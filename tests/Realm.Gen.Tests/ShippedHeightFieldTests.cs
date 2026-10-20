@@ -15,7 +15,7 @@ public class ShippedHeightFieldTests
     private const int TestSpacing = 128;
 
     // Interior means: every macro cell within this many cells (8 x 64 m = 512 m) belongs to the same region, which is
-    // beyond the blend distance (384 m by default), so the biome values apply unmixed.
+    // beyond the blend distance (512 m by default), so the biome values apply unmixed.
     private const int InteriorRadiusCells = 8;
 
     private sealed record Loaded(ContentDatabase Db, MacroMapDefinition Map, RegionField Regions, HeightField Field);
@@ -31,11 +31,16 @@ public class ShippedHeightFieldTests
         return new Loaded(db, map, regions, field!);
     }
 
-    // The height range a biome allows on its own: base +- relief (ocean: minus the water depth).
+    // The height range a biome allows: base +- relief (ocean: minus the water depth), widened by what its landmarks can
+    // add (all hills and mountains stacked, with the 30 percent size variation and the 12 percent hill bump) or remove
+    // (all basins), and by one terrace step.
     private static (double Min, double Max) Range(BiomeDefinition biome)
     {
         BiomeTerrainParameters p = BiomeTerrainParameters.TryFrom(biome, new ValidationReport())!;
-        return (p.BaseHeightMeters - p.ReliefMeters, p.BaseHeightMeters + p.ReliefMeters);
+        double up = p.Landmarks.Where(l => l.Kind != LandmarkKind.Basin).Sum(l => l.HeightMeters * 1.3 * 1.12);
+        double down = p.Landmarks.Where(l => l.Kind == LandmarkKind.Basin).Sum(l => l.HeightMeters * 1.3);
+        double terrace = p.Terrace > 0 ? HeightFieldSettings.DefaultTerraceStepMeters : 0;
+        return (p.BaseHeightMeters - p.ReliefMeters - down - terrace, p.BaseHeightMeters + p.ReliefMeters + up + terrace);
     }
 
     private static bool IsInterior(RegionField regions, int cellX, int cellZ)
@@ -167,6 +172,6 @@ public class ShippedHeightFieldTests
         return dir?.FullName ?? throw new InvalidOperationException("Realm.sln not found above the test binary.");
     }
 
-    // Captured from the accepted implementation (generator version 1, spacing 128 m, seed 1, six-region sample world).
-    private const ulong GoldenChecksum = 10432179646867385957UL;
+    // Captured from the accepted implementation (generator version 2, spacing 128 m, seed 1, six-region sample world).
+    private const ulong GoldenChecksum = 8823570733630450160UL;
 }

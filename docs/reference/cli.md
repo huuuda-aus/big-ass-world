@@ -62,7 +62,7 @@ Error TERR002 world.main: 6204 cell(s) belong to no region, for example around (
 
 ## `height-field [dir] [--seed N] [--spacing M] [--blend M] [--erode] [--iterations N] [--strength S] [--threshold KM2] [--min-lake-area KM2] [--png file]`
 
-Loads the content, rasterises each world, generates its height field and prints statistics: vertex count, spacing, seed, generator version, checksum, time, height range and per-region min, max and mean. Defaults: `dir` is `content`, seed 1, spacing 8 m, blend 384 m. With `--png`, writes a coloured, hill-shaded preview image (at most 1024 pixels per side) with pale region borders. Validator issues (`TERR`) are printed after the table. Exit codes: `0` ok, `1` errors, `2` bad arguments.
+Loads the content, rasterises each world, generates its height field and prints statistics: vertex count, spacing, seed, generator version, checksum, time, height range and per-region min, max and mean. Defaults: `dir` is `content`, seed 1, spacing 8 m, blend 512 m. With `--png`, writes a coloured, hill-shaded preview image (at most 1024 pixels per side) with pale region borders. Validator issues (`TERR`) are printed after the table. Exit codes: `0` ok, `1` errors, `2` bad arguments.
 
 With `--erode` the step also erodes the terrain and finds rivers and lakes (the preview then shows rivers and lakes in blue). Erosion options: `--iterations N` (default 20), `--strength S` (default 2), `--threshold KM2` (flow needed for a river, default 2) and `--min-lake-area KM2` (smallest lake kept, default 4). The eroded output also lists the longest rivers and every lake. See [tune erosion and rivers](../how-to/tune-erosion-and-rivers.md).
 

@@ -286,6 +286,10 @@ public class ErosionGeneratorTests
             Settings(s => s with { LakeMinDepthMeters = -1 }),
             Settings(s => s with { LakeMinDepthMeters = 0 }),
             Settings(s => s with { MinLakeAreaKm2 = -1 }),
+            Settings(s => s with { GorgeWallSlope = 0 }),
+            Settings(s => s with { GorgeFullFlowKm2 = 0 }),
+            Settings(s => s with { RiverBaseWidthMeters = -1 }),
+            Settings(s => s with { GorgeFadeHeightMeters = double.NaN }),
         })
         {
             var report = new ValidationReport();

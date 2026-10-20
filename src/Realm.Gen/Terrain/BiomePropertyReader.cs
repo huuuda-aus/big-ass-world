@@ -35,6 +35,27 @@ internal static class BiomePropertyReader
     }
 
     /// <summary>Warns that a property does not apply to this kind of biome and is ignored.</summary>
+    /// <summary>Reads an optional property; absent means 0, present must satisfy <paramref name="isValid"/>.</summary>
+    public static double Optional(
+        BiomeDefinition biome, string name, ValidationReport report, Func<double, bool> isValid, string rule)
+    {
+        if (!biome.Properties.TryGetValue(name, out double value))
+        {
+            return 0;
+        }
+
+        if (!isValid(value))
+        {
+            report.Error(
+                TerrainCodes.BiomePropertyOutOfRange,
+                biome.Id.Value,
+                $"Biome '{biome.Id}' property '{name}' is {value} but {rule}.");
+            return 0;
+        }
+
+        return value;
+    }
+
     public static void WarnIgnored(BiomeDefinition biome, string name, string kind, ValidationReport report)
     {
         if (biome.Properties.ContainsKey(name))

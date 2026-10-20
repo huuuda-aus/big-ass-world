@@ -24,9 +24,27 @@ The shipped biome values and tuning settings are placeholders. This is how you r
    ```
 5. Fix it in one of two ways, then run again:
    - Lower the height difference between neighbouring biomes (smaller `relief_m` or a shallower sea).
-   - Widen the blend: `dotnet run --project src/Realm.Cli -- height-field --spacing 32 --blend 640`. With 640 m the example above passes (512 m still leaves one marginal step at slope 2.00).
+   - Widen the blend: `dotnet run --project src/Realm.Cli -- height-field --spacing 32 --blend 640`. With 640 m the example above passes (that example was measured with the old 384 m default; the default is now 512 m).
 6. Try other seeds: `--seed 2`. Different seeds give different mountain shapes; the biome values stay the same.
 7. When you like the result, run `dotnet test Realm.sln`. The shipped-world golden tests describe the sample values and will fail after you change them on purpose; update them (see troubleshooting).
+
+## Making mountains, lone hills and lagoons
+
+The shape properties in the [biome reference](../reference/content/biome.md#shape-properties-all-optional) change what a region looks like, not just how high it is.
+
+1. Rocky ridges: add `ridge: 0.8` to a mountainous biome. Re-run step 1 and open the PNG: smooth hills turn into crests and valleys.
+2. A mountain standing alone in a forest: add to `temperate_forest.yaml`
+   ```yaml
+   mountain_density: 6        # per 100 km2 of forest
+   mountain_height_m: 480
+   mountain_radius_m: 1000
+   ```
+   Re-run; the preview shows a rocky peak or two inside the forest. Raise the density for more; lonely hills use `hill_*`.
+3. Ponds and lagoons: add `basin_density`, `basin_height_m` (depth) and `basin_radius_m`. They show up as lakes when you add `--erode`, because erosion fills any basin that is large and deep enough ([lakes](tune-erosion-and-rivers.md)).
+4. Mesas and stepped cliffs: `terrace: 0.8` on a dry biome.
+5. Cliff-lined rivers: add `gorge_depth_m: 40` to a rocky biome and use `--erode`.
+
+If the seam error reappears (TERR014), lower the `ridge` of the biome next to the sea or reduce `relief_m`; the default blend is now 512 m.
 
 ## Verify
 You should see `0 error(s), 0 warning(s)` and a preview image that matches what you intended: for example taller, whiter highlands.

@@ -29,7 +29,7 @@ public static class ErosionGenerator
     /// Bump when the output for the same input changes, and regenerate golden tests in the same change
     /// (CLAUDE.md section 7.4).
     /// </summary>
-    public const int GeneratorVersion = 1;
+    public const int GeneratorVersion = 2;
 
     private const float SeaLevel = 0f;
     private const double HalfDivisor = 2.0;
@@ -86,6 +86,7 @@ public static class ErosionGenerator
         ParameterGrid erodibilityGrid = BuildGrid(regions, perRegion, p => p.Erodibility, blurCells);
         ParameterGrid slopeGrid = BuildGrid(regions, perRegion, p => p.MaxSlopeDegrees, blurCells);
         ParameterGrid lossGrid = BuildGrid(regions, perRegion, p => p.RiverLoss, blurCells);
+        ParameterGrid gorgeGrid = BuildGrid(regions, perRegion, p => p.GorgeDepthMeters, blurCells);
 
         // Coarse working grid: every k-th vertex of the field.
         int k = settings.WorkingSpacingMeters / source.SpacingMeters;
@@ -142,6 +143,9 @@ public static class ErosionGenerator
         // Thermal relaxation at full resolution, with each vertex's stable slope from its biome (blurred).
         double[] stable = StableSlopes(slopeGrid, side, source.SpacingMeters, half);
         float[] relaxed = ThermalEroder.Relax(carved, side, source.SpacingMeters, stable, settings.ThermalIterations);
+
+        // Gorges are cut after thermal relaxation, which would otherwise slump the cliff walls down to the biome's stable slope.
+        GorgeCarver.Carve(relaxed, side, source.SpacingMeters, source.WorldSizeMeters, network.Rivers, gorgeGrid, settings);
 
         var field = new HeightField(source.WorldSizeMeters, source.SpacingMeters, relaxed);
         HeightFieldValidator.Validate(field, regions, report);

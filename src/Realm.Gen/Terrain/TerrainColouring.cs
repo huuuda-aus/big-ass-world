@@ -15,6 +15,12 @@ public static class TerrainColouring
     /// <summary>Blue component of the colour used for rivers and lakes.</summary>
     public const byte WaterBlue = 255;
 
+    /// <summary>Slope (rise over run) where bare rock starts to show through the ground colour (about 27 degrees).</summary>
+    public const double RockSlopeStart = 0.5;
+
+    /// <summary>Slope (rise over run) from which the ground is fully rock coloured (about 45 degrees).</summary>
+    public const double RockSlopeFull = 1.0;
+
     private const double ShallowWaterDepthFraction = 1.0;
     private const double LowlandUpTo = 0.25;
     private const double HillsUpTo = 0.6;
@@ -25,14 +31,16 @@ public static class TerrainColouring
     private static readonly (double R, double G, double B) Lowland = (70, 130, 60);
     private static readonly (double R, double G, double B) Hills = (140, 120, 80);
     private static readonly (double R, double G, double B) Rock = (120, 115, 110);
+    private static readonly (double R, double G, double B) SlopeRock = (110, 105, 100);
     private static readonly (double R, double G, double B) Snow = (245, 245, 250);
 
     /// <summary>Colour of the ground at a height.</summary>
     /// <param name="height">Height in metres; negative is below sea level.</param>
     /// <param name="top">Height that maps to the top of the land palette (usually the world's highest point).</param>
     /// <param name="depth">Depth that maps to the deepest water colour (usually minus the world's lowest point).</param>
+    /// <param name="slope">Ground slope as rise over run; steeper than <see cref="RockSlopeStart"/> blends toward bare rock. Ignored under water.</param>
     /// <returns>Red, green and blue in 0 to 255.</returns>
-    public static (double R, double G, double B) Albedo(double height, double top, double depth)
+    public static (double R, double G, double B) Albedo(double height, double top, double depth, double slope = 0)
     {
         top = Math.Max(1.0, top);
         depth = Math.Max(1.0, depth);
@@ -41,6 +49,18 @@ public static class TerrainColouring
             return Lerp(Shallow, Deep, Math.Clamp(-height / (depth * ShallowWaterDepthFraction), 0, 1));
         }
 
+        // Steep ground is bare rock whatever its height.
+        double rock = Math.Clamp((slope - RockSlopeStart) / (RockSlopeFull - RockSlopeStart), 0, 1);
+        if (rock > 0)
+        {
+            return Lerp(HeightAlbedo(height, top), SlopeRock, rock * rock * (3 - (2 * rock)));
+        }
+
+        return HeightAlbedo(height, top);
+    }
+
+    private static (double R, double G, double B) HeightAlbedo(double height, double top)
+    {
         double t = Math.Clamp(height / top, 0, 1);
         if (t < LowlandUpTo)
         {

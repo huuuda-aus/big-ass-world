@@ -10,3 +10,6 @@ properties:
   erodibility: 0.2
   max_slope_deg: 20
   river_loss: 0
+  basin_density: 6
+  basin_height_m: 12
+  basin_radius_m: 500

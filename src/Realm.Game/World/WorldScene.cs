@@ -49,8 +49,7 @@ public partial class WorldScene : Node3D
     private const float HudMargin = 10;
     private const float TapeStartAhead = 3f;
     private const int TapeLengthMeters = 100;
-    private const float WaterPlaneSize = 12000f;
-    private const float WaterSnap = 200f;
+    private const float EdgeMarginMeters = 10f; // the player cannot get closer than this to the edge of the world
     private const double HudInterval = 0.25;
     private const int AutowalkWarmupFrames = 60;
 
@@ -282,8 +281,7 @@ public partial class WorldScene : Node3D
             }
         }
 
-        _water.Position = new Vector3(
-            Mathf.Snapped(_body.Position.X, WaterSnap), 0, Mathf.Snapped(_body.Position.Z, WaterSnap));
+        ClampToWorld();
 
         _hudTimer += delta;
         if (_hudTimer >= HudInterval && !_args.Flag("no-hud", false))
@@ -446,7 +444,18 @@ public partial class WorldScene : Node3D
             CommitBudgetMs: 4,
             UpdatePerAdd: false,
             UpdatePerRemove: false,
-            BuildOnWorker: true);
+            BuildOnWorker: true,
+            MinRegion: _source.Manifest.MinRegion,
+            MaxRegion: _source.Manifest.MaxRegion);
+    }
+
+    // An invisible wall at the edge of the baked world (where there is no terrain).
+    private void ClampToWorld()
+    {
+        float low = (_source.Manifest.MinRegion * _source.Manifest.RegionExtentMeters) + EdgeMarginMeters;
+        float high = ((_source.Manifest.MaxRegion + 1) * _source.Manifest.RegionExtentMeters) - EdgeMarginMeters;
+        Vector3 p = _body.Position;
+        _body.Position = new Vector3(Mathf.Clamp(p.X, low, high), p.Y, Mathf.Clamp(p.Z, low, high));
     }
 
     private void ApplyViewMode()
@@ -524,7 +533,7 @@ public partial class WorldScene : Node3D
 
         _water = new MeshInstance3D
         {
-            Mesh = new PlaneMesh { Size = new Vector2(WaterPlaneSize, WaterPlaneSize) },
+            Mesh = new PlaneMesh { Size = new Vector2(_source.Manifest.WorldSizeMeters, _source.Manifest.WorldSizeMeters) }, // exactly the world: the sea stops where the terrain does
             MaterialOverride = new StandardMaterial3D
             {
                 AlbedoColor = new Color(0.10f, 0.32f, 0.62f, 0.72f),

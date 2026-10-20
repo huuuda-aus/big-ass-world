@@ -120,9 +120,9 @@ public class TerrainBakerTests
     public void HillShading_DarkensSlopesFacingAwayFromTheLight_AndBrightensTheOthers()
     {
         // Heights rise toward the south-east (+x and +z): the slope faces north-west, toward the light, so it is lit...
-        HeightField towardLight = Field((x, z) => 100f + ((x + z) * 2f));
+        HeightField towardLight = Field((x, z) => 100f + ((x + z) * 0.4f)); // gentle: slope 0.1 per axis, below where rock colour starts
         // ...and the mirror image falls toward the south-east, facing away from the light.
-        HeightField awayFromLight = Field((x, z) => 100f - ((x + z) * 2f));
+        HeightField awayFromLight = Field((x, z) => 100f - ((x + z) * 0.4f));
         HeightField flat = Field((_, _) => 100f);
 
         double Brightness(HeightField f)
@@ -157,7 +157,7 @@ public class TerrainBakerTests
                     double sx = (field.At(Math.Min(vx + 1, last), vz) - field.At(Math.Max(vx - 1, 0), vz)) / (2.0 * Spacing);
                     double sz = (field.At(vx, Math.Min(vz + 1, last)) - field.At(vx, Math.Max(vz - 1, 0))) / (2.0 * Spacing);
                     double shade = Math.Clamp(1.0 + (0.9 * (sx + sz)), 0.45, 1.35);
-                    (double r, double g, double b) = TerrainColouring.Albedo(field.At(vx, vz), top, depth);
+                    (double r, double g, double b) = TerrainColouring.Albedo(field.At(vx, vz), top, depth, Math.Sqrt((sx * sx) + (sz * sz)));
 
                     Assert.Equal(TerrainColouring.Pack(r * shade, g * shade, b * shade), tile.Colours[(iz * RegionSize) + ix]);
                 }

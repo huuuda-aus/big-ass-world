@@ -245,7 +245,7 @@ public sealed class RegionStreamer
         var wanted = new List<Vector2I>();
         foreach ((int x, int z, _) in RegionGrid.RegionsWithin(
                      camera.X, camera.Z, Options.LoadDistanceMeters, _bridge.RegionExtentMeters,
-                     TerrainBridge.MinRegionCoordinate, TerrainBridge.MaxRegionCoordinate))
+                     Math.Max(TerrainBridge.MinRegionCoordinate, Options.MinRegion), Math.Min(TerrainBridge.MaxRegionCoordinate, Options.MaxRegion)))
         {
             wanted.Add(new Vector2I(x, z));
         }

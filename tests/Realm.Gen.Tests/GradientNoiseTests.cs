@@ -167,4 +167,27 @@ public class GradientNoiseTests
 
     // Captured from the first accepted implementation (generator version 1); see Fractal_IsStableGolden.
     private const double GoldenFractal = 0.09142582937236886;
+
+    [Fact]
+    public void Ridged_StaysInZeroToOne_AndPeaksOnTheLatticeWhereTheNoiseIsZero()
+    {
+        GradientNoise noise = Noise(3);
+
+        for (int i = 0; i < 2000; i++)
+        {
+            double r = noise.Ridged((i * 0.173) - 100, (i * 0.311) - 40, 4, 2.0, 0.5);
+            Assert.InRange(r, 0.0, 1.0);
+        }
+
+        // Plain noise is exactly 0 at integer lattice points, and so is every octave when the lacunarity is 2: all crests, so exactly 1.
+        Assert.Equal(1.0, noise.Ridged(7, -3, 4, 2.0, 0.5), 12);
+        Assert.Equal(1.0, noise.Ridged(-12, 25, 5, 2.0, 0.6), 12);
+    }
+
+    [Fact]
+    public void Ridged_IsDeterministic_AndDiffersFromFractal()
+    {
+        Assert.Equal(Noise(2).Ridged(1.3, 4.7, 4, 2, 0.5), Noise(2).Ridged(1.3, 4.7, 4, 2, 0.5));
+        Assert.NotEqual(Noise(2).Ridged(1.3, 4.7, 4, 2, 0.5), (Noise(2).Fractal(1.3, 4.7, 4, 2, 0.5) + 1) / 2);
+    }
 }

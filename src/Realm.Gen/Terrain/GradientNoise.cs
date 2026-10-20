@@ -102,6 +102,34 @@ public sealed class GradientNoise
         return Math.Clamp(sum / total, -1.0, 1.0);
     }
 
+    /// <summary>
+    /// Ridged fractal: bright crest lines where the underlying noise crosses zero, falling away to valleys. Gives
+    /// mountain ridges instead of rounded hills.
+    /// </summary>
+    /// <param name="x">Lattice-space X.</param>
+    /// <param name="z">Lattice-space Z.</param>
+    /// <param name="octaves">Number of octaves, at least 1.</param>
+    /// <param name="lacunarity">Frequency multiplier per octave.</param>
+    /// <param name="gain">Amplitude multiplier per octave.</param>
+    /// <returns>A value in [0, 1]; 1 on a crest line.</returns>
+    public double Ridged(double x, double z, int octaves, double lacunarity, double gain)
+    {
+        double sum = 0;
+        double amplitude = 1;
+        double total = 0;
+        double frequency = 1;
+        for (int o = 0; o < octaves; o++)
+        {
+            double crest = 1.0 - Math.Abs(Sample(x * frequency, z * frequency));
+            sum += amplitude * crest * crest;
+            total += amplitude;
+            amplitude *= gain;
+            frequency *= lacunarity;
+        }
+
+        return Math.Clamp(sum / total, 0.0, 1.0);
+    }
+
     private static double Fade(double t) => t * t * t * ((t * ((t * FadeA) - FadeB)) + FadeC);
 
     private double Dot(int ix, int iz, double dx, double dz)

@@ -53,7 +53,17 @@ All notable changes are recorded here. Format: [Keep a Changelog](https://keepac
 
 - Scale reference: `Realm.Gen.Props` low-poly models (one-storey cottage 4.2 m, two-storey house 7.4 m, pine/oak/poplar trees 4 to 10 m) with 15 tests; the game lays a measure tape from the spawn to the world edge with a house and three trees every 100 m (`StripLayout`, 5 tests; segments stream in and out; `T` toggles, `--no-tape`).
 
+### Fixed
+- Walking or flying to the edge of the world: the streamer asked for regions that were never baked and failed with a missing-tile error (it hung a start near the edge). It now only wants regions inside the baked world (`StreamingOptions.MinRegion`/`MaxRegion`).
+- The world edge showed a stretched "curtain" of terrain; Terrain3D's world background is now off.
+
+- Terrain shapes (`terrain.height_field` v2): ridged noise and domain warping, terracing, and scattered landmarks (hills, mountains, basins) from new optional biome properties (`ridge`, `terrace`, `hill_*`, `mountain_*`, `basin_*`); `LandmarkPlacer`, `LandmarkShaper`, `GradientNoise.Ridged`. See ADR 0011.
+- Gorges (`terrain.erosion` v2): `GorgeCarver` cuts cliff-walled gorges along big rivers, from the optional biome property `gorge_depth_m`.
+- Steep ground is baked and previewed as bare rock (`TerrainColouring.Albedo` slope parameter).
+
 ### Changed
+- Generator versions bumped: `terrain.height_field` 1 -> 2, `terrain.erosion` 1 -> 2; golden checksums regenerated. Default blend radius 384 -> 512 m (the ridged mountains failed the seam check at 384 m). Shipped biome values (placeholders) now include landmarks, ridges, terracing and gorges, and the baked world was regenerated.
+- The player cannot go within 10 m of the world edge (invisible wall); the sea plane is exactly the size of the world instead of following the player.
 - Streaming commit budget in CLAUDE.md section 4.9 is now frame-based (was a fixed 1 ms): one Terrain3D shared-texture rebuild costs about 7 ms with 9 to 12 regions of 256 x 256 vertices. Load set is by view distance, below half a region width.
 - Fixed inverted hill-shading direction in `HeightPreview` (light from the north-west): ridges in earlier preview images were lit from the wrong side.
 - Architecture test now covers `Realm.Game`; `RiverNetwork` records its working-grid spacing; `TerrainManifest` has value equality.

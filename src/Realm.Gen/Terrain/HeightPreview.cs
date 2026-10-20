@@ -46,7 +46,9 @@ public static class HeightPreview
                 int vx = px * step;
                 int vz = py * step;
                 double h = field.At(vx, vz);
-                (double r, double g, double b) = TerrainColouring.Albedo(h, top, depth);
+                double gradX = (field.At(Math.Min(vx + step, side - 1), vz) - field.At(Math.Max(vx - step, 0), vz)) / (2.0 * step * field.SpacingMeters);
+                double gradZ = (field.At(vx, Math.Min(vz + step, side - 1)) - field.At(vx, Math.Max(vz - step, 0))) / (2.0 * step * field.SpacingMeters);
+                (double r, double g, double b) = TerrainColouring.Albedo(h, top, depth, Math.Sqrt((gradX * gradX) + (gradZ * gradZ)));
 
                 // Light from the north-west: a surface rising toward the south-east faces the light and is lit more.
                 double dx = field.At(Math.Min(vx + step, side - 1), vz) - field.At(Math.Max(vx - step, 0), vz);

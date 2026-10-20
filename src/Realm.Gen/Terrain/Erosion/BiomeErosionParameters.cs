@@ -33,6 +33,15 @@ public sealed record BiomeErosionParameters(
     /// <summary>Property name: fraction of river flow lost per kilometre, 0 to 1 (land biomes).</summary>
     public const string RiverLossProperty = "river_loss";
 
+    /// <summary>Property name: how deep the biome's big rivers cut gorges with cliff walls, in metres (optional, 0 = none).</summary>
+    public const string GorgeDepthProperty = "gorge_depth_m";
+
+    /// <summary>Largest allowed gorge depth in metres.</summary>
+    public const double MaxGorgeDepthMeters = 200;
+
+    /// <summary>Depth in metres that the biome's largest rivers cut below the surrounding ground; 0 when the biome sets none.</summary>
+    public double GorgeDepthMeters { get; init; }
+
     /// <summary>Slope limit used for ocean biomes: effectively none, so the sea floor is never relaxed.</summary>
     public const double OceanMaxSlopeDegrees = 89.0;
 
@@ -50,7 +59,7 @@ public sealed record BiomeErosionParameters(
 
         if (biome.Tags.Contains(BiomeTerrainParameters.OceanTag))
         {
-            foreach (string name in new[] { RainfallProperty, ErodibilityProperty, MaxSlopeProperty, RiverLossProperty })
+            foreach (string name in new[] { RainfallProperty, ErodibilityProperty, MaxSlopeProperty, RiverLossProperty, GorgeDepthProperty })
             {
                 BiomePropertyReader.WarnIgnored(biome, name, "ocean", report);
             }
@@ -64,11 +73,13 @@ public sealed record BiomeErosionParameters(
         double maxSlope = BiomePropertyReader.Require(biome, MaxSlopeProperty, report, v => v > 0 && v <= 90, "must be above 0 and at most 90 degrees");
         double riverLoss = BiomePropertyReader.Require(biome, RiverLossProperty, report, v => v >= 0 && v <= 1, "must be between 0 and 1");
 
+        double gorge = BiomePropertyReader.Optional(biome, GorgeDepthProperty, report, v => v >= 0 && v <= MaxGorgeDepthMeters, $"must be between 0 and {MaxGorgeDepthMeters} m");
+
         if (report.Count(Severity.Error) > errorsBefore)
         {
             return null;
         }
 
-        return new BiomeErosionParameters(rainfall, erodibility, maxSlope, riverLoss, false);
+        return new BiomeErosionParameters(rainfall, erodibility, maxSlope, riverLoss, false) { GorgeDepthMeters = gorge };
     }
 }

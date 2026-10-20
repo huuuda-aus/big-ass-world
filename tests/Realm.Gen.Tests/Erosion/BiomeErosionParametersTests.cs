@@ -109,4 +109,28 @@ public class BiomeErosionParametersTests
         Assert.Null(p);
         Assert.Equal(3, report.Issues.Count); // two out of range, one missing river_loss
     }
+
+    [Fact]
+    public void GorgeDepth_IsOptional_AndDefaultsToNone()
+    {
+        BiomeErosionParameters p = BiomeErosionParameters.TryFrom(
+            Biome("biome.plain", false, ("rainfall", 0.5), ("erodibility", 0.5), ("max_slope_deg", 30), ("river_loss", 0.1)), new ValidationReport())!;
+
+        Assert.Equal(0, p.GorgeDepthMeters);
+    }
+
+    [Fact]
+    public void GorgeDepth_IsRead_AndRejectedOutsideZeroToTwoHundred()
+    {
+        BiomeDefinition WithGorge(double depth) =>
+            Biome("biome.rocky", false, ("rainfall", 0.5), ("erodibility", 0.5), ("max_slope_deg", 30), ("river_loss", 0.1), ("gorge_depth_m", depth));
+
+        Assert.Equal(45, BiomeErosionParameters.TryFrom(WithGorge(45), new ValidationReport())!.GorgeDepthMeters);
+        foreach (double bad in new[] { -1.0, 201.0 })
+        {
+            var report = new ValidationReport();
+            Assert.Null(BiomeErosionParameters.TryFrom(WithGorge(bad), report));
+            Assert.Equal(TerrainCodes.BiomePropertyOutOfRange, Assert.Single(report.Issues).Code);
+        }
+    }
 }

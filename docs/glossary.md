@@ -4,7 +4,7 @@
 - **Bake**: turning generated terrain into files the game streams: region tiles plus a manifest (`realm bake-terrain`).
 - **Basin fill**: erosion step that raises depressions that are not kept lakes to their water level, standing for sediment-filled floodplains, so rivers cross them.
 - **Biome**: content record (`biome.*`) describing the character of an area for the terrain generator; tags such as `ocean`, free-form numeric properties.
-- **Blend radius** (`BlendRadiusMeters`): how far biome terrain values blend to each side of a region border (default 384 m, rounded up to whole macro cells). Larger gives gentler coasts and borders.
+- **Blend radius** (`BlendRadiusMeters`): how far biome terrain values blend to each side of a region border (default 512 m, rounded up to whole macro cells). Larger gives gentler coasts and borders.
 - **Catchment** (flow): the area draining to a point, measured in effective square kilometres: rainfall 1 counts a full km2, rainfall 0.5 half.
 - **Chunk**: streaming unit of the overworld (proposed 256 m square). Baked as one contiguous blob and loaded or unloaded as a whole.
 - **Commit** (streaming): the main-thread step that adds prepared chunk data to the Godot scene, time-sliced to a per-frame budget.

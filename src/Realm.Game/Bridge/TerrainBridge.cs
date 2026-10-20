@@ -28,6 +28,7 @@ public sealed class TerrainBridge
     private const string RegionClass = "Terrain3DRegion";
     private const int AllMapTypes = 3; // Terrain3DRegion.TYPE_MAX
     private const int NoError = 0;
+    private const int NoWorldBackground = 0; // Terrain3DMaterial.WorldBackground.NONE
 
     private readonly GodotObject _data;
 
@@ -85,6 +86,9 @@ public sealed class TerrainBridge
         terrain.Set("collision_radius", settings.CollisionRadius);
         terrain.Set("collision_mode", (int)settings.Collision);
         terrain.Call("set_camera", camera);
+
+        // Draw nothing beyond the last region: the default background extends the world edge as a stretched curtain.
+        terrain.Call("get_material").AsGodotObject().Call("set_world_background", NoWorldBackground);
 
         GodotObject data = terrain.Call("get_data").AsGodotObject();
         return new TerrainBridge(terrain, data, settings);

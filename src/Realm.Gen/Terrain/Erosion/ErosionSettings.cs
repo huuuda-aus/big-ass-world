@@ -55,6 +55,36 @@ public sealed record ErosionSettings
     /// </summary>
     public double MinLakeAreaKm2 { get; init; } = DefaultMinLakeAreaKm2;
 
+    /// <summary>Default slope (rise over run) of gorge walls: 2 is about 63 degrees.</summary>
+    public const double DefaultGorgeWallSlope = 2.0;
+
+    /// <summary>Default flow in km2 at which a river cuts its full gorge depth.</summary>
+    public const double DefaultGorgeFullFlowKm2 = 10.0;
+
+    /// <summary>Default width of the smallest river channel in metres.</summary>
+    public const double DefaultRiverBaseWidthMeters = 4.0;
+
+    /// <summary>Default extra channel width in metres per square root of km2 of flow.</summary>
+    public const double DefaultRiverWidthPerSqrtKm2 = 2.0;
+
+    /// <summary>Default height above sea level in metres over which gorges fade out toward the coast.</summary>
+    public const double DefaultGorgeFadeHeightMeters = 20.0;
+
+    /// <summary>Steepness of gorge walls (rise over run); higher gives sheerer cliffs.</summary>
+    public double GorgeWallSlope { get; init; } = DefaultGorgeWallSlope;
+
+    /// <summary>River flow in km2 at which the full gorge depth is reached.</summary>
+    public double GorgeFullFlowKm2 { get; init; } = DefaultGorgeFullFlowKm2;
+
+    /// <summary>Width of the smallest river channel in metres.</summary>
+    public double RiverBaseWidthMeters { get; init; } = DefaultRiverBaseWidthMeters;
+
+    /// <summary>Extra channel width in metres per square root of km2 of flow.</summary>
+    public double RiverWidthPerSqrtKm2 { get; init; } = DefaultRiverWidthPerSqrtKm2;
+
+    /// <summary>Gorges fade to nothing over this many metres of height above sea level, so rivers reach the coast without canyons.</summary>
+    public double GorgeFadeHeightMeters { get; init; } = DefaultGorgeFadeHeightMeters;
+
     /// <summary>Checks the settings against each other, the world and the height-field spacing.</summary>
     /// <param name="worldSizeMeters">World side length in metres.</param>
     /// <param name="fieldSpacingMeters">Vertex spacing of the height field.</param>
@@ -94,6 +124,12 @@ public sealed record ErosionSettings
         else if (!(MinLakeAreaKm2 >= 0) || !double.IsFinite(MinLakeAreaKm2))
         {
             problem = "MinLakeAreaKm2 must be a number that is not negative.";
+        }
+        else if (!(GorgeWallSlope > 0) || !(GorgeFullFlowKm2 > 0) || !(RiverBaseWidthMeters >= 0) || !(RiverWidthPerSqrtKm2 >= 0) || !(GorgeFadeHeightMeters > 0)
+                 || !double.IsFinite(GorgeWallSlope) || !double.IsFinite(GorgeFullFlowKm2) || !double.IsFinite(RiverBaseWidthMeters)
+                 || !double.IsFinite(RiverWidthPerSqrtKm2) || !double.IsFinite(GorgeFadeHeightMeters))
+        {
+            problem = "Gorge settings must be finite; GorgeWallSlope, GorgeFullFlowKm2 and GorgeFadeHeightMeters must be positive, river widths not negative.";
         }
         else
         {

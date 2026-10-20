@@ -29,9 +29,24 @@ public static class HeightFieldGenerator
     /// Bump when the output for the same input changes, and regenerate golden tests in the same change
     /// (CLAUDE.md section 7.4).
     /// </summary>
-    public const int GeneratorVersion = 1;
+    public const int GeneratorVersion = 2;
 
     private const double HalfDivisor = 2.0;
+    private const double WarpOffsetX = 31.7;
+    private const double WarpOffsetZ = 83.3;
+    private const double RidgeOffset = 211.3;
+    private const int RidgeMaxOctaves = 4; // crests are sharp already; more octaves only add steep fine noise
+    private const double RidgeGainFactor = 0.8;
+    private const double TerraceRiserSharpness = 4.0; // steeper than 1: flat treads with short risers
+
+    // Flat steps with cliff risers: each step height is held for most of its range, then rises quickly.
+    private static double Terraced(double height, double step)
+    {
+        double u = height / step;
+        double floor = Math.Floor(u);
+        double fraction = Math.Clamp(((u - floor) - 0.5) * TerraceRiserSharpness + 0.5, 0.0, 1.0);
+        return (floor + fraction) * step;
+    }
 
     /// <summary>Generates the height field and runs <see cref="HeightFieldValidator"/> on it.</summary>
     /// <param name="map">The macro map.</param>
@@ -82,6 +97,8 @@ public static class HeightFieldGenerator
         ParameterGrid baseGrid = BuildGrid(regions, perRegion, p => p.BaseHeightMeters, blurCells);
         ParameterGrid reliefGrid = BuildGrid(regions, perRegion, p => p.ReliefMeters, blurCells);
         ParameterGrid roughnessGrid = BuildGrid(regions, perRegion, p => p.Roughness, blurCells);
+        ParameterGrid ridgeGrid = BuildGrid(regions, perRegion, p => p.Ridge, blurCells);
+        ParameterGrid terraceGrid = BuildGrid(regions, perRegion, p => p.Terrace, blurCells);
 
         var noise = new GradientNoise(Rng.ForKey(worldSeed, "terrain", "height"));
         int side = (map.WorldSizeMeters / settings.SpacingMeters) + 1;
@@ -97,15 +114,38 @@ public static class HeightFieldGenerator
                 double baseHeight = baseGrid.Sample(x, z);
                 double relief = reliefGrid.Sample(x, z);
                 double gain = settings.MinGain + ((settings.MaxGain - settings.MinGain) * roughnessGrid.Sample(x, z));
-                double n = noise.Fractal(
-                    x / settings.FeatureWavelengthMeters,
-                    z / settings.FeatureWavelengthMeters,
-                    settings.Octaves,
-                    settings.Lacunarity,
-                    gain);
-                heights[(row * side) + col] = (float)(baseHeight + (relief * n));
+                // Domain warp: look the noise up at a slightly displaced position so features are not evenly round.
+                double wx = x;
+                double wz = z;
+                if (settings.WarpMeters > 0)
+                {
+                    wx += settings.WarpMeters * noise.Sample((x / settings.WarpWavelengthMeters) + WarpOffsetX, z / settings.WarpWavelengthMeters);
+                    wz += settings.WarpMeters * noise.Sample(x / settings.WarpWavelengthMeters, (z / settings.WarpWavelengthMeters) + WarpOffsetZ);
+                }
+
+                double fx = wx / settings.FeatureWavelengthMeters;
+                double fz = wz / settings.FeatureWavelengthMeters;
+                double n = noise.Fractal(fx, fz, settings.Octaves, settings.Lacunarity, gain);
+                double ridge = ridgeGrid.Sample(x, z);
+                if (ridge > 0)
+                {
+                    double ridged = (noise.Ridged(fx + RidgeOffset, fz + RidgeOffset, Math.Min(settings.Octaves, RidgeMaxOctaves), settings.Lacunarity, gain * RidgeGainFactor) * 2) - 1;
+                    n += ridge * (Math.Clamp(ridged, -1.0, 1.0) - n);
+                }
+
+                double height = baseHeight + (relief * n);
+                double terrace = terraceGrid.Sample(x, z);
+                if (terrace > 0)
+                {
+                    height += terrace * (Terraced(height, settings.TerraceStepMeters) - height);
+                }
+
+                heights[(row * side) + col] = (float)height;
             }
         });
+
+        IReadOnlyList<Landmark> landmarks = LandmarkPlacer.Place(regions, perRegion, worldSeed);
+        LandmarkShaper.Apply(heights, side, settings.SpacingMeters, map.WorldSizeMeters, landmarks, new GradientNoise(Rng.ForKey(worldSeed, "terrain", "landmark-shape")));
 
         var field = new HeightField(map.WorldSizeMeters, settings.SpacingMeters, heights);
         HeightFieldValidator.Validate(field, regions, report);

@@ -133,6 +133,32 @@ public class ShippedErosionTests
     }
 
     [Fact]
+    public void Gorges_OnlyEverLowerTheGround_AndDoLowerSome()
+    {
+        ContentDatabase db = ContentLoader.Load(Path.Combine(RepoRoot(), "content"), new ValidationReport());
+        MacroMapDefinition map = db.MacroMaps[ContentId.Parse("world.main")];
+        RegionField regions = MacroRasterizer.Rasterize(map, new ValidationReport());
+        HeightField source = HeightFieldGenerator.Generate(
+            map, regions, db.Biomes, 1, new HeightFieldSettings { SpacingMeters = Spacing }, new ValidationReport())!;
+
+        ErodedTerrain With(double fullFlowKm2) => ErosionGenerator.Apply(
+            map, regions, db.Biomes, source, new ErosionSettings { WorkingSpacingMeters = Spacing, GorgeFullFlowKm2 = fullFlowKm2 }, new ValidationReport())!;
+
+        // A full-depth flow of a million km2 is out of reach, so that run has (practically) no gorges.
+        HeightField none = With(1_000_000).Field;
+        HeightField gorges = With(ErosionSettings.DefaultGorgeFullFlowKm2).Field;
+
+        int lower = 0;
+        for (int i = 0; i < gorges.Heights.Length; i++)
+        {
+            Assert.True(gorges.Heights[i] <= none.Heights[i] + 0.01f, $"vertex {i} is higher with gorges");
+            lower += gorges.Heights[i] < none.Heights[i] - 1 ? 1 : 0;
+        }
+
+        Assert.True(lower > 0, "the shipped world's big rivers in rocky biomes should have cut gorges");
+    }
+
+    [Fact]
     public void SameSeed_GivesTheSameResult_DifferentSeedDoesNot()
     {
         ulong a = Run(new ValidationReport(), 1).Eroded.Checksum();
@@ -160,6 +186,6 @@ public class ShippedErosionTests
         return dir?.FullName ?? throw new InvalidOperationException("Realm.sln not found above the test binary.");
     }
 
-    // Captured from the accepted implementation (erosion generator version 1, 128 m grid, seed 1, six-region sample world).
-    private const ulong GoldenChecksum = 1861100600665340144UL;
+    // Captured from the accepted implementation (erosion generator version 2, 128 m grid, seed 1, six-region sample world).
+    private const ulong GoldenChecksum = 11649216531522621169UL;
 }

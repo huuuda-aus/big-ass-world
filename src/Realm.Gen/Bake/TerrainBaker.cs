@@ -97,8 +97,9 @@ public static class TerrainBaker
                 float h = field.At(originVertexX + ix, originVertexZ + iz);
                 int i = (iz * regionSize) + ix;
                 heights[i] = h;
-                (double r, double g, double b) = TerrainColouring.Albedo(h, top, depth);
-                double shade = Shade(field, originVertexX + ix, originVertexZ + iz);
+                (double slopeX, double slopeZ) = Slopes(field, originVertexX + ix, originVertexZ + iz);
+                (double r, double g, double b) = TerrainColouring.Albedo(h, top, depth, Math.Sqrt((slopeX * slopeX) + (slopeZ * slopeZ)));
+                double shade = Math.Clamp(1.0 + (ShadeStrength * (slopeX + slopeZ)), ShadeMinimum, ShadeMaximum);
                 colours[i] = TerrainColouring.Pack(r * shade, g * shade, b * shade);
             }
         }
@@ -113,18 +114,17 @@ public static class TerrainBaker
         return new RegionTile(regionX, regionZ, regionSize, field.SpacingMeters, heights, colours);
     }
 
-    // Baked hill shading, lit from the north-west: a surface that rises toward the south-east faces the light and
-    // brightens; one that falls toward the south-east faces away and darkens.
-    // Terrain3D has no textures yet, so this is what makes relief visible; it uses the height field's own neighbours,
-    // so tile edges shade seamlessly.
-    private static double Shade(HeightField field, int vertexX, int vertexZ)
+    // Ground slope in X and Z (rise over run). It drives the baked hill shading, lit from the north-west (a surface that
+    // rises toward the south-east faces the light and brightens; one that falls toward the south-east darkens), and the
+    // rock colour on steep ground. It reads the height field's own neighbours, so tile edges match seamlessly.
+    private static (double X, double Z) Slopes(HeightField field, int vertexX, int vertexZ)
     {
         int last = field.VerticesPerSide - 1;
         double slopeX = (field.At(Math.Min(vertexX + 1, last), vertexZ) - field.At(Math.Max(vertexX - 1, 0), vertexZ))
                         / (2.0 * field.SpacingMeters);
         double slopeZ = (field.At(vertexX, Math.Min(vertexZ + 1, last)) - field.At(vertexX, Math.Max(vertexZ - 1, 0)))
                         / (2.0 * field.SpacingMeters);
-        return Math.Clamp(1.0 + (ShadeStrength * (slopeX + slopeZ)), ShadeMinimum, ShadeMaximum);
+        return (slopeX, slopeZ);
     }
 
     /// <summary>Bakes every region of a field to files and writes the manifest.</summary>

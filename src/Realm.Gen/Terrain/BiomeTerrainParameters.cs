@@ -15,6 +15,27 @@ namespace Realm.Gen.Terrain;
 /// <param name="IsOcean">True for biomes tagged <c>ocean</c>.</param>
 public sealed record BiomeTerrainParameters(double BaseHeightMeters, double ReliefMeters, double Roughness, bool IsOcean)
 {
+    /// <summary>Property name: 0 to 1, how much of the noise is ridged (mountain crests) instead of smooth.</summary>
+    public const string RidgeProperty = "ridge";
+
+    /// <summary>Property name: 0 to 1, how strongly heights are terraced into flat steps with cliff risers.</summary>
+    public const string TerraceProperty = "terrace";
+
+    /// <summary>Largest allowed landmark density per 100 square kilometres.</summary>
+    public const double MaxLandmarkDensity = 200;
+
+    /// <summary>Smallest allowed landmark radius in metres.</summary>
+    public const double MinLandmarkRadiusMeters = 50;
+
+    /// <summary>Ridged share of the noise, 0 to 1 (0 when the biome sets no <c>ridge</c>).</summary>
+    public double Ridge { get; init; }
+
+    /// <summary>Terracing strength, 0 to 1 (0 when the biome sets no <c>terrace</c>).</summary>
+    public double Terrace { get; init; }
+
+    /// <summary>Landmarks this biome scatters; empty when it sets none.</summary>
+    public System.Collections.Generic.IReadOnlyList<LandmarkSpec> Landmarks { get; init; } = System.Array.Empty<LandmarkSpec>();
+
     /// <summary>Property name: typical height above sea level in metres (land biomes).</summary>
     public const string BaseHeightProperty = "base_height_m";
 
@@ -64,11 +85,31 @@ public sealed record BiomeTerrainParameters(double BaseHeightMeters, double Reli
             BiomePropertyReader.WarnIgnored(biome, WaterDepthProperty, "land", report);
         }
 
+        double ridge = BiomePropertyReader.Optional(biome, RidgeProperty, report, value => value >= 0 && value <= 1, "must be between 0 and 1");
+        double terrace = BiomePropertyReader.Optional(biome, TerraceProperty, report, value => value >= 0 && value <= 1, "must be between 0 and 1");
+        var landmarks = new System.Collections.Generic.List<LandmarkSpec>();
+        if (!ocean)
+        {
+            foreach (LandmarkKind kind in System.Enum.GetValues<LandmarkKind>())
+            {
+                string prefix = kind.ToString().ToLowerInvariant();
+                double density = BiomePropertyReader.Optional(biome, prefix + "_density", report, value => value >= 0 && value <= MaxLandmarkDensity, $"must be between 0 and {MaxLandmarkDensity} per 100 km2");
+                if (density <= 0)
+                {
+                    continue;
+                }
+
+                double height = BiomePropertyReader.Require(biome, prefix + "_height_m", report, value => value > 0, "must be positive");
+                double radius = BiomePropertyReader.Require(biome, prefix + "_radius_m", report, value => value >= MinLandmarkRadiusMeters, $"must be at least {MinLandmarkRadiusMeters} m");
+                landmarks.Add(new LandmarkSpec(kind, density, height, radius));
+            }
+        }
+
         if (report.Count(Severity.Error) > errorsBefore)
         {
             return null;
         }
 
-        return new BiomeTerrainParameters(baseHeight, relief, roughness, ocean);
+        return new BiomeTerrainParameters(baseHeight, relief, roughness, ocean) { Ridge = ridge, Terrace = terrace, Landmarks = landmarks };
     }
 }

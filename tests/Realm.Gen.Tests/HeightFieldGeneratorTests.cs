@@ -127,7 +127,8 @@ public class HeightFieldGeneratorTests
     {
         var land = Land("biome.land", 100, 30, 0.6);
         var report = new ValidationReport();
-        HeightField field = Generate(LandAndSea(), Biomes(land, FlatSea), report)!;
+        var settings = new HeightFieldSettings { SpacingMeters = 16, BlendRadiusMeters = PinnedBlendMeters, FeatureWavelengthMeters = 256 };
+        HeightField field = Generate(LandAndSea(), Biomes(land, FlatSea), report, 1, settings)!;
 
         double min = double.MaxValue;
         double max = double.MinValue;
@@ -236,6 +237,9 @@ public class HeightFieldGeneratorTests
             new HeightFieldSettings { Lacunarity = 1 },
             new HeightFieldSettings { MinGain = 0.8, MaxGain = 0.5 },
             new HeightFieldSettings { MaxGain = 1.5 },
+            new HeightFieldSettings { WarpMeters = -1 },
+            new HeightFieldSettings { WarpWavelengthMeters = 0 },
+            new HeightFieldSettings { TerraceStepMeters = 0 },
         })
         {
             var report = new ValidationReport();

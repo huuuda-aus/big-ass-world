@@ -122,4 +122,71 @@ public class BiomeTerrainParametersTests
         Assert.Equal(-90, seaParams!.BaseHeightMeters);
         Assert.Equal(TerrainCodes.BiomePropertyIgnored, Assert.Single(seaReport.Issues).Code);
     }
+
+    [Fact]
+    public void OptionalProperties_DefaultToNothing()
+    {
+        BiomeTerrainParameters p = BiomeTerrainParameters.TryFrom(Land("biome.plain", 10, 5, 0.5), new ValidationReport())!;
+
+        Assert.Equal(0, p.Ridge);
+        Assert.Equal(0, p.Terrace);
+        Assert.Empty(p.Landmarks);
+    }
+
+    [Fact]
+    public void RidgeTerraceAndLandmarks_AreRead()
+    {
+        BiomeDefinition biome = Biome("biome.rugged", false,
+            ("base_height_m", 100), ("relief_m", 50), ("roughness", 0.5), ("ridge", 0.7), ("terrace", 0.2),
+            ("hill_density", 8), ("hill_height_m", 90), ("hill_radius_m", 600),
+            ("basin_density", 2), ("basin_height_m", 20), ("basin_radius_m", 400));
+
+        BiomeTerrainParameters p = BiomeTerrainParameters.TryFrom(biome, new ValidationReport())!;
+
+        Assert.Equal(0.7, p.Ridge);
+        Assert.Equal(0.2, p.Terrace);
+        Assert.Equal(
+            new[] { new LandmarkSpec(LandmarkKind.Hill, 8, 90, 600), new LandmarkSpec(LandmarkKind.Basin, 2, 20, 400) },
+            p.Landmarks);
+    }
+
+    [Theory]
+    [InlineData("ridge", 1.5)]
+    [InlineData("terrace", -0.1)]
+    [InlineData("hill_density", -1)]
+    [InlineData("mountain_density", 500)]
+    public void OptionalPropertiesOutOfRange_AreRejected(string name, double value)
+    {
+        var report = new ValidationReport();
+
+        Assert.Null(BiomeTerrainParameters.TryFrom(Biome("biome.bad", false, ("base_height_m", 1), ("relief_m", 1), ("roughness", 0.5), (name, value)), report));
+        Assert.Equal(TerrainCodes.BiomePropertyOutOfRange, Assert.Single(report.Issues).Code);
+    }
+
+    [Fact]
+    public void Landmark_NeedsItsHeightAndRadius_WhenItHasADensity()
+    {
+        var report = new ValidationReport();
+
+        Assert.Null(BiomeTerrainParameters.TryFrom(Biome("biome.bad", false, ("base_height_m", 1), ("relief_m", 1), ("roughness", 0.5), ("mountain_density", 3)), report));
+        Assert.Equal(2, report.Issues.Count(i => i.Code == TerrainCodes.BiomeMissingProperty));
+    }
+
+    [Fact]
+    public void Landmark_RadiusBelowTheMinimum_IsRejected()
+    {
+        var report = new ValidationReport();
+
+        Assert.Null(BiomeTerrainParameters.TryFrom(Biome("biome.bad", false, ("base_height_m", 1), ("relief_m", 1), ("roughness", 0.5),
+            ("hill_density", 3), ("hill_height_m", 10), ("hill_radius_m", 10)), report));
+        Assert.Equal(TerrainCodes.BiomePropertyOutOfRange, Assert.Single(report.Issues).Code);
+    }
+
+    [Fact]
+    public void OceanBiomes_IgnoreLandmarks()
+    {
+        BiomeDefinition sea = Biome("biome.sea", true, ("water_depth_m", 50), ("relief_m", 5), ("roughness", 0.3), ("hill_density", 5), ("hill_height_m", 10), ("hill_radius_m", 200));
+
+        Assert.Empty(BiomeTerrainParameters.TryFrom(sea, new ValidationReport())!.Landmarks);
+    }
 }

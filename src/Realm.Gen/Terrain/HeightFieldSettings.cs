@@ -13,7 +13,7 @@ public sealed record HeightFieldSettings
     public const int DefaultSpacingMeters = 8;
 
     /// <summary>Default distance over which biome parameters blend to each side of a region border.</summary>
-    public const int DefaultBlendRadiusMeters = 384;
+    public const int DefaultBlendRadiusMeters = 512;
 
     /// <summary>Default number of noise octaves.</summary>
     public const int DefaultOctaves = 6;
@@ -24,11 +24,29 @@ public sealed record HeightFieldSettings
     /// <summary>Default frequency multiplier per octave.</summary>
     public const double DefaultLacunarity = 2.0;
 
+    /// <summary>Default sideways shift of the noise lookup, in metres (domain warping).</summary>
+    public const double DefaultWarpMeters = 300.0;
+
+    /// <summary>Default wavelength of the domain warp, in metres.</summary>
+    public const double DefaultWarpWavelengthMeters = 1200.0;
+
+    /// <summary>Default height of one terrace step, in metres.</summary>
+    public const double DefaultTerraceStepMeters = 30.0;
+
     /// <summary>Default amplitude multiplier per octave at roughness 0 (fine detail fades fast).</summary>
     public const double DefaultMinGain = 0.35;
 
     /// <summary>Default amplitude multiplier per octave at roughness 1 (fine detail stays strong).</summary>
     public const double DefaultMaxGain = 0.60;
+
+    /// <summary>How far the noise lookup is pushed sideways by a second, slower noise; breaks up the regular blob look. 0 turns it off.</summary>
+    public double WarpMeters { get; init; } = DefaultWarpMeters;
+
+    /// <summary>Wavelength of the domain warp in metres.</summary>
+    public double WarpWavelengthMeters { get; init; } = DefaultWarpWavelengthMeters;
+
+    /// <summary>Height of one terrace step in metres, used where a biome sets <c>terrace</c> above 0.</summary>
+    public double TerraceStepMeters { get; init; } = DefaultTerraceStepMeters;
 
     /// <summary>Vertex spacing in metres; must divide the world size.</summary>
     public int SpacingMeters { get; init; } = DefaultSpacingMeters;
@@ -75,6 +93,14 @@ public sealed record HeightFieldSettings
         else if (!(FeatureWavelengthMeters > 0) || !double.IsFinite(FeatureWavelengthMeters))
         {
             problem = "FeatureWavelengthMeters must be a positive number.";
+        }
+        else if (!(WarpMeters >= 0) || !double.IsFinite(WarpMeters) || !(WarpWavelengthMeters > 0) || !double.IsFinite(WarpWavelengthMeters))
+        {
+            problem = "WarpMeters must not be negative and WarpWavelengthMeters must be positive.";
+        }
+        else if (!(TerraceStepMeters > 0) || !double.IsFinite(TerraceStepMeters))
+        {
+            problem = "TerraceStepMeters must be a positive number.";
         }
         else if (!(Lacunarity > 1) || !double.IsFinite(Lacunarity))
         {

@@ -10,3 +10,10 @@ properties:
   erodibility: 0.3
   max_slope_deg: 30
   river_loss: 0.3
+  hill_density: 10
+  hill_height_m: 80
+  hill_radius_m: 600
+  basin_density: 1
+  basin_height_m: 25
+  basin_radius_m: 600
+  gorge_depth_m: 6
