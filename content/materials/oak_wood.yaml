@@ -1,0 +1,7 @@
+id: material.oak_wood
+name: Oak wood
+tags: [wood, organic]
+properties:
+  hardness: 2
+  weight: 0.7
+  conductivity: 0

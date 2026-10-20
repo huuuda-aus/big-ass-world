@@ -1,0 +1,12 @@
+# Placeholder terrain values, not design.
+id: biome.badlands
+name: Badlands
+tags: [land, dry]
+properties:
+  base_height_m: 250
+  relief_m: 180
+  roughness: 0.8
+  rainfall: 0.1
+  erodibility: 0.9
+  max_slope_deg: 60
+  river_loss: 0.4

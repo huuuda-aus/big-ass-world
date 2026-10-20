@@ -1,0 +1,12 @@
+# Placeholder terrain values, not design.
+id: biome.temperate_forest
+name: Temperate forest
+tags: [land]
+properties:
+  base_height_m: 60
+  relief_m: 40
+  roughness: 0.4
+  rainfall: 0.6
+  erodibility: 0.4
+  max_slope_deg: 35
+  river_loss: 0.02

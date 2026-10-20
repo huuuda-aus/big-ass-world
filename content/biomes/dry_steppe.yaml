@@ -1,0 +1,12 @@
+# Placeholder terrain values, not design.
+id: biome.dry_steppe
+name: Dry steppe
+tags: [land, dry]
+properties:
+  base_height_m: 120
+  relief_m: 60
+  roughness: 0.3
+  rainfall: 0.15
+  erodibility: 0.3
+  max_slope_deg: 30
+  river_loss: 0.3

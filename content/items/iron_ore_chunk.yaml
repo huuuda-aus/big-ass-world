@@ -1,0 +1,4 @@
+id: item.iron_ore_chunk
+name: Iron ore chunk
+tags: [raw_material]
+material: material.iron_ore

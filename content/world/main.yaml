@@ -1,0 +1,46 @@
+# Sample macro map (placeholder names and layout, not design).
+# World is 20,480 m = 80 chunks of 256 m = 320 macro cells of 64 m. Origin is the world centre;
+# X is east, Z is south, all in metres. A 16 km square of land (six regions) sits in an ocean ring.
+# Land regions share their border vertices exactly, so they tile the square with no gaps or overlaps.
+id: world.main
+name: Main world
+world_size_m: 20480
+regions:
+  - id: region.frostpeak_range
+    name: Frostpeak Range
+    biome: biome.alpine_peaks
+    polygons:
+      - [[-8000, -8000], [-1000, -8000], [-2000, -2500], [-8000, -1500]]
+  - id: region.ashen_highlands
+    name: Ashen Highlands
+    biome: biome.highlands
+    polygons:
+      - [[-1000, -8000], [8000, -8000], [8000, -2000], [2500, -3000], [-2000, -2500]]
+  - id: region.mistwood
+    name: Mistwood
+    biome: biome.temperate_forest
+    polygons:
+      - [[-8000, -1500], [-2000, -2500], [-500, 1500], [-8000, 3000]]
+  - id: region.sunlit_steppe
+    name: Sunlit Steppe
+    biome: biome.dry_steppe
+    polygons:
+      - [[-2000, -2500], [2500, -3000], [8000, -2000], [8000, 2500], [3000, 3500], [-500, 1500]]
+  - id: region.saltmarsh
+    name: Saltmarsh
+    biome: biome.marsh
+    polygons:
+      - [[-8000, 3000], [-500, 1500], [3000, 3500], [2000, 8000], [-8000, 8000]]
+  - id: region.redrock_badlands
+    name: Redrock Badlands
+    biome: biome.badlands
+    polygons:
+      - [[3000, 3500], [8000, 2500], [8000, 8000], [2000, 8000]]
+  - id: region.outer_sea
+    name: Outer Sea
+    biome: biome.deep_ocean
+    polygons:
+      - [[-10240, -10240], [10240, -10240], [10240, -8000], [-10240, -8000]]
+      - [[-10240, 8000], [10240, 8000], [10240, 10240], [-10240, 10240]]
+      - [[-10240, -8000], [-8000, -8000], [-8000, 8000], [-10240, 8000]]
+      - [[8000, -8000], [10240, -8000], [10240, 8000], [8000, 8000]]

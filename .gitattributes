@@ -1,0 +1,12 @@
+* text=auto eol=lf
+
+# Git LFS: baked generator output and binary assets
+baked/**/*.exr filter=lfs diff=lfs merge=lfs -text
+baked/**/*.r16 filter=lfs diff=lfs merge=lfs -text
+baked/**/*.png filter=lfs diff=lfs merge=lfs -text
+baked/**/*.bin filter=lfs diff=lfs merge=lfs -text
+assets/**/*.png filter=lfs diff=lfs merge=lfs -text
+assets/**/*.glb filter=lfs diff=lfs merge=lfs -text
+assets/**/*.ogg filter=lfs diff=lfs merge=lfs -text
+assets/**/*.wav filter=lfs diff=lfs merge=lfs -text
+baked/**/*.tile filter=lfs diff=lfs merge=lfs -text

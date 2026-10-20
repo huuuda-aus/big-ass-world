@@ -1,0 +1,25 @@
+; Engine configuration file. Edit through the editor where possible.
+config_version=5
+
+[application]
+
+config/name="Realm"
+config/features=PackedStringArray("4.5", "C#", "Forward Plus")
+run/main_scene="res://scenes/world.tscn"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+
+[dotnet]
+
+project/assembly_name="Realm.Game"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/terrain_3d/plugin.cfg")
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0

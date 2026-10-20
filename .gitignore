@@ -1,0 +1,27 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+*.log
+
+# Godot
+.godot/
+.mono/
+*.translation
+export_presets.cfg
+export_credentials.cfg
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local
+.claude/settings.local.json

@@ -1,0 +1,14 @@
+<Project Sdk="Godot.NET.Sdk/4.5.1">
+
+  <PropertyGroup>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Realm.Core\Realm.Core.csproj" />
+    <ProjectReference Include="..\Realm.Data\Realm.Data.csproj" />
+    <ProjectReference Include="..\Realm.Sim\Realm.Sim.csproj" />
+    <ProjectReference Include="..\Realm.Gen\Realm.Gen.csproj" />
+  </ItemGroup>
+
+</Project>

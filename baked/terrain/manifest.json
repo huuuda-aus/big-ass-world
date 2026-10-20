@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "world": "world.main",
+  "worldSizeMeters": 20480,
+  "spacingMeters": 4,
+  "regionSize": 256,
+  "regionExtentMeters": 1024,
+  "regionsPerAxis": 20,
+  "minRegion": -10,
+  "maxRegion": 9,
+  "seed": 1,
+  "generators": [
+    "terrain.height_field v1, terrain.erosion v1"
+  ],
+  "minHeight": -218.16107177734375,
+  "maxHeight": 655.7567749023438,
+  "riverCount": 18,
+  "lakeCount": 1,
+  "spawnX": -912,
+  "spawnZ": 2688,
+  "checksum": "22c8eb1cf80badfa"
+}

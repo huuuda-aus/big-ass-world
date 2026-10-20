@@ -1,0 +1,7 @@
+id: material.iron_ore
+name: Iron ore
+tags: [metal, ore]
+properties:
+  hardness: 4
+  weight: 7.8
+  conductivity: 0.2

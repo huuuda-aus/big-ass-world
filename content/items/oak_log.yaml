@@ -1,0 +1,4 @@
+id: item.oak_log
+name: Oak log
+tags: [raw_material]
+material: material.oak_wood

@@ -1,0 +1,7 @@
+id: material.copper_ore
+name: Copper ore
+tags: [metal, ore]
+properties:
+  hardness: 3
+  weight: 8.9
+  conductivity: 0.9

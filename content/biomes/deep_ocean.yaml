@@ -1,0 +1,8 @@
+# Placeholder terrain values, not design.
+id: biome.deep_ocean
+name: Deep ocean
+tags: [ocean]
+properties:
+  water_depth_m: 200
+  relief_m: 30
+  roughness: 0.3

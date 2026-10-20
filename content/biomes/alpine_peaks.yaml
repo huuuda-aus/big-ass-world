@@ -1,0 +1,12 @@
+# Placeholder terrain values, not design.
+id: biome.alpine_peaks
+name: Alpine peaks
+tags: [land, mountainous]
+properties:
+  base_height_m: 400
+  relief_m: 600
+  roughness: 0.9
+  rainfall: 0.9
+  erodibility: 0.5
+  max_slope_deg: 55
+  river_loss: 0

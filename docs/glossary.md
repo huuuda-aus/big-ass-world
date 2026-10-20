@@ -1,0 +1,53 @@
+# Glossary
+
+- **Architecture test**: test that reads `.csproj` files and fails when the dependency rules are broken.
+- **Bake**: turning generated terrain into files the game streams: region tiles plus a manifest (`realm bake-terrain`).
+- **Basin fill**: erosion step that raises depressions that are not kept lakes to their water level, standing for sediment-filled floodplains, so rivers cross them.
+- **Biome**: content record (`biome.*`) describing the character of an area for the terrain generator; tags such as `ocean`, free-form numeric properties.
+- **Blend radius** (`BlendRadiusMeters`): how far biome terrain values blend to each side of a region border (default 384 m, rounded up to whole macro cells). Larger gives gentler coasts and borders.
+- **Catchment** (flow): the area draining to a point, measured in effective square kilometres: rainfall 1 counts a full km2, rainfall 0.5 half.
+- **Chunk**: streaming unit of the overworld (proposed 256 m square). Baked as one contiguous blob and loaded or unloaded as a whole.
+- **Commit** (streaming): the main-thread step that adds prepared chunk data to the Godot scene, time-sliced to a per-frame budget.
+- **Component**: plain-data `struct` attached to an entity, such as a position. Stored by type in `SimWorld`.
+- **Confluence**: where one river joins another; the river that ends there has the mouth kind `Confluence`.
+- **Content ID** (`ContentId`): stable string identifier of a content record, such as `material.iron_ore`. The first segment is the content type.
+- **Content lint**: `content-lint` CLI command and the shipped-content test; load all YAML content and report every problem.
+- **Content root**: the directory (default `content/`) holding one subdirectory per content type.
+- **Entity** (`EntityId`): an ID with components attached. IDs increase and are never reused.
+- **Erodibility** (`erodibility`): biome property, 0 to 1; how strongly flowing water carves the ground. 0 is bedrock.
+- **ForKey**: `Rng.ForKey(seed, keys...)`. Derives a generator for a named place in the seed hierarchy so unrelated generator parts do not reshuffle each other.
+- **Game time** (`GameTime`): whole minutes since the world began (day 0, 00:00), derived from the tick count.
+- **Golden test**: fixed seed and parameters must produce a fixed output. Intentional changes bump the generator version and regenerate the golden.
+- **Height field** (`HeightField`): terrain heights in metres on a square grid of vertices, north-west corner first. Sea level is 0 m. Produced by `HeightFieldGenerator`.
+- **Hitch**: a frame much longer than the typical frame, seen as stutter. The traversal soak test counts them.
+- **Hydraulic erosion**: carving of valleys along the flow, an implicit stream-power law (`erodibility x strength x flow^0.5 / distance`).
+- **Lake**: a depression kept as water: surface area at least `MinLakeAreaKm2` (default 4) and deep enough (default 2 m). Smaller basins are filled in.
+- **Macro cell**: one square of the coarse region grid (proposed 64 m). A macro cell belongs to the region whose polygon contains the cell centre.
+- **Macro map** (`world` record): the hand-authored list of regions and polygons that tile the world, in metres.
+- **Manifest** (`manifest.json`): describes a baked terrain: geometry, generators, seed, spawn point and a checksum.
+- **PCG32**: the pseudo-random algorithm behind `Rng` (XSH-RR variant).
+- **Presentation layer**: `Realm.Game` (Godot). Renders the simulation; never mutates it directly.
+- **Rainfall** (`rainfall`): biome property, 0 to 1; how much water each area adds to the flow, which drives how many rivers there are.
+- **Rebuild** (shared-texture rebuild): Terrain3D's `update_maps`, which re-uploads the maps of all loaded regions. Its cost grows with the loaded pixels and sets the height of a streaming frame spike (ADR 0009).
+- **Reference** (content): a field holding another record's ID, such as `item.material`. Checked after loading (`DATA013`, `DATA014`); a reference to a missing record is a *dangling reference*.
+- **Region** (`region.*`): a named area of the world made of one or more polygons with one biome. Ocean is a region with an `ocean` biome. Defined inside a macro map.
+- **Region field** (`RegionField`): the macro map rasterised to a grid of macro cells, each holding its owning region.
+- **Relief** (`relief_m`): biome property; how far terrain rises above and falls below its base height (half the peak-to-peak range).
+- **Ring** (streaming): a distance band around the player with its own level of detail (near: simulation and collision; middle: visuals; far: terrain LOD and impostors).
+- **River**: a polyline along the path where flow reaches the river threshold, from a source to the sea, the world edge, a confluence, or until it dries up.
+- **River loss** (`river_loss`): biome property, 0 to 1; fraction of a river's flow lost per kilometre while crossing the biome, so rivers can fade out in dry regions.
+- **Roughness** (`roughness`): biome property from 0 (smooth, rolling) to 1 (jagged); how slowly fine noise detail fades out.
+- **Seed sweep**: running a generator over many seeds with all validators. **Planned.**
+- **Soak test** (traversal): automated fly-through of the full world that records frame times, streaming cost, GC and memory to prove seamless streaming. The M1 gate.
+- **Stable slope** (`max_slope_deg`): biome property; steepest slope in degrees that stays put. Steeper slopes slump during thermal erosion.
+- **Stream**: PCG selector that gives an independent sequence for the same seed.
+- **System** (`ISystem`): logic that runs once per tick over components. Systems run in registration order.
+- **Tag** (`TagSet`): a lowercase label such as `metal` attached to content. Behaviour composes from tags and properties, not class hierarchies.
+- **Terrain3D region**: Terrain3D's data unit: `region_size` vertices at `vertex_spacing` metres (here 256 x 4 m = 1,024 m). At most 32 x 32 regions exist.
+- **Thermal erosion**: slumping of slopes steeper than the stable slope, mass-conserving, run on the full-resolution field.
+- **Tick**: one step of the simulation. `TicksPerGameMinute` ticks make one game minute.
+- **Tile** (`RegionTile`): one baked region on disk: heights, colours and a checksum.
+- **Validation report** (`ValidationReport`): list of issues (severity, stable code, location, message, suggested fix) returned by validators and the content loader.
+- **Vertex spacing** (`SpacingMeters`): distance between neighbouring height-field vertices. Development default 8 m; the final value is a proposal (2 m).
+- **View distance**: how far from the camera terrain regions are loaded (480 m walking, 1,600 m flying); kept below half a region width so at most 4 regions are loaded while walking.
+- **Working grid**: the coarse grid (default 32 m spacing) on which water is routed and hydraulic erosion runs; the carve is then transferred to the full-resolution field.

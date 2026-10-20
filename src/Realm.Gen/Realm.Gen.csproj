@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Realm.Gen.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Realm.Core\Realm.Core.csproj" />
+    <ProjectReference Include="..\Realm.Data\Realm.Data.csproj" />
+    <ProjectReference Include="..\Realm.Sim\Realm.Sim.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+  </PropertyGroup>
+
+</Project>
