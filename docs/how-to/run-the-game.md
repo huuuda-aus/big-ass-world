@@ -59,7 +59,7 @@ Pass them after `--`, for example `<godot> --path src/Realm.Game -- --fly --pos=
 - Terrain is the baked eroded height field; colours come from the baked colour map (height palette, baked shading, rivers and lakes). There are no textures, vegetation, buildings or characters yet.
 - The sea is a flat plane at height 0. Rivers and lakes are painted on the ground, not rendered as water.
 - Walking uses physics: you collide with the terrain and cannot climb slopes steeper than 50 degrees. Fly mode (F) ignores collision. If you fall through at start, report it; a failsafe normally lifts you back.
-- Extra options: `--render-scale=0.75` (3D resolution relative to the window, 1 = sharp), `--collision-shape=8`, `--collision-radius=16`, `--colour-map` (old colour-only look).
+- Extra options: `--render-scale=0.75` (3D resolution relative to the window, 1 = sharp), `--collision-shape=8`, `--collision-radius=16`, `--colour-map` (old colour-only look), `--no-cities`, `--map`.
 - Walk mode loads terrain within 480 m and uses thick fog; fly mode loads 1,600 m and uses thin fog.
 
 ## Verify

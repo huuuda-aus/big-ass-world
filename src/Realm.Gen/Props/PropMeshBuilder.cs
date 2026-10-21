@@ -5,7 +5,7 @@ using System.Numerics;
 namespace Realm.Gen.Props;
 
 /// <summary>Collects convex solids into a <see cref="PropMesh"/>; every face is wound outward automatically.</summary>
-internal sealed class PropMeshBuilder
+internal sealed partial class PropMeshBuilder
 {
     private readonly List<PropTriangle> _triangles = new();
 
@@ -126,7 +126,7 @@ internal sealed class PropMeshBuilder
     }
 
     // Wind the triangle so its normal points away from a point inside the (convex) solid.
-    private void Triangle(Vector3 a, Vector3 b, Vector3 c, Vector3 inside, Vector3 colour)
+    internal void Triangle(Vector3 a, Vector3 b, Vector3 c, Vector3 inside, Vector3 colour)
     {
         Vector3 normal = Vector3.Cross(b - a, c - a);
         if (Vector3.Dot(normal, a - inside) < 0)

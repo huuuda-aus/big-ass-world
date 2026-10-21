@@ -5,6 +5,7 @@
 - **Basin fill**: erosion step that raises depressions that are not kept lakes to their water level, standing for sediment-filled floodplains, so rivers cross them.
 - **Biome**: content record (`biome.*`) describing the character of an area for the terrain generator; tags such as `ocean`, free-form numeric properties.
 - **Blend radius** (`BlendRadiusMeters`): how far biome terrain values blend to each side of a region border (default 512 m, rounded up to whole macro cells). Larger gives gentler coasts and borders.
+- **Bridge**: a timber deck where a road crosses a river; baked in `roads.json` and built by the game.
 - **Catchment** (flow): the area draining to a point, measured in effective square kilometres: rainfall 1 counts a full km2, rainfall 0.5 half.
 - **Chunk**: streaming unit of the overworld (proposed 256 m square). Baked as one contiguous blob and loaded or unloaded as a whole.
 - **Commit** (streaming): the main-thread step that adds prepared chunk data to the Godot scene, time-sliced to a per-frame budget.
@@ -15,6 +16,7 @@
 - **Content root**: the directory (default `content/`) holding one subdirectory per content type.
 - **Entity** (`EntityId`): an ID with components attached. IDs increase and are never reused.
 - **Erodibility** (`erodibility`): biome property, 0 to 1; how strongly flowing water carves the ground. 0 is bedrock.
+- **Far mesh / near mesh**: the cheap closed exterior of a house (painted doors and windows) versus the detailed one with real openings, rooms and collision, built only within 35 m of the player.
 - **ForKey**: `Rng.ForKey(seed, keys...)`. Derives a generator for a named place in the seed hierarchy so unrelated generator parts do not reshuffle each other.
 - **Game time** (`GameTime`): whole minutes since the world began (day 0, 00:00), derived from the tick count.
 - **Golden test**: fixed seed and parameters must produce a fixed output. Intentional changes bump the generator version and regenerate the golden.
@@ -25,6 +27,8 @@
 - **Macro cell**: one square of the coarse region grid (proposed 64 m). A macro cell belongs to the region whose polygon contains the cell centre.
 - **Macro map** (`world` record): the hand-authored list of regions and polygons that tile the world, in metres.
 - **Manifest** (`manifest.json`): describes a baked terrain: geometry, generators, seed, spawn point and a checksum.
+- **Pad**: the flattened ground under a settlement (wall radius plus 30 m) that blends back into the terrain over 100 m.
+- **Patch / ward**: one Voronoi cell of a city plan; inside the wall it has a ward type (market, cathedral, merchant, craftsmen, slum, park).
 - **PCG32**: the pseudo-random algorithm behind `Rng` (XSH-RR variant).
 - **Presentation layer**: `Realm.Game` (Godot). Renders the simulation; never mutates it directly.
 - **Rainfall** (`rainfall`): biome property, 0 to 1; how much water each area adds to the flow, which drives how many rivers there are.
@@ -36,8 +40,10 @@
 - **Ring** (streaming): a distance band around the player with its own level of detail (near: simulation and collision; middle: visuals; far: terrain LOD and impostors).
 - **River**: a polyline along the path where flow reaches the river threshold, from a source to the sea, the world edge, a confluence, or until it dries up.
 - **River loss** (`river_loss`): biome property, 0 to 1; fraction of a river's flow lost per kilometre while crossing the biome, so rivers can fade out in dry regions.
+- **Road**: a graded, painted strip of terrain between two settlement gates, planned by `RoadPlanner` and listed in `roads.json`.
 - **Roughness** (`roughness`): biome property from 0 (smooth, rolling) to 1 (jagged); how slowly fine noise detail fades out.
 - **Seed sweep**: running a generator over many seeds with all validators. **Planned.**
+- **Settlement**: a city or town placed on the map; baked as an entry in `settlements.json`.
 - **Soak test** (traversal): automated fly-through of the full world that records frame times, streaming cost, GC and memory to prove seamless streaming. The M1 gate.
 - **Stable slope** (`max_slope_deg`): biome property; steepest slope in degrees that stays put. Steeper slopes slump during thermal erosion.
 - **Stream**: PCG selector that gives an independent sequence for the same seed.

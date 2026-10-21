@@ -2,7 +2,7 @@
 
 A single-player, first-person, retro-styled open-world RPG in the spirit of *Might and Magic VI–VIII*. Godot 4 (.NET) front end over a Godot-free C# simulation and generator core.
 
-**Status:** M0 — Foundations, moving into the terrain pipeline. Core, Data, Sim, the terrain pipeline (macro map, height field, erosion, rivers, lakes, bake) and a first playable preview exist: you can walk and fly over the baked 20 km world in Godot. Ground has placeholder textures and a physics walker; there are no characters or gameplay yet.
+**Status:** M0 — Foundations, moving into the terrain pipeline. Core, Data, Sim, the terrain pipeline (macro map, height field, erosion, rivers, lakes, bake) and a first playable preview exist: you can walk and fly over the baked 20 km world in Godot. Ground has placeholder textures and a physics walker, and the map has 3 walled cities and 5 towns with names, joined by roads and bridges, that you can walk into; there are no characters or gameplay yet.
 
 - Project rules and design: [CLAUDE.md](CLAUDE.md)
 - All documentation: [docs/index.md](docs/index.md)
@@ -31,7 +31,7 @@ Works on Linux and Windows (Terrain3D binaries are vendored for those two only).
 4. Check the build: `dotnet test Realm.sln`.
 5. Run the game: `godot --path src/Realm.Game` (use the full path to the Godot executable if it is not on your PATH).
 
-Controls: W A S D move, Shift run, Space jump, F fly, T hide the scale-reference strip, F1 hide the HUD, Esc release the mouse. More: [Run the game](docs/how-to/run-the-game.md).
+Controls: W A S D move, Shift run, Space jump, F fly, M map, F1 hide the HUD, Esc release the mouse. More: [Run the game](docs/how-to/run-the-game.md).
 
 If the baked terrain is missing (a clone without LFS), create it with `dotnet run --project src/Realm.Cli -- bake-terrain` (about 40 s).
 

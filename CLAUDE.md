@@ -155,6 +155,7 @@ Target: the player can walk in a straight line for 30 minutes (about 10 km) in t
 │  ├─ Realm.Gen/                    no Godot. Generators + validators:
 │  │   ├─ Terrain/                  macro map, biome fields, erosion, rivers, ravines, roads, bridges, settlements
 │  │   ├─ Dungeon/                  mission graph, layout, kit assembly, sectors, population, validators
+│  │   ├─ Settlements/              city generator (imported from CityGen, ADR 0012): plan, interiors, meshes, placement on the map
 │  │   └─ Population/               NPC generation, households, relationships, professions, task seeding
 │  ├─ Realm.Scripting/              no Godot. Lua sandbox, API surface exposed to content/mods
 │  ├─ Realm.Game/                   Godot project (presentation)

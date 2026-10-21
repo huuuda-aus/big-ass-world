@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Realm.Core.Validation;
+using Realm.Gen.Settlements.Roads;
 using Realm.Gen.Terrain;
 using Realm.Gen.Terrain.Erosion;
 
@@ -31,6 +32,10 @@ public static class TerrainBaker
     private const double ShadeStrength = 0.9;   // how strongly the slope toward the light brightens (and away darkens) the colour
     private const double ShadeMinimum = 0.45;
     private const double ShadeMaximum = 1.35;
+    private const double RoadRed = 168;
+    private const double RoadGreen = 140;
+    private const double RoadBlue = 100;
+    private const double RoadPaintMargin = 0.5; // paint a little wider than the surface so a 4 m vertex grid always catches it
     private const double RiverMinimumHalfWidthMeters = 2.0;
     private const double RiverHalfWidthPerRootKm2 = 0.6;
     private const ulong Fnv64Offset = 14695981039346656037UL;
@@ -77,8 +82,9 @@ public static class TerrainBaker
     /// <param name="regionX">Region coordinate, east.</param>
     /// <param name="regionZ">Region coordinate, south.</param>
     /// <param name="regionSize">Vertices per region side; must already be validated.</param>
+    /// <param name="roads">Roads to paint into the colour map, or null.</param>
     /// <returns>The tile.</returns>
-    public static RegionTile BuildTile(HeightField field, RiverNetwork? network, int regionX, int regionZ, int regionSize)
+    public static RegionTile BuildTile(HeightField field, RiverNetwork? network, int regionX, int regionZ, int regionSize, IReadOnlyList<Road>? roads = null)
     {
         ArgumentNullException.ThrowIfNull(field);
         int regionsPerAxis = field.WorldSizeMeters / (regionSize * field.SpacingMeters);
@@ -111,6 +117,13 @@ public static class TerrainBaker
             PaintWater(colours, regionSize, field.SpacingMeters, tileWestX, tileNorthZ, network);
         }
 
+        if (roads is { Count: > 0 })
+        {
+            double westX = -half + (originVertexX * (double)field.SpacingMeters);
+            double northZ = -half + (originVertexZ * (double)field.SpacingMeters);
+            PaintRoads(colours, regionSize, field.SpacingMeters, westX, northZ, roads);
+        }
+
         return new RegionTile(regionX, regionZ, regionSize, field.SpacingMeters, heights, colours);
     }
 
@@ -137,6 +150,8 @@ public static class TerrainBaker
     /// <param name="report">Receives problems.</param>
     /// <param name="regionSize">Vertices per region side.</param>
     /// <param name="maxRegionsPerAxis">Largest allowed number of regions per axis.</param>
+    /// <param name="spawn">Where the player starts (world X and Z); by default beside the middle of the longest river.</param>
+    /// <param name="roads">Roads to paint into the colour maps, or null.</param>
     /// <returns>The manifest, or null when the settings were invalid.</returns>
     public static TerrainManifest? Bake(
         HeightField field,
@@ -147,7 +162,9 @@ public static class TerrainBaker
         string outputDirectory,
         ValidationReport report,
         int regionSize = DefaultRegionSize,
-        int maxRegionsPerAxis = DefaultMaxRegionsPerAxis)
+        int maxRegionsPerAxis = DefaultMaxRegionsPerAxis,
+        (double X, double Z)? spawn = null,
+        IReadOnlyList<Road>? roads = null)
     {
         ArgumentNullException.ThrowIfNull(field);
         ArgumentNullException.ThrowIfNull(outputDirectory);
@@ -171,7 +188,7 @@ public static class TerrainBaker
         {
             int regionX = min + (index % perAxis);
             int regionZ = min + (index / perAxis);
-            RegionTile tile = BuildTile(field, network, regionX, regionZ, regionSize);
+            RegionTile tile = BuildTile(field, network, regionX, regionZ, regionSize, roads);
             byte[] bytes = RegionTileFile.ToBytes(tile);
             checksums[index] = BitConverter.ToUInt64(bytes, bytes.Length - sizeof(ulong));
             string path = Path.Combine(outputDirectory, RegionTile.FileName(regionX, regionZ));
@@ -189,7 +206,7 @@ public static class TerrainBaker
             }
         }
 
-        (double spawnX, double spawnZ) = ChooseSpawn(field, network);
+        (double spawnX, double spawnZ) = spawn ?? ChooseSpawn(field, network);
         var manifest = new TerrainManifest
         {
             World = worldId,
@@ -227,6 +244,53 @@ public static class TerrainBaker
         }
 
         return (0, 0);
+    }
+
+    /// <summary>Half the painted width of a river with the given flow, in metres.</summary>
+    /// <param name="flowKm2">Flow in square kilometres of catchment.</param>
+    /// <returns>Half width: at least 2 m, growing with the square root of the flow.</returns>
+    public static double RiverHalfWidthMeters(double flowKm2) =>
+        Math.Max(RiverMinimumHalfWidthMeters, RiverHalfWidthPerRootKm2 * Math.Sqrt(Math.Max(0, flowKm2)));
+
+    private static void PaintRoads(uint[] colours, int size, int spacing, double westX, double northZ, IReadOnlyList<Road> roads)
+    {
+        double tileEast = westX + (size * (double)spacing);
+        double tileSouth = northZ + (size * (double)spacing);
+        uint surface = TerrainColouring.Pack(RoadRed, RoadGreen, RoadBlue);
+        foreach (Road road in roads)
+        {
+            double halfWidth = (road.WidthMeters / 2) + RoadPaintMargin;
+            for (int i = 1; i < road.Points.Count; i++)
+            {
+                RoadPoint a = road.Points[i - 1];
+                RoadPoint b = road.Points[i];
+                double minX = Math.Min(a.X, b.X) - halfWidth;
+                double maxX = Math.Max(a.X, b.X) + halfWidth;
+                double minZ = Math.Min(a.Z, b.Z) - halfWidth;
+                double maxZ = Math.Max(a.Z, b.Z) + halfWidth;
+                if (maxX < westX || minX > tileEast || maxZ < northZ || minZ > tileSouth)
+                {
+                    continue;
+                }
+
+                int ix0 = Math.Max(0, (int)Math.Floor((minX - westX) / spacing));
+                int ix1 = Math.Min(size - 1, (int)Math.Ceiling((maxX - westX) / spacing));
+                int iz0 = Math.Max(0, (int)Math.Floor((minZ - northZ) / spacing));
+                int iz1 = Math.Min(size - 1, (int)Math.Ceiling((maxZ - northZ) / spacing));
+                for (int iz = iz0; iz <= iz1; iz++)
+                {
+                    for (int ix = ix0; ix <= ix1; ix++)
+                    {
+                        double x = westX + (ix * (double)spacing);
+                        double z = northZ + (iz * (double)spacing);
+                        if (DistanceToSegment(x, z, a.X, a.Z, b.X, b.Z) <= halfWidth)
+                        {
+                            colours[(iz * size) + ix] = surface;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private static void PaintWater(uint[] colours, int size, int spacing, double westX, double northZ, RiverNetwork network)

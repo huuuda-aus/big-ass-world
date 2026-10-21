@@ -16,6 +16,9 @@ public sealed class BakedTerrainSource
         Manifest = manifest;
     }
 
+    /// <summary>The directory the terrain was read from (it also holds <c>settlements.json</c> when cities were baked).</summary>
+    public string Directory => _directory;
+
     /// <summary>The terrain's manifest.</summary>
     public TerrainManifest Manifest { get; }
 

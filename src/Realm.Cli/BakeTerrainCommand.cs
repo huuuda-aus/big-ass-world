@@ -1,10 +1,17 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using Realm.Core.Validation;
 using Realm.Data.Content;
 using Realm.Gen.Bake;
+using Realm.Gen.Settlements.Generation;
+using Realm.Gen.Settlements.Geometry;
+using Realm.Gen.Settlements.Model;
+using Realm.Gen.Settlements.Placement;
+using Realm.Gen.Settlements.Roads;
 using Realm.Gen.Terrain;
 using Realm.Gen.Terrain.Erosion;
 
@@ -16,6 +23,9 @@ internal static class BakeTerrainCommand
     private const int ExitErrors = 1;
     private const int ExitUsage = 2;
     private const ulong DefaultSeed = 1;
+    private const string MapFileName = "map.png";
+    private const int MapPixels = 1024;
+    private const double SpawnClearanceMeters = 1.5; // beyond the edge of the first city's centrepiece
     private const int DefaultSpacing = 4; // ADR 0009: 256 vertices x 4 m = 1,024 m regions
 
     /// <summary>Runs the terrain pipeline (regions, heights, erosion) and bakes it to region tiles.</summary>
@@ -28,6 +38,9 @@ internal static class BakeTerrainCommand
         int spacing = DefaultSpacing;
         int regionSize = TerrainBaker.DefaultRegionSize;
         bool erode = true;
+        bool withSettlements = true;
+        var settlementSettings = new SettlementSettings();
+        bool withRoads = true;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -48,6 +61,22 @@ internal static class BakeTerrainCommand
             {
                 regionSize = rs;
             }
+            else if (arg == "--cities" && i + 1 < args.Length && int.TryParse(args[++i], NumberStyles.None, CultureInfo.InvariantCulture, out int cities))
+            {
+                settlementSettings = settlementSettings with { Cities = cities };
+            }
+            else if (arg == "--towns" && i + 1 < args.Length && int.TryParse(args[++i], NumberStyles.None, CultureInfo.InvariantCulture, out int towns))
+            {
+                settlementSettings = settlementSettings with { Towns = towns };
+            }
+            else if (arg == "--no-roads")
+            {
+                withRoads = false;
+            }
+            else if (arg == "--no-settlements")
+            {
+                withSettlements = false;
+            }
             else if (arg == "--no-erode")
             {
                 erode = false;
@@ -58,7 +87,7 @@ internal static class BakeTerrainCommand
             }
             else
             {
-                error.WriteLine($"Bad argument '{arg}'. Usage: realm bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode]");
+                error.WriteLine($"Bad argument '{arg}'. Usage: realm bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--no-settlements] [--no-roads]");
                 return ExitUsage;
             }
         }
@@ -98,12 +127,73 @@ internal static class BakeTerrainCommand
                 output.WriteLine($"  erosion: deepest carve {eroded.MaxCarveDepthMeters:F1} m, {network.Rivers.Count} river(s), {network.Lakes.Count} lake(s) ({step.Elapsed.TotalSeconds:F1} s)");
             }
 
+            IReadOnlyList<Settlement> settlements = Array.Empty<Settlement>();
+            (double X, double Z)? spawn = null;
+            if (withSettlements)
+            {
+                step.Restart();
+                settlements = SettlementPlacer.Place(field, network, seed, settlementSettings, report);
+                field = SettlementTerrain.Flatten(field, settlements, settlementSettings);
+                SettlementValidator.Validate(settlements, field, network, settlementSettings, report);
+                generators += $", {SettlementPlacer.GeneratorId} v{SettlementPlacer.GeneratorVersion}";
+                output.WriteLine($"  settlements: {settlements.Count} placed and the ground flattened under them ({step.Elapsed.TotalSeconds:F1} s)");
+                foreach (Settlement s in settlements)
+                {
+                    output.WriteLine($"    {s.Id,-22} {s.Name,-14} {s.Tier,-5} at ({s.X:F0}, {s.Z:F0}), ground {s.GroundHeightMeters:F0} m, wall radius {s.WallRadiusMeters:F0} m, up to {s.MaxBuildings} houses");
+                }
+
+                if (settlements.Count > 0)
+                {
+                    // Start the player in the first city's central square, just outside its centrepiece.
+                    Settlement first = settlements[0];
+                    City firstCity = CityGenerator.Generate(first.ToCityParams());
+                    double clearance = (firstCity.Landmark?.Radius ?? 0) + SpawnClearanceMeters;
+                    spawn = first.ToWorld(new Vec2(clearance, 0));
+                }
+            }
+
+            IReadOnlyList<Road> roads = Array.Empty<Road>();
+            if (withSettlements && withRoads && settlements.Count > 1)
+            {
+                step.Restart();
+                HeightField beforeRoads = field;
+                roads = RoadPlanner.Plan(field, network, settlements, null, report);
+                field = RoadTerrain.Carve(field, roads);
+                RoadValidator.Validate(roads, beforeRoads, field, network, null, report);
+                generators += $", {RoadPlanner.GeneratorId} v{RoadPlanner.GeneratorVersion}";
+                double kilometres = roads.Sum(r => Enumerable.Range(1, r.Points.Count - 1).Sum(i => Math.Sqrt(Math.Pow(r.Points[i].X - r.Points[i - 1].X, 2) + Math.Pow(r.Points[i].Z - r.Points[i - 1].Z, 2)))) / 1000.0;
+                output.WriteLine($"  roads: {roads.Count} road(s), {kilometres:F1} km, {roads.Sum(r => r.Bridges.Count)} bridge(s), terrain graded under them ({step.Elapsed.TotalSeconds:F1} s)");
+            }
+
             step.Restart();
             TerrainManifest? manifest = TerrainBaker.Bake(
-                field, network, map.Id.Value, seed, new[] { generators }, outputDirectory, report, regionSize);
+                field, network, map.Id.Value, seed, new[] { generators }, outputDirectory, report, regionSize, spawn: spawn, roads: roads);
             if (manifest is null)
             {
                 continue;
+            }
+
+            if (withSettlements)
+            {
+                // A flat map of the finished world for the in-game map screen (M).
+                byte[] mapPixels = HeightPreview.Render(field, MapPixels, out int mapWidth, out int mapHeight, network, null);
+                File.WriteAllBytes(Path.Combine(outputDirectory, MapFileName), PngEncoder.Encode(mapWidth, mapHeight, mapPixels));
+                var settlementManifest = new SettlementManifest
+                {
+                    World = map.Id.Value,
+                    Seed = seed,
+                    Generators = new[] { $"{SettlementPlacer.GeneratorId} v{SettlementPlacer.GeneratorVersion}" },
+                    Settlements = settlements,
+                };
+                File.WriteAllText(Path.Combine(outputDirectory, SettlementManifest.FileName), settlementManifest.ToJson());
+                var roadManifest = new RoadManifest
+                {
+                    World = map.Id.Value,
+                    Seed = seed,
+                    Generators = new[] { $"{RoadPlanner.GeneratorId} v{RoadPlanner.GeneratorVersion}" },
+                    Roads = roads,
+                };
+                File.WriteAllText(Path.Combine(outputDirectory, RoadManifest.FileName), roadManifest.ToJson());
             }
 
             output.WriteLine(

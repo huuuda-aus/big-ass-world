@@ -61,6 +61,16 @@ All notable changes are recorded here. Format: [Keep a Changelog](https://keepac
 - Gorges (`terrain.erosion` v2): `GorgeCarver` cuts cliff-walled gorges along big rivers, from the optional biome property `gorge_depth_m`.
 - Steep ground is baked and previewed as bare rock (`TerrainColouring.Albedo` slope parameter).
 
+- Cities (ADR 0012): the CityGen generator imported as `Realm.Gen.Settlements` (plan, wards, wall, streets, lots, buildings, interiors; `Rng`-based, documented, 46 ported tests); placement of 3 cities and 5 towns on flat land with terrain flattening (`SettlementPlacer`, `SettlementTerrain`, `SettlementValidator`, codes `SETL001` to `SETL006`, generator `settlement.placement` v1); baked `settlements.json`; `bake-terrain --cities/--towns/--no-settlements`; the player spawns in the first city.
+- Godot-free 3D meshing of cities (`BuildingMesher`, `CityMesher`, `LandmarkMesher`) ported from the CityGen web viewer; in the game `SettlementStreamer`, `CityInstance`, `CityBuild`: cities stream in around the player, detailed enterable houses within 35 m (doors, windows, rooms, stairs, collision, lamps), wall with towers and gates, fountain/pyre/block/market centrepieces. `--no-cities` switches them off.
+- Sun shadows in the game (150 m).
+
+- Names and roads (ADR 0013): generated settlement names (`SettlementNamer`; `settlement.placement` v2); `road.planner` v1: a spanning tree plus extra links, A* routes with slope and river costs, graded surface (12 percent), terrain cut and fill under the road, bridges at river crossings (`BridgeMesher`), road colour in the tiles, `roads.json`, validators `ROAD001` to `ROAD006`; `bake-terrain --no-roads`.
+- World map screen (M) from the baked `map.png` with roads, names and the player; HUD shows the nearest settlement; cities load from about 2 km when flying.
+
+### Removed
+- The scale-reference measure tape, houses and trees were removed from the game (`ReferenceStrip`, `MeasureTape`, `PropMeshConverter`). The Godot-free models (`Realm.Gen.Props`: cottage, town house, three tree kinds, `StripLayout`) and their tests stay for later use.
+
 ### Changed
 - Generator versions bumped: `terrain.height_field` 1 -> 2, `terrain.erosion` 1 -> 2; golden checksums regenerated. Default blend radius 384 -> 512 m (the ridged mountains failed the seam check at 384 m). Shipped biome values (placeholders) now include landmarks, ridges, terracing and gorges, and the baked world was regenerated.
 - The player cannot go within 10 m of the world edge (invisible wall); the sea plane is exactly the size of the world instead of following the player.

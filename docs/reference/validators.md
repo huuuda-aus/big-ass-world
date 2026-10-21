@@ -76,6 +76,32 @@ Rivers that dry up (`Dried` mouth) are not an error: it is how river loss shows.
 |---|---|---|---|
 | TERR018 | Error | The bake settings do not fit the height field: region size below 2, a region width that does not divide the world size, more regions per axis than allowed (32 for Terrain3D 1.0.2), or an odd number of regions per axis (the world origin must be a region corner). | Use a region size and `--spacing` whose product divides the world size into an even number of at most 32 regions, for example 256 vertices at 4 m. |
 
+## Settlement validators
+
+Reported by `SettlementPlacer` and `SettlementValidator` during `bake-terrain` ([settlements](../systems/settlements.md)).
+
+| Code | Severity | Meaning | Typical fix |
+|---|---|---|---|
+| SETL001 | Error | The settlement settings are invalid (negative counts, fewer than 3 houses, non-positive blend, candidate step below 16 m, minimum height not below maximum height, non-positive relief limit). | Fix the `SettlementSettings` value named in the message. |
+| SETL002 | Warning | Fewer settlements were placed than requested: the land had no more sites that are flat enough, above the minimum height, clear of water and far enough from the others. | Allow steeper ground (`MaxReliefPerRadius`), reduce the spacing, or ask for fewer or smaller settlements. |
+| SETL003 | Error | Two settlements are closer than the minimum spacing. | Increase the spacing or ask for fewer settlements. |
+| SETL004 | Error | A settlement's pad is not level (more than 0.5 m off), lies below the minimum height, or its ground is above the maximum. | Flatten after placing; keep sites above sea level. |
+| SETL005 | Error | A river or lake reaches a settlement's pad. | Move the settlement away from water or raise `WaterClearanceMeters`. |
+| SETL006 | Error | `settlements.json` is damaged, has an unknown tier or centrepiece, or an unsupported format. | Re-run `bake-terrain`. |
+
+## Road validators
+
+Reported by `RoadPlanner` and `RoadValidator` during `bake-terrain` ([ADR 0013](../decisions/0013-roads-and-bridges.md)).
+
+| Code | Severity | Meaning | Typical fix |
+|---|---|---|---|
+| ROAD001 | Error | The road settings are invalid. | Fix the `RoadSettings` value named in the message. |
+| ROAD002 | Warning | A settlement is not connected to the first one by road (no route found: sea, lakes, or too many obstacles). | Allow steeper roads or more river crossings, or check the land between them. |
+| ROAD003 | Error | The terrain under a road differs from its graded surface by more than 1 m (checked only when the vertex spacing is no coarser than the road width), or a cut or fill is deeper than 20 m. | Raise `MaxCutFillMeters`, raise `SlopePenalty` so the road avoids hills. |
+| ROAD004 | Error | A road runs through the sea or a lake. | Route around the water or raise `MinHeightMeters`. |
+| ROAD005 | Error | A bridge is longer than 80 m. | Raise `MaxBridgeMeters` or `RiverCrossingPenaltyMeters`. |
+| ROAD006 | Error | `roads.json` is damaged or has an unsupported format. | Re-run `bake-terrain`. |
+
 ## Dungeon and population validators
 
 **Planned** (CLAUDE.md section 7). Codes will be added here as each validator lands.

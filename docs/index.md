@@ -14,6 +14,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
 - [Tune erosion, rivers and lakes](how-to/tune-erosion-and-rivers.md)
 - [Set up Godot (.NET) and Terrain3D](how-to/set-up-godot.md)
 - [Run the game (walkable world)](how-to/run-the-game.md)
+- [Place cities, follow the roads and walk into one](how-to/place-cities.md)
 - [Run the streaming spike](how-to/run-the-streaming-spike.md)
 - [Add a content type (developers)](how-to/add-a-content-type.md)
 - [Add a simulation system (developers)](how-to/add-a-system.md)
@@ -26,6 +27,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
 - [Validator codes](reference/validators.md)
 - Content types: [material](reference/content/material.md), [item](reference/content/item.md), [biome](reference/content/biome.md), [world / macro map](reference/content/world.md)
 - [Baked terrain format](reference/baked-terrain.md)
+- [Baked settlements (`settlements.json`)](reference/settlements.md)
 - Save format, scripting API, other content schemas: **Planned**
 
 ## Explanation
@@ -40,6 +42,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
 - [Sim](systems/sim.md)
 - [Gen](systems/gen.md)
 - [Game](systems/game.md)
+- [Settlements (cities)](systems/settlements.md)
 
 ## Records
 - [Decisions (ADRs)](decisions/)
@@ -54,6 +57,8 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [0009 Terrain3D integration and streaming](decisions/0009-terrain3d-integration-and-streaming.md)
   - [0010 Baked terrain format](decisions/0010-baked-terrain-format.md)
   - [0011 Terrain shapes, landmarks and gorges](decisions/0011-terrain-shapes-landmarks-and-gorges.md)
+  - [0012 City generator import, placement and 3D](decisions/0012-city-generator-import-and-placement.md)
+  - [0013 Roads, bridges, names and the world map](decisions/0013-roads-and-bridges.md)
 - [Devlog](devlog/)
   - [2026-10-20 Solution skeleton](devlog/2026-10-20-solution-skeleton.md)
   - [2026-10-20 Core and Data foundations](devlog/2026-10-20-core-data-foundations.md)
@@ -66,6 +71,8 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [2026-10-20 Erosion and rivers](devlog/2026-10-20-erosion-and-rivers.md)
   - [2026-10-20 Godot and streaming](devlog/2026-10-20-godot-streaming.md)
   - [2026-10-20 Landscape shapes](devlog/2026-10-20-landscape-shapes.md)
+  - [2026-10-21 Cities](devlog/2026-10-21-cities.md)
+  - [2026-10-21 Names and roads](devlog/2026-10-21-names-and-roads.md)
 - [Known issues](known-issues.md)
 - [Glossary](glossary.md)
 - [Changelog](../CHANGELOG.md)

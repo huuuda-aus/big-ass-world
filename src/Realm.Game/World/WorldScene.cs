@@ -6,6 +6,7 @@ using System.Text.Json;
 using Godot;
 using Realm.Core.Diagnostics;
 using Realm.Game.Bridge;
+using Realm.Game.World.Settlements;
 using Realm.Gen.Textures;
 
 namespace Realm.Game.World;
@@ -16,7 +17,7 @@ namespace Realm.Game.World;
 /// </summary>
 /// <remarks>
 /// Run: <c>godot --path src/Realm.Game</c> after <c>realm bake-terrain</c>. Options (after <c>--</c>):
-/// baked (directory), pos (x,z metres), yaw/pitch (degrees), fly, fly-speed, screenshot (png path), render-scale (3D resolution relative to the window, default 0.75),
+/// baked (directory), pos (x,z metres), yaw/pitch (degrees), fly, fly-speed, screenshot (png path), map (start with the world map open), render-scale (3D resolution relative to the window, default 0.75),
 /// screenshot-after (frames), no-capture, autowalk (seconds of automatic forward walking, then a report), autowalk-run, report (json path), vsync (default on; off for measurement runs). Controls: W A S D move, Shift run, Space jump (fly: rise),
 /// Q/E down/up in fly mode, F toggles fly, F1 toggles the HUD, Esc releases or recaptures the mouse.
 /// The walker is a <c>CharacterBody3D</c> colliding with Terrain3D's dynamic collision (slope limit 50 degrees).
@@ -47,8 +48,6 @@ public partial class WorldScene : Node3D
     private const int HudFontSize = 18; // the HUD is drawn at window resolution
     private const float DefaultRenderScale = 0.75f; // 3D resolution relative to the window (1.0 = full)
     private const float HudMargin = 10;
-    private const float TapeStartAhead = 3f;
-    private const int TapeLengthMeters = 100;
     private const float EdgeMarginMeters = 10f; // the player cannot get closer than this to the edge of the world
     private const double HudInterval = 0.25;
     private const int AutowalkWarmupFrames = 60;
@@ -59,9 +58,11 @@ public partial class WorldScene : Node3D
     private Camera3D _camera = null!; // Safe: set in _Ready.
     private CharacterBody3D _body = null!; // Safe: set in _Ready; origin at the player's feet, the camera is its child.
     private MeshInstance3D _water = null!; // Safe: set in _Ready.
+    private SettlementStreamer? _cities;
+    private RoadsLayer? _roads;
+    private WorldMap? _map;
     private SubViewport _viewport = null!; // Safe: set in _Ready by BuildViewport.
     private Node3D _world = null!; // Safe: set in _Ready; parent of every 3D node, inside the low-resolution viewport.
-    private ReferenceStrip? _strip;
     private Label _hud = null!; // Safe: set in _Ready.
     private Godot.Environment _environment = null!; // Safe: set in _Ready by BuildEnvironment.
     private LaunchArguments _args = new(Array.Empty<string>());
@@ -169,17 +170,34 @@ public partial class WorldScene : Node3D
         _body.Position = new Vector3((float)startX, (float.IsNaN(ground) ? 0 : ground) + lift, (float)startZ);
         ApplyLook();
 
-        if (!_args.Flag("no-tape", false))
+        if (!_args.Flag("no-cities", false))
         {
-            var heading = new Vector3(-Mathf.Sin(_yaw), 0, -Mathf.Cos(_yaw));
-            var tapeStart = new Vector3((float)startX, 0, (float)startZ) + (heading * TapeStartAhead);
-            float edge = ReferenceStrip.DistanceToEdge(
-                tapeStart, heading, _source.Manifest.MinRegion * _source.Manifest.RegionExtentMeters, (_source.Manifest.MaxRegion + 1) * _source.Manifest.RegionExtentMeters);
-            _strip = new ReferenceStrip(_bridge, tapeStart, heading, edge, _source.Manifest.Seed);
-            _world.AddChild(_strip);
+            _cities = SettlementStreamer.Open(_source.Directory);
+            if (_cities is not null)
+            {
+                _world.AddChild(_cities);
+                GD.Print($"[world] {_cities.Settlements.Count} settlement(s)");
+            }
+        }
+
+        _roads = RoadsLayer.Open(_source.Directory);
+        if (_roads is not null)
+        {
+            _world.AddChild(_roads);
         }
 
         BuildHud();
+        if (_cities is not null)
+        {
+            _map = WorldMap.Open(_source.Directory, _source.Manifest.WorldSizeMeters, _cities.Settlements, _roads);
+            if (_map is not null)
+            {
+                AddChild(_map);
+                GetWindow().SizeChanged += _map.Rebuild;
+                _map.Visible = _args.Flag("map", false);
+            }
+        }
+
         _hud.Visible = !_args.Flag("no-hud", false);
         _water.Visible = !_args.Flag("no-water", false);
         if (!_args.Flag("no-capture", false) && !_args.Has("screenshot"))
@@ -214,8 +232,8 @@ public partial class WorldScene : Node3D
                     _body.Velocity = Vector3.Zero;
                     ApplyViewMode();
                     break;
-                case Key.T when _strip is not null:
-                    _strip.Visible = !_strip.Visible;
+                case Key.M when _map is not null:
+                    _map.Visible = !_map.Visible;
                     break;
                 case Key.F1:
                     _hud.Visible = !_hud.Visible;
@@ -268,7 +286,11 @@ public partial class WorldScene : Node3D
         }
 
         _streamer.Update(_body.Position, _frame);
-        _strip?.Update(_body.Position);
+        _cities?.Process(_body.Position, delta, _streamer.Options.LoadDistanceMeters);
+        if (_map is { Visible: true })
+        {
+            _map.SetPlayer(_body.Position.X, _body.Position.Z, _yaw);
+        }
         if (_streamer.Events.Count > 0)
         {
             for (int i = _streamer.Events.Count - 1; i >= 0; i--)
@@ -344,7 +366,6 @@ public partial class WorldScene : Node3D
                 loadedAtEnd = _streamer.LoadedCount,
                 discarded = _streamer.DiscardedCount,
             },
-            strip = _strip is null ? null : new { segments = _strip.SegmentCount, builtTotal = _strip.BuiltTotal, builtAtEnd = _strip.BuiltCount, alongMetres = Math.Round(_strip.AlongMeters(_body.Position), 0) },
             gc = new { gen0 = GC.CollectionCount(0) - _gc0, gen1 = GC.CollectionCount(1) - _gc1, gen2 = GC.CollectionCount(2) - _gc2 },
         };
         string json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
@@ -458,6 +479,47 @@ public partial class WorldScene : Node3D
         _body.Position = new Vector3(Mathf.Clamp(p.X, low, high), p.Y, Mathf.Clamp(p.Z, low, high));
     }
 
+    private string CityHudLine()
+    {
+        if (_cities is null)
+        {
+            return string.Empty;
+        }
+
+        int near = 0;
+        foreach (CityInstance city in _cities.Cities)
+        {
+            near += city.NearCount;
+        }
+
+        Realm.Gen.Settlements.Placement.Settlement? inside = _cities.InsideWall(_body.Position.X, _body.Position.Z);
+        Realm.Gen.Settlements.Placement.Settlement? nearest = null;
+        double best = double.MaxValue;
+        foreach (Realm.Gen.Settlements.Placement.Settlement s in _cities.Settlements)
+        {
+            double d = s.DistanceTo(_body.Position.X, _body.Position.Z);
+            if (d < best)
+            {
+                best = d;
+                nearest = s;
+            }
+        }
+
+        string place = inside is not null
+            ? $"in {inside.Name}"
+            : nearest is null ? string.Empty : $"{nearest.Name} is {best / 1000:F1} km {Compass(nearest.X - _body.Position.X, nearest.Z - _body.Position.Z)}";
+        return $"{place}   ({_cities.Cities.Count} built, {_cities.BuildingCount} building, {near} detailed houses)   M map\n";
+    }
+
+    // Eight-point compass direction; north is minus Z.
+    private static string Compass(double dx, double dz)
+    {
+        string[] names = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+        double angle = Math.Atan2(dx, -dz); // 0 = north, increasing clockwise
+        int index = (int)Math.Round(angle / (Math.PI / 4));
+        return names[((index % 8) + 8) % 8];
+    }
+
     private void ApplyViewMode()
     {
         _streamer.Options = ViewOptions(_fly);
@@ -508,7 +570,7 @@ public partial class WorldScene : Node3D
 
     private void BuildEnvironment()
     {
-        _world.AddChild(new DirectionalLight3D { RotationDegrees = new Vector3(-45, -135, 0), LightEnergy = 1.1f });
+        _world.AddChild(new DirectionalLight3D { RotationDegrees = new Vector3(-45, -135, 0), LightEnergy = 1.1f, ShadowEnabled = true, DirectionalShadowMaxDistance = 150f });
         var fog = new Color(0.64f, 0.74f, 0.84f);
         _environment = new Godot.Environment
             {
@@ -567,7 +629,7 @@ public partial class WorldScene : Node3D
             $"{Engine.GetFramesPerSecond()} fps   {_smoothedFrameMs:F1} ms   {(_fly ? "FLY" : "WALK")}\n" +
             $"x {p.X:F0}  z {p.Z:F0}  ground {groundText}  region ({region.X}, {region.Y})\n" +
             $"terrain: {_streamer.LoadedCount} loaded, {_streamer.PendingCount} loading, last rebuild {_lastUpdateMs:F1} ms\n" +
-            (_strip is null ? string.Empty : $"strip: {_strip.BuiltCount} of {_strip.SegmentCount} segments built (km {_strip.AlongMeters(p) / 1000:F1})\n") +
-            "WASD move  Shift run  Space jump  F fly  T tape+props  F1 hide  Esc mouse";
+            CityHudLine() +
+            "WASD move  Shift run  Space jump  F fly  F1 hide  Esc mouse";
     }
 }
