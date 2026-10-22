@@ -175,7 +175,7 @@ Target: the player can walk in a straight line for 30 minutes (about 10 km) in t
 │  ├─ Realm.Gen.Tests/              includes seed sweeps and golden-output tests
 │  └─ Realm.Scripting.Tests/
 ├─ content/                         shipped base content (YAML), organised by type
-│  ├─ world/  biomes/  materials/  items/  recipes/  creatures/  npc/  tasks/  dialogue/  dungeons/  kits/  factions/
+│  ├─ world/  biomes/  materials/  items/  services/  recipes/  creatures/  npc/  tasks/  dialogue/  dungeons/  kits/  factions/
 ├─ baked/                           baked generator outputs (heightmaps, dungeon artefacts, populations) — LFS
 ├─ assets/                          textures, meshes, audio — LFS
 ├─ mods/                            example mod(s) used as living documentation and tests
@@ -218,7 +218,7 @@ These are the target designs. Build them incrementally (§10). When implementati
   3. **Erosion:** hydraulic and thermal passes.
   4. **Rivers:** traced downhill from sources, carved, with lakes at basins.
   5. **Ravines:** spline-carved cuts, lined with cliff-kit placements.
-  6. **Settlements:** placed on suitable flat land per the macro map, with terrain flattened locally.
+  6. **Settlements:** placed on suitable land per the macro map and built on the natural ground (no flattening, ADR 0014): buildings stand level on foundations (stone plinth, wooden pilings or a pier) where the ground slopes, and every settlement gets its tier's service buildings from `content/services/`.
   7. **Roads:** A* with slope/water/biome costs between settlements; road beds flattened.
   8. **Bridges:** auto-placed where roads cross rivers or ravines, chosen from the kit by span.
   9. **Structures and props:** ruins, towers, dungeon entrances (Terrain3D holes plus cave-mouth kit), POIs.

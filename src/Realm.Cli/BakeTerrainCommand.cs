@@ -4,6 +4,7 @@ using System.Linq;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using Realm.Core.Ids;
 using Realm.Core.Validation;
 using Realm.Data.Content;
 using Realm.Gen.Bake;
@@ -132,14 +133,19 @@ internal static class BakeTerrainCommand
             if (withSettlements)
             {
                 step.Restart();
-                settlements = SettlementPlacer.Place(field, network, seed, settlementSettings, report);
+                HashSet<ContentId> mountainRegions = map.Regions
+                    .Where(r => db.Biomes.TryGetValue(r.Biome, out BiomeDefinition? biome) && biome.Tags.Contains("mountainous"))
+                    .Select(r => r.Id)
+                    .ToHashSet();
+                settlements = ServiceCatalog.Attach(
+                    SettlementPlacer.Place(field, network, seed, settlementSettings, report, (x, z) => mountainRegions.Contains(regions.RegionAt(x, z))), db);
                 field = SettlementTerrain.Flatten(field, settlements, settlementSettings);
                 SettlementValidator.Validate(settlements, field, network, settlementSettings, report);
                 generators += $", {SettlementPlacer.GeneratorId} v{SettlementPlacer.GeneratorVersion}";
-                output.WriteLine($"  settlements: {settlements.Count} placed and the ground flattened under them ({step.Elapsed.TotalSeconds:F1} s)");
+                output.WriteLine($"  settlements: {settlements.Count} placed on the natural ground ({step.Elapsed.TotalSeconds:F1} s)");
                 foreach (Settlement s in settlements)
                 {
-                    output.WriteLine($"    {s.Id,-22} {s.Name,-14} {s.Tier,-5} at ({s.X:F0}, {s.Z:F0}), ground {s.GroundHeightMeters:F0} m, wall radius {s.WallRadiusMeters:F0} m, up to {s.MaxBuildings} houses");
+                    output.WriteLine($"    {s.Id,-22} {s.Name,-14} {s.Tier,-5} at ({s.X:F0}, {s.Z:F0}), ground {s.GroundHeightMeters:F0} m{(s.Highland ? " (mountain)" : string.Empty)}, wall radius {s.WallRadiusMeters:F0} m, up to {s.MaxBuildings} houses, {s.ServiceList.Sum(x => x.Count)} service building(s)");
                 }
 
                 if (settlements.Count > 0)
@@ -159,7 +165,7 @@ internal static class BakeTerrainCommand
                 HeightField beforeRoads = field;
                 roads = RoadPlanner.Plan(field, network, settlements, null, report);
                 field = RoadTerrain.Carve(field, roads);
-                RoadValidator.Validate(roads, beforeRoads, field, network, null, report);
+                RoadValidator.Validate(roads, beforeRoads, field, network, null, report, settlements);
                 generators += $", {RoadPlanner.GeneratorId} v{RoadPlanner.GeneratorVersion}";
                 double kilometres = roads.Sum(r => Enumerable.Range(1, r.Points.Count - 1).Sum(i => Math.Sqrt(Math.Pow(r.Points[i].X - r.Points[i - 1].X, 2) + Math.Pow(r.Points[i].Z - r.Points[i - 1].Z, 2)))) / 1000.0;
                 output.WriteLine($"  roads: {roads.Count} road(s), {kilometres:F1} km, {roads.Sum(r => r.Bridges.Count)} bridge(s), terrain graded under them ({step.Elapsed.TotalSeconds:F1} s)");
@@ -186,6 +192,10 @@ internal static class BakeTerrainCommand
                     Settlements = settlements,
                 };
                 File.WriteAllText(Path.Combine(outputDirectory, SettlementManifest.FileName), settlementManifest.ToJson());
+                // The terrain under each city after roads, so the game can build on it without the terrain engine.
+                File.WriteAllBytes(
+                    Path.Combine(outputDirectory, GroundGridFile.FileName),
+                    GroundGridFile.ToBytes(settlements.Select(x => GroundGrid.Capture(field, x)).ToList()));
                 var roadManifest = new RoadManifest
                 {
                     World = map.Id.Value,

@@ -21,7 +21,7 @@ public static class CityGenerator
     private const double MaxLotDepth = 22;
 
     /// <summary>Each side of a house is set back this far from the lot line; neighbours stand twice this apart.</summary>
-    private const double SideGap = 0.9;
+    private const double SideGap = 1.4;
 
     /// <summary>Average houses per ward at the default settings; used to guess a ward count for a target size.</summary>
     private const int TypicalBuildingsPerWard = 18;
@@ -81,6 +81,9 @@ public static class CityGenerator
             BuildLots(patch, streetEdges, wallEdges, rng);
 
         if (maxBuildings is int cap) TrimBuildings(cityPatches, cap);
+
+        // after the trim, so a service building is never trimmed away; its own random stream, so it never moves a house
+        ServiceAssigner.Assign(cityPatches, patches, wall, gates, p.Services, Rng.ForKey((ulong)(uint)p.Seed, "city", "services"));
 
         // placed last, so choosing a centrepiece never changes where a single house stands
         Landmark? landmark = PlaceLandmark(cityPatches[0], p.Centre, Rng.ForKey((ulong)(uint)p.Seed, "city", "landmark"));
@@ -451,32 +454,6 @@ public static class CityGenerator
         Split(b, minArea, depth + 1, patch, rng);
     }
 
-    /// <summary>How much of each side next to the apex is cut away when a triangle is made into a quadrilateral.</summary>
-    private const double ApexCut = 0.4;
-
-    /// <summary>
-    /// Turns a triangle into a quadrilateral by cutting off the corner opposite its street-facing
-    /// edge, so the front edge (and the door on it) is untouched. Returns null if it has no front.
-    /// </summary>
-    private static ConvexPoly? CutApex(ConvexPoly triangle)
-    {
-        int front = FrontEdge(triangle);
-        if (front < 0 || triangle.Count != 3) return front < 0 ? null : triangle;
-
-        // front edge runs a -> b; c is the apex opposite it
-        Vec2 a = triangle.Points[front];
-        Vec2 b = triangle.Points[(front + 1) % 3];
-        Vec2 c = triangle.Points[(front + 2) % 3];
-
-        Vec2 p = c + (b - c) * ApexCut;  // on the side b -> c, near c
-        Vec2 q = c + (a - c) * ApexCut;  // on the side c -> a, near c
-
-        // counter-clockwise a, b, p, q: the sides b-p and q-a keep the tags of the sides they came from
-        return new ConvexPoly(
-            new[] { a, b, p, q },
-            new[] { triangle.Tags[front], triangle.Tags[(front + 1) % 3], 0, triangle.Tags[(front + 2) % 3] });
-    }
-
     /// <summary>Longest edge facing a street or alley, or -1 if the lot is landlocked.</summary>
     private static int FrontEdge(ConvexPoly lot)
     {
@@ -508,19 +485,78 @@ public static class CityGenerator
         var gaps = Enumerable.Range(0, lot.Count)
             .Select(i => lot.Tags[i] == OnStreetTag ? 0.0 : SideGap)
             .ToArray();
-        ConvexPoly? house = lot.Inset(gaps);
+        ConvexPoly? lotInner = lot.Inset(gaps);
+        if (lotInner == null) return;
+
+        // Every building has a rectangular floor plan: the biggest rectangle that fits the lot, with its front on the street edge.
+        ConvexPoly? house = FitRectangle(lotInner);
         if (house == null) return;
 
-        // no triangular houses: they come from corner pieces of a block
-        if (house.Count < 4)
+        int door = 0; // FitRectangle makes edge 0 the front
+        if (house.Area < 12 || house.EdgeLength(door) < MinFrontage) return;
+        patch.Buildings.Add(new Building(patch.Index * 1000 + patch.Buildings.Count, house, door, patch.Ward));
+    }
+
+    /// <summary>Smallest depth a building may have, in metres.</summary>
+    private const double MinDepth = 3.0;
+
+    /// <summary>Depth steps tried when looking for the biggest rectangle, in metres.</summary>
+    private const double DepthStep = 0.25;
+
+    /// <summary>
+    /// The largest rectangle inside a convex polygon that has one side on the polygon's street-facing front edge. Written in
+    /// (u, v) with u along the front edge and v inward: the polygon is convex, so a rectangle from v = 0 to v = d fits exactly when
+    /// it fits at both v = 0 and v = d. Returns null when the lot is too shallow or narrow. Edge 0 of the result is the front.
+    /// </summary>
+    private static ConvexPoly? FitRectangle(ConvexPoly lot)
+    {
+        int front = FrontEdge(lot);
+        if (front < 0) return null;
+
+        Vec2 origin = lot.Points[front];
+        Vec2 u = lot.Edge(front).Normalized();
+        Vec2 v = new Vec2(-u.Y, u.X); // inward: the polygon is counter-clockwise, so its inside is left of every edge
+        double maxDepth = lot.Points.Max(p => Vec2.Dot(p - origin, v));
+
+        (double lo0, double hi0) = Span(lot, origin, u, v, 0);
+        double bestArea = 0, bestLo = 0, bestHi = 0, bestDepth = 0;
+        for (double d = MinDepth; d <= maxDepth + 1e-9; d += DepthStep)
         {
-            house = CutApex(house);
-            if (house == null) return;
+            (double lo, double hi) = Span(lot, origin, u, v, Math.Min(d, maxDepth));
+            double left = Math.Max(lo0, lo), right = Math.Min(hi0, hi);
+            double width = right - left;
+            if (width < MinFrontage) continue;
+            double area = width * d;
+            if (area > bestArea) { bestArea = area; bestLo = left; bestHi = right; bestDepth = d; }
         }
 
-        int door = FrontEdge(house);
-        if (door < 0 || house.Area < 12 || house.EdgeLength(door) < MinFrontage) return;
-        patch.Buildings.Add(new Building(patch.Index * 1000 + patch.Buildings.Count, house, door, patch.Ward));
+        if (bestArea <= 0) return null;
+        Vec2 a = origin + u * bestLo, b = origin + u * bestHi;
+        int tag = lot.Tags[front];
+        return new ConvexPoly(new[] { a, b, b + v * bestDepth, a + v * bestDepth }, new[] { tag, 0, 0, 0 });
+    }
+
+    // The u-range of the polygon on the line at inward depth `depth`.
+    private static (double Lo, double Hi) Span(ConvexPoly poly, Vec2 origin, Vec2 u, Vec2 v, double depth)
+    {
+        double lo = double.MaxValue, hi = double.MinValue;
+        for (int i = 0; i < poly.Count; i++)
+        {
+            Vec2 p = poly.Points[i] - origin, q = poly.EdgeEnd(i) - origin;
+            double pv = Vec2.Dot(p, v) - depth, qv = Vec2.Dot(q, v) - depth;
+            if (pv * qv > 0) continue; // the edge does not cross the line
+            double t = Math.Abs(pv - qv) < 1e-12 ? 0 : pv / (pv - qv);
+            double x = Vec2.Dot(p, u) + (t * (Vec2.Dot(q, u) - Vec2.Dot(p, u)));
+            lo = Math.Min(lo, x);
+            hi = Math.Max(hi, x);
+            if (Math.Abs(pv - qv) < 1e-12)
+            {
+                lo = Math.Min(lo, Math.Min(Vec2.Dot(p, u), Vec2.Dot(q, u)));
+                hi = Math.Max(hi, Math.Max(Vec2.Dot(p, u), Vec2.Dot(q, u)));
+            }
+        }
+
+        return (lo, hi);
     }
 
     // ---- vertex keys ---------------------------------------------------------------

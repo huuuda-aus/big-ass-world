@@ -26,7 +26,7 @@ public static class SettlementPlacer
     public const string GeneratorId = "settlement.placement";
 
     /// <summary>Bump when the output for the same input changes, and regenerate the golden tests in the same change.</summary>
-    public const int GeneratorVersion = 2; // v2: generated names
+    public const int GeneratorVersion = 3; // v3: natural ground (no flattening), steeper sites, mountain city
 
     private const int RingsPerCandidate = 3;
     private const int PointsPerRing = 8;
@@ -40,13 +40,15 @@ public static class SettlementPlacer
     /// <param name="worldSeed">Root seed of the world.</param>
     /// <param name="settings">Tuning; defaults when null.</param>
     /// <param name="report">Receives <see cref="SettlementCodes"/> issues.</param>
-    /// <returns>The settlements, cities first. Fewer than requested when the land has no more suitable sites (warning SETL002).</returns>
+    /// <param name="highlandArea">Tells whether a world position is in mountainous terrain (where the mountain cities go); when null, ground at or above <see cref="SettlementSettings.MountainMinHeightMeters"/> counts.</param>
+    /// <returns>The settlements: cities, then mountain cities, then towns. Fewer than requested when the land has no more suitable sites (warning SETL002).</returns>
     public static IReadOnlyList<Settlement> Place(
         HeightField field,
         RiverNetwork? network,
         ulong worldSeed,
         SettlementSettings? settings,
-        ValidationReport report)
+        ValidationReport report,
+        Func<double, double, bool>? highlandArea = null)
     {
         ArgumentNullException.ThrowIfNull(field);
         ArgumentNullException.ThrowIfNull(report);
@@ -61,12 +63,15 @@ public static class SettlementPlacer
         var water = new WaterMask(field.WorldSizeMeters, network);
         var placed = new List<Settlement>();
         var usedNames = new HashSet<string>(StringComparer.Ordinal);
-        int requested = settings.Cities + settings.Towns;
+        int requested = settings.Cities + settings.MountainCities + settings.Towns;
         for (int i = 0; i < requested; i++)
         {
-            SettlementTier tier = i < settings.Cities ? SettlementTier.City : SettlementTier.Town;
-            int index = tier == SettlementTier.City ? i : i - settings.Cities;
-            Settlement? settlement = PlaceOne(field, water, worldSeed, settings, tier, index, placed, usedNames);
+            bool city = i < settings.Cities;
+            bool mountain = !city && i < settings.Cities + settings.MountainCities;
+            SettlementTier tier = city || mountain ? SettlementTier.City : SettlementTier.Town;
+            string kind = city ? "city" : mountain ? "mountain" : "town";
+            int index = city ? i : mountain ? i - settings.Cities : i - settings.Cities - settings.MountainCities;
+            Settlement? settlement = PlaceOne(field, water, worldSeed, settings, tier, kind, index, mountain, highlandArea, placed, usedNames);
             if (settlement is not null)
             {
                 placed.Add(settlement);
@@ -86,9 +91,9 @@ public static class SettlementPlacer
     }
 
     private static Settlement? PlaceOne(
-        HeightField field, WaterMask water, ulong worldSeed, SettlementSettings settings, SettlementTier tier, int index, List<Settlement> placed, ISet<string> usedNames)
+        HeightField field, WaterMask water, ulong worldSeed, SettlementSettings settings, SettlementTier tier, string kind, int index,
+        bool highland, Func<double, double, bool>? highlandArea, List<Settlement> placed, ISet<string> usedNames)
     {
-        string kind = tier.ToString().ToLowerInvariant();
         Rng seedRng = Rng.ForKey(worldSeed, "settlement", kind, index);
         int citySeed = (int)(seedRng.NextUInt64() & SeedMask);
         double rotation = seedRng.NextDouble() * 2 * Math.PI;
@@ -106,7 +111,9 @@ public static class SettlementPlacer
         double pad = wallRadius + settings.PadMarginMeters;
         double half = field.WorldSizeMeters / HalfDivisor;
         double edge = pad + settings.BlendMeters + settings.EdgeMarginMeters;
-        double reliefLimit = settings.MaxReliefPerRadius * pad;
+        double reliefLimit = (highland ? settings.MountainMaxReliefPerRadius : settings.MaxReliefPerRadius) * pad;
+        double minHeight = highland ? settings.MountainMinHeightMeters : settings.MinHeightMeters;
+        double maxHeight = highland ? settings.MountainMaxHeightMeters : settings.MaxHeightMeters;
 
         double bestScore = double.NegativeInfinity;
         double bestX = 0;
@@ -124,7 +131,12 @@ public static class SettlementPlacer
                     continue;
                 }
 
-                if (!TrySurvey(field, x, z, pad, settings, reliefLimit, out double relief, out double mean))
+                if (highland && highlandArea is not null && !highlandArea(x, z))
+                {
+                    continue;
+                }
+
+                if (!TrySurvey(field, x, z, pad, minHeight, maxHeight, reliefLimit, out double relief, out double mean))
                 {
                     continue;
                 }
@@ -171,7 +183,9 @@ public static class SettlementPlacer
             citySeed,
             buildings,
             tier == SettlementTier.City,
-            centre);
+            centre,
+            null,
+            highland);
     }
 
     private static bool FarFromOthers(double x, double z, double pad, List<Settlement> placed, SettlementSettings settings)
@@ -189,9 +203,9 @@ public static class SettlementPlacer
     }
 
     // Samples the ground on rings across the pad: everything must be above the minimum height, below the maximum and
-    // within the allowed relief. Returns the relief and the mean height (the level the pad will be flattened to).
+    // within the allowed relief. Returns the relief and the mean height (the settlement's ground height).
     private static bool TrySurvey(
-        HeightField field, double x, double z, double pad, SettlementSettings settings, double reliefLimit, out double relief, out double mean)
+        HeightField field, double x, double z, double pad, double minHeight, double maxHeight, double reliefLimit, out double relief, out double mean)
     {
         double min = field.Sample(x, z);
         double max = min;
@@ -213,6 +227,6 @@ public static class SettlementPlacer
 
         relief = max - min;
         mean = sum / count;
-        return min >= settings.MinHeightMeters && max <= settings.MaxHeightMeters && relief <= reliefLimit;
+        return min >= minHeight && max <= maxHeight && relief <= reliefLimit;
     }
 }

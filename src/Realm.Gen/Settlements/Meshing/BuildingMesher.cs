@@ -37,8 +37,9 @@ public static class BuildingMesher
     /// <summary>Builds the cheap exterior of a building.</summary>
     /// <param name="building">The building.</param>
     /// <param name="interior">Its interior (used for the positions of doors and windows and the storey count).</param>
-    /// <returns>A closed mesh: walls, roof, painted openings and half-timbering.</returns>
-    public static PropMesh Far(Building building, Interior interior)
+    /// <param name="site">Where the floor sits on uneven ground; null for level ground. The mesh is built with the floor at 0 and a foundation below it; the caller places it at <see cref="BuildingSite.BaseY"/>.</param>
+    /// <returns>A closed mesh: walls, roof, painted openings and half-timbering, on its foundation.</returns>
+    public static PropMesh Far(Building building, Interior interior, BuildingSite? site = null)
     {
         ArgumentNullException.ThrowIfNull(building);
         ArgumentNullException.ThrowIfNull(interior);
@@ -51,14 +52,16 @@ public static class BuildingMesher
         Roof(b, building, height);
         Facade(b, building, openings);
         Timber(b, building, interior, openings);
+        Support(b, building, site, openings);
         return b.Build($"building.{building.Id}.far");
     }
 
     /// <summary>Builds the detailed exterior and interior of a building, with its collision.</summary>
     /// <param name="building">The building.</param>
     /// <param name="interior">Its interior.</param>
+    /// <param name="site">Where the floor sits on uneven ground; null for level ground. See <see cref="Far"/>.</param>
     /// <returns>The visual and collision meshes.</returns>
-    public static BuildingMeshes Near(Building building, Interior interior)
+    public static BuildingMeshes Near(Building building, Interior interior, BuildingSite? site = null)
     {
         ArgumentNullException.ThrowIfNull(building);
         ArgumentNullException.ThrowIfNull(interior);
@@ -156,6 +159,8 @@ public static class BuildingMesher
 
         Roof(visual, building, height);
         Timber(visual, building, interior, openings);
+        Support(visual, building, site, openings);
+        Support(collision, building, site, openings, sign: false);
         return new BuildingMeshes(visual.Build($"building.{building.Id}.near"), collision.Build($"building.{building.Id}.collision"));
     }
 
@@ -223,6 +228,48 @@ public static class BuildingMesher
     }
 
     // ---- exterior ----------------------------------------------------------------------------------------------
+
+    // The foundation and front steps (when the ground is uneven) and the sign over the door (service buildings).
+    private static void Support(PropMeshBuilder b, Building building, BuildingSite? site, IReadOnlyList<WallOpening> openings, bool sign = true)
+    {
+        foreach (WallOpening door in openings)
+        {
+            if (!door.IsDoor)
+            {
+                continue;
+            }
+
+            if (site is not null)
+            {
+                FoundationMesher.Add(b, building, site, door.Edge, door.U);
+            }
+
+            if (sign && building.Service is { } service)
+            {
+                Sign(b, building, door, service);
+            }
+
+            return;
+        }
+    }
+
+    // A board hanging from a bracket over the door; its colour tells the service apart at a glance.
+    private static void Sign(PropMeshBuilder b, Building building, WallOpening door, ServiceSpec service)
+    {
+        ConvexPoly fp = building.Footprint;
+        Vec2 a = fp.Points[door.Edge];
+        Vec2 dir = fp.Edge(door.Edge).Normalized();
+        Vec2 outward = fp.OutwardNormal(door.Edge);
+        var along = new Vector3((float)dir.X, 0, (float)dir.Y);
+        var across = new Vector3((float)outward.X, 0, (float)outward.Y);
+        Vec2 at = a + (dir * door.U);
+        const float bracketY = 2.7f;
+        const float armLength = 1.0f;
+        Vector3 Point(double outwardMeters, double y) => P(at + (outward * outwardMeters), y);
+
+        b.OrientedBox(Point(armLength / 2, bracketY), across, Vector3.UnitY, along, new Vector3(armLength, 0.08f, 0.08f), SettlementPalette.Wood);
+        b.OrientedBox(Point(armLength - 0.05, bracketY - 0.35f), along, Vector3.UnitY, across, new Vector3(0.9f, 0.6f, 0.06f), SettlementPalette.Sign(service.Id));
+    }
 
     private static void Roof(PropMeshBuilder b, Building building, double baseY)
     {

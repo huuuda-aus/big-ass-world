@@ -1,0 +1,8 @@
+id: service.inn
+name: Inn
+tags: [civic, hospitality]
+counts: { city: 2, town: 1 }
+wards: [merchant, craftsmen]
+near: gate
+min_area_m2: 80
+main_room: kitchen

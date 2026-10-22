@@ -1,6 +1,8 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using Realm.Core.Validation;
+using Realm.Gen.Settlements.Placement;
 using Realm.Gen.Terrain;
 using Realm.Gen.Terrain.Erosion;
 
@@ -19,13 +21,15 @@ public static class RoadValidator
     /// <param name="network">Rivers and lakes, or null.</param>
     /// <param name="settings">Limits; defaults when null.</param>
     /// <param name="report">Receives ROAD003 to ROAD005 issues.</param>
+    /// <param name="settlements">The settlements the roads join; roads that end at a mountain city get the looser highland limits. Optional.</param>
     public static void Validate(
         IReadOnlyList<Road> roads,
         HeightField before,
         HeightField carved,
         RiverNetwork? network,
         RoadSettings? settings,
-        ValidationReport report)
+        ValidationReport report,
+        IReadOnlyList<Settlement>? settlements = null)
     {
         ArgumentNullException.ThrowIfNull(roads);
         ArgumentNullException.ThrowIfNull(before);
@@ -36,8 +40,12 @@ public static class RoadValidator
 
         foreach (Road road in roads)
         {
+            bool highland = settlements is not null && settlements.Any(s => s.Highland && (s.Id == road.From || s.Id == road.To));
+            double bedTolerance = highland ? settings.HighlandBedToleranceMeters : BedToleranceMeters;
+            double cutLimit = highland ? settings.HighlandMaxCutFillMeters : settings.MaxCutFillMeters;
             double worstBed = 0;
             double worstCut = 0;
+            RoadPoint worstAt = road.Points[0];
             int inWater = 0;
             for (int i = 0; i < road.Points.Count; i++)
             {
@@ -58,7 +66,13 @@ public static class RoadValidator
                     continue;
                 }
 
-                worstBed = Math.Max(worstBed, Math.Abs(carved.Sample(p.X, p.Z) - p.Height));
+                double bed = Math.Abs(carved.Sample(p.X, p.Z) - p.Height);
+                if (bed > worstBed)
+                {
+                    worstBed = bed;
+                    worstAt = p;
+                }
+
                 worstCut = Math.Max(worstCut, Math.Abs(before.Sample(p.X, p.Z) - p.Height));
             }
 
@@ -69,12 +83,12 @@ public static class RoadValidator
 
             // A grid coarser than the road cannot hold its surface, so the match is only checked when the road is resolvable.
             bool resolvable = carved.SpacingMeters <= road.WidthMeters;
-            if ((resolvable && worstBed > BedToleranceMeters) || worstCut > settings.MaxCutFillMeters)
+            if ((resolvable && worstBed > bedTolerance) || worstCut > cutLimit)
             {
                 report.Error(
                     RoadCodes.BedMismatch,
                     road.Id,
-                    $"The terrain under '{road.Id}' differs from its surface by up to {worstBed:F2} m, or a cut or fill reaches {worstCut:F1} m (limit {settings.MaxCutFillMeters:F0} m).",
+                    $"The terrain under '{road.Id}' differs from its surface by up to {worstBed:F2} m (worst near {worstAt.X:F0}, {worstAt.Z:F0}), or a cut or fill reaches {worstCut:F1} m (limit {cutLimit:F0} m).",
                     "Raise MaxCutFillMeters, lower SlopePenalty so the road avoids hills, or check the shoulder settings.");
             }
 

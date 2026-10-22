@@ -106,7 +106,6 @@ public sealed partial class CityInstance : Node3D
 
     private void Attach()
     {
-        AddChild(new MeshInstance3D { Mesh = _build.Ground, MaterialOverride = CityMaterials.Solid, Name = "Ground", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
         if (_build.Wall is not null && _build.WallShape is not null)
         {
             AddChild(new MeshInstance3D { Mesh = _build.Wall, MaterialOverride = CityMaterials.Solid, Name = "Wall" });
@@ -117,28 +116,31 @@ public sealed partial class CityInstance : Node3D
 
         if (_build.Landmark is { } landmark)
         {
-            AddChild(new MeshInstance3D { Mesh = landmark.Solid, MaterialOverride = CityMaterials.Solid, Name = "Landmark" });
+            // The landmark mesh has its base at 0; the root puts it on the ground at the square's height.
+            var root = new Node3D { Name = "LandmarkRoot", Position = new Vector3(0, (float)_build.LandmarkBaseY, 0) };
+            AddChild(root);
+            root.AddChild(new MeshInstance3D { Mesh = landmark.Solid, MaterialOverride = CityMaterials.Solid, Name = "Landmark" });
             var body = new StaticBody3D { Name = "LandmarkBody" };
             body.AddChild(new CollisionShape3D { Shape = landmark.SolidShape });
-            AddChild(body);
+            root.AddChild(body);
             if (landmark.Water is not null)
             {
-                AddChild(new MeshInstance3D { Mesh = landmark.Water, MaterialOverride = CityMaterials.Water, Name = "Water", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+                root.AddChild(new MeshInstance3D { Mesh = landmark.Water, MaterialOverride = CityMaterials.Water, Name = "Water", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
             }
 
             if (landmark.Flames is not null)
             {
-                AddChild(new MeshInstance3D { Mesh = landmark.Flames, MaterialOverride = CityMaterials.Fire, Name = "Flames", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+                root.AddChild(new MeshInstance3D { Mesh = landmark.Flames, MaterialOverride = CityMaterials.Fire, Name = "Flames", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
             }
 
             if (landmark.FireLight is { } at)
             {
-                AddChild(new OmniLight3D { Position = at, LightColor = new Color(1f, 0.55f, 0.23f), LightEnergy = 3f, OmniRange = 40f, Name = "FireLight" });
+                root.AddChild(new OmniLight3D { Position = at, LightColor = new Color(1f, 0.55f, 0.23f), LightEnergy = 3f, OmniRange = 40f, Name = "FireLight" });
             }
 
             if (landmark.JetOrigin is { } jet)
             {
-                AddChild(BuildJets(jet, (float)_build.City.Landmark!.Radius));
+                root.AddChild(BuildJets(jet, (float)_build.City.Landmark!.Radius));
             }
         }
 
@@ -162,7 +164,14 @@ public sealed partial class CityInstance : Node3D
 
     private void AddFar(int index)
     {
-        var node = new MeshInstance3D { Mesh = _build.Buildings[index].Far, MaterialOverride = CityMaterials.Solid, Name = $"House{_build.Buildings[index].Building.Id}" };
+        // Meshes are built with the floor at 0; the node sits at the floor's height on the ground.
+        var node = new MeshInstance3D
+        {
+            Mesh = _build.Buildings[index].Far,
+            MaterialOverride = CityMaterials.Solid,
+            Name = $"House{_build.Buildings[index].Building.Id}",
+            Position = new Vector3(0, (float)_build.Buildings[index].Site.BaseY, 0),
+        };
         node.Visible = !_nearBuilding[index] || _near[index] is null;
         AddChild(node);
         _far[index] = node;
@@ -212,7 +221,7 @@ public sealed partial class CityInstance : Node3D
         CityBuilding b = _build.Buildings[index];
         Task.Run(() =>
         {
-            BuildingMeshes meshes = BuildingMesher.Near(b.Building, b.Interior);
+            BuildingMeshes meshes = BuildingMesher.Near(b.Building, b.Interior, b.Site);
             _finished.Enqueue(new NearResult(index, PropMeshConverter.ToArrayMesh(meshes.Visual), PropMeshConverter.ToCollisionShape(meshes.Collision)));
         });
     }
@@ -225,7 +234,11 @@ public sealed partial class CityInstance : Node3D
             return; // dropped while it was being built
         }
 
-        var root = new Node3D { Name = $"Near{_build.Buildings[result.Index].Building.Id}" };
+        var root = new Node3D
+        {
+            Name = $"Near{_build.Buildings[result.Index].Building.Id}",
+            Position = new Vector3(0, (float)_build.Buildings[result.Index].Site.BaseY, 0),
+        };
         root.AddChild(new MeshInstance3D { Mesh = result.Visual, MaterialOverride = CityMaterials.Solid });
         var body = new StaticBody3D();
         body.AddChild(new CollisionShape3D { Shape = result.Shape });

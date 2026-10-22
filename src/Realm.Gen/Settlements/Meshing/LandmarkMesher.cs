@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Realm.Core.Random;
 using Realm.Gen.Props;
@@ -38,6 +39,10 @@ public static class LandmarkMesher
         SettlementPalette.Hex(0xd9c9a0), SettlementPalette.Hex(0x8a5a3a),
     };
 
+    private const double PlinthMarginMeters = 0.8;
+    private const int PlinthSides = 32;
+    private const double PlinthBuriedMeters = 0.4;
+    private const double PlinthMinDropMeters = 0.25;
     private const int BasinSides = 48;
     private const float Rim = 0.85f;
     private const float WallShare = 0.25f; // half the basin wall thickness (0.5 m)
@@ -45,21 +50,51 @@ public static class LandmarkMesher
     /// <summary>Builds a landmark.</summary>
     /// <param name="landmark">The landmark of a generated city.</param>
     /// <param name="citySeed">Seed of the city (for the layout of logs, flames and goods).</param>
+    /// <param name="ground">The ground under the city; level ground when null.</param>
+    /// <param name="baseY">Height of the landmark's base above the city origin. The mesh is built with its base at 0 (stalls follow the ground relative to it) and the caller places it at this height.</param>
     /// <returns>The meshes, or null when the landmark kind is <see cref="CentrepieceKind.None"/>.</returns>
-    public static LandmarkMeshes? Build(Landmark landmark, int citySeed)
+    public static LandmarkMeshes? Build(Landmark landmark, int citySeed, IGroundSampler? ground = null, double baseY = 0)
     {
         ArgumentNullException.ThrowIfNull(landmark);
+        ground ??= FlatGround.Instance;
         Rng rng = Rng.ForKey((ulong)(uint)citySeed, "landmark-mesh");
         Vector3 centre = new((float)landmark.Center.X, 0, (float)landmark.Center.Y);
         float radius = (float)landmark.Radius;
-        return landmark.Kind switch
+        LandmarkMeshes? meshes = landmark.Kind switch
         {
             CentrepieceKind.Fountain => Fountain(centre, radius),
             CentrepieceKind.Pyre => Pyre(centre, radius, rng),
             CentrepieceKind.ExecutionBlock => ExecutionBlock(centre, radius),
-            CentrepieceKind.Market => Market(landmark, centre, rng),
+            CentrepieceKind.Market => Market(landmark, centre, rng, ground, baseY),
             _ => null,
         };
+        return meshes is null || landmark.Kind == CentrepieceKind.Market ? meshes : meshes with { Solid = WithPlinth(meshes.Solid, landmark, citySeed, ground, baseY) };
+    }
+
+    // A stacked-stone ring under a centrepiece that stands on a slope, down to the lowest ground around it.
+    private static PropMesh WithPlinth(PropMesh solid, Landmark landmark, int citySeed, IGroundSampler ground, double baseY)
+    {
+        double reach = landmark.Radius + PlinthMarginMeters;
+        var ring = new List<Vec2>();
+        double lowest = ground.HeightAt(landmark.Center.X, landmark.Center.Y);
+        for (int i = 0; i < PlinthSides; i++)
+        {
+            double angle = 2 * Math.PI * i / PlinthSides;
+            var p = new Vec2(landmark.Center.X + (reach * Math.Cos(angle)), landmark.Center.Y + (reach * Math.Sin(angle)));
+            ring.Add(p);
+            lowest = Math.Min(lowest, ground.HeightAt(p.X, p.Y));
+        }
+
+        if (lowest - baseY > -PlinthMinDropMeters)
+        {
+            return solid; // level enough: no plinth
+        }
+
+        double bottom = lowest - baseY - PlinthBuriedMeters;
+
+        var b = new PropMeshBuilder();
+        FoundationMesher.Plinth(b, ring, bottom, citySeed);
+        return b.TriangleCount == 0 ? solid : new PropMesh(solid.Name, solid.Triangles.Concat(b.Build("plinth").Triangles).ToList());
     }
 
     // ---- fountain ----------------------------------------------------------------------------------------------
@@ -200,7 +235,7 @@ public static class LandmarkMesher
 
     // ---- market ------------------------------------------------------------------------------------------------
 
-    private static LandmarkMeshes? Market(Landmark landmark, Vector3 c, Rng rng)
+    private static LandmarkMeshes? Market(Landmark landmark, Vector3 c, Rng rng, IGroundSampler ground, double baseY)
     {
         var b = new PropMeshBuilder();
         foreach (ConvexPoly stall in landmark.Stalls)
@@ -218,9 +253,10 @@ public static class LandmarkMesher
             Vec2 t = (p1 - p0).Normalized(); // along the width
             Vec2 outward = (p3 - p0).Normalized(); // away from the centre of the square
             Vec2 middle = stall.Centroid;
+            double floor = ground.HeightAt(middle.X, middle.Y) - baseY; // each stall stands on the ground under it
             var along = new Vector3((float)t.X, 0, (float)t.Y);
             var across = new Vector3((float)outward.X, 0, (float)outward.Y);
-            Vector3 At(double u, double v, double y) => new((float)(middle.X + (t.X * u) + (outward.X * v)), (float)y, (float)(middle.Y + (t.Y * u) + (outward.Y * v)));
+            Vector3 At(double u, double v, double y) => new((float)(middle.X + (t.X * u) + (outward.X * v)), (float)(y + floor), (float)(middle.Y + (t.Y * u) + (outward.Y * v)));
             void Box(double u, double v, double y, double sx, double sy, double sz, Vector3 colour) =>
                 b.OrientedBox(At(u, v, y), along, Vector3.UnitY, across, new Vector3((float)sx, (float)sy, (float)sz), colour);
 

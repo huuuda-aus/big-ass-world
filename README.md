@@ -2,7 +2,7 @@
 
 A single-player, first-person, retro-styled open-world RPG in the spirit of *Might and Magic VI–VIII*. Godot 4 (.NET) front end over a Godot-free C# simulation and generator core.
 
-**Status:** M0 — Foundations, moving into the terrain pipeline. Core, Data, Sim, the terrain pipeline (macro map, height field, erosion, rivers, lakes, bake) and a first playable preview exist: you can walk and fly over the baked 20 km world in Godot. Ground has placeholder textures and a physics walker, and the map has 3 walled cities and 5 towns with names, joined by roads and bridges, that you can walk into; there are no characters or gameplay yet.
+**Status:** M0 — Foundations, moving into the terrain pipeline. Core, Data, Sim, the terrain pipeline (macro map, height field, erosion, rivers, lakes, bake) and a first playable preview exist: you can walk and fly over the baked 20 km world in Godot. Ground has placeholder textures and a physics walker, and the map has 4 walled cities (one in the mountains) and 5 towns with names, built on the natural ground with foundations where it slopes, each with its service buildings (inn, blacksmith, trader and so on), joined by roads and bridges, that you can walk into; there are no characters or gameplay yet.
 
 - Project rules and design: [CLAUDE.md](CLAUDE.md)
 - All documentation: [docs/index.md](docs/index.md)

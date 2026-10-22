@@ -35,6 +35,29 @@ public class SettlementTerrainTests
     private static Settlement At(double x, double z, double ground = 100, double pad = 300) =>
         new("settlement.test", "Test", SettlementTier.Town, x, z, 0, ground, pad - 30, pad, 1, 40, false, CentrepieceKind.None);
 
+    private static readonly SettlementSettings Full = new() { FlattenStrength = 1 };
+
+    [Fact]
+    public void Flatten_DoesNothingByDefault_SoCitiesStandOnTheNaturalGround()
+    {
+        HeightField field = Rolling();
+
+        HeightField result = SettlementTerrain.Flatten(field, new[] { At(0, 0) });
+
+        Assert.Same(field, result);
+    }
+
+    [Fact]
+    public void Flatten_HalfStrength_MovesTheGroundHalfwayToThePad()
+    {
+        HeightField field = Rolling();
+        float natural = field.At(Side / 2, Side / 2);
+
+        HeightField half = SettlementTerrain.Flatten(field, new[] { At(0, 0) }, new SettlementSettings { FlattenStrength = 0.5 });
+
+        Assert.Equal(natural + (0.5 * (100 - natural)), half.At(Side / 2, Side / 2), 3);
+    }
+
     [Fact]
     public void Weight_IsOneInsidePad_HalfwayAtHalfBlend_ZeroBeyond()
     {
@@ -64,7 +87,7 @@ public class SettlementTerrainTests
         float[] before = field.Heights.ToArray();
         Settlement s = At(0, 0);
 
-        HeightField flat = SettlementTerrain.Flatten(field, new[] { s });
+        HeightField flat = SettlementTerrain.Flatten(field, new[] { s }, Full);
 
         Assert.Equal(before, field.Heights.ToArray()); // the input is untouched
         for (int row = 0; row < Side; row++)
@@ -96,25 +119,36 @@ public class SettlementTerrainTests
     [Fact]
     public void Flatten_TwoSettlements_EachGetTheirOwnLevel()
     {
-        HeightField flat = SettlementTerrain.Flatten(Rolling(), new[] { At(-1200, 0, ground: 90), At(1200, 0, ground: 120) });
+        HeightField flat = SettlementTerrain.Flatten(Rolling(), new[] { At(-1200, 0, ground: 90), At(1200, 0, ground: 120) }, Full);
 
         Assert.Equal(90.0, flat.Sample(-1200, 0), 3);
         Assert.Equal(120.0, flat.Sample(1200, 0), 3);
     }
 
     [Fact]
-    public void Validator_AcceptsAFlattenedSettlement_AndFlagsAnUnflattenedOne()
+    public void Validator_AcceptsGentleGround_AndFlagsAPadThatIsTooSteepOrOutOfRange()
     {
-        HeightField field = Rolling();
+        HeightField gentle = Rolling();
         Settlement s = At(0, 0);
+        var steep = new float[Side * Side];
+        for (int row = 0; row < Side; row++)
+        {
+            for (int col = 0; col < Side; col++)
+            {
+                steep[(row * Side) + col] = 100 + (0.5f * ((col * Spacing) - (Side * Spacing / 2f))); // a 27 degree ramp
+            }
+        }
 
         var good = new ValidationReport();
-        SettlementValidator.Validate(new[] { s }, SettlementTerrain.Flatten(field, new[] { s }), null, null, good);
-        var bad = new ValidationReport();
-        SettlementValidator.Validate(new[] { s }, field, null, null, bad);
+        SettlementValidator.Validate(new[] { s }, gentle, null, null, good);
+        var tooSteep = new ValidationReport();
+        SettlementValidator.Validate(new[] { s }, new HeightField(World, Spacing, steep), null, null, tooSteep);
+        var tooLow = new ValidationReport();
+        SettlementValidator.Validate(new[] { s with { Highland = true } }, gentle, null, null, tooLow);
 
         Assert.Empty(good.Issues);
-        Assert.Equal(SettlementCodes.PadUnsuitable, Assert.Single(bad.Issues).Code);
+        Assert.Equal(SettlementCodes.PadUnsuitable, Assert.Single(tooSteep.Issues).Code);
+        Assert.Equal(SettlementCodes.PadUnsuitable, Assert.Single(tooLow.Issues).Code); // 100 m is below the mountain minimum
     }
 
     [Fact]
@@ -129,7 +163,7 @@ public class SettlementTerrainTests
             new List<Realm.Gen.Terrain.Erosion.Lake>(), 32);
         var report = new ValidationReport();
 
-        SettlementValidator.Validate(new[] { a, b }, SettlementTerrain.Flatten(field, new[] { a, b }), network, null, report);
+        SettlementValidator.Validate(new[] { a, b }, field, network, null, report);
 
         Assert.Contains(report.Issues, i => i.Code == SettlementCodes.TooClose);
         Assert.Contains(report.Issues, i => i.Code == SettlementCodes.WaterOnPad);

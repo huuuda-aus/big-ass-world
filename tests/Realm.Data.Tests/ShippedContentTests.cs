@@ -42,6 +42,23 @@ public class ShippedContentTests
         Assert.Null(db.Items[ContentId.Parse("item.torch")].Material);
     }
 
+    [Fact]
+    public void ShippedServices_CoverTheRequestedBuildings_ForCitiesAndTowns()
+    {
+        var report = new ValidationReport();
+        ContentDatabase db = ContentLoader.Load(Path.Combine(RepoRoot(), "content"), report);
+
+        foreach (string name in new[] { "city_hall", "inn", "blacksmith", "trader", "baker", "jail", "warehouse", "farmer", "woodcutter" })
+        {
+            Assert.True(db.Services.ContainsKey(ContentId.Parse("service." + name)), name);
+        }
+
+        Assert.Equal(1, db.Services[ContentId.Parse("service.city_hall")].CountFor("city"));
+        Assert.Equal(0, db.Services[ContentId.Parse("service.city_hall")].CountFor("town"));
+        Assert.True(db.Services[ContentId.Parse("service.inn")].CountFor("town") >= 1);
+        Assert.True(db.Services[ContentId.Parse("service.farmer")].OutsideWall);
+    }
+
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

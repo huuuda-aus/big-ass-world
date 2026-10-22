@@ -25,8 +25,9 @@ Run content validation with `dotnet run --project src/Realm.Cli -- content-lint`
 | DATA015 | Error | `world_size_m` is zero or negative. | Use a positive number of metres. |
 | DATA016 | Error | A region polygon is invalid: fewer than 3 vertices, a vertex that is not an `[x, z]` pair, a non-finite number, repeated or collinear vertices, or edges that cross or touch. The message names the region, the ring and the reason. | Fix the vertices; keep the ring simple. |
 | DATA017 | Error | A region polygon extends outside the world square. | Move the vertices inside, or raise `world_size_m`. |
+| DATA018 | Error | A `service` record has an unknown tier, ward, `near`, `foundation` or `main_room` word, a count outside 1 to 8, a non-positive `min_area_m2`, or lists `wards` together with `outside_wall: true`. | Use one of the words the message lists; see the [service reference](content/service.md). |
 
-Known content types today: `material`, `item`, `biome`, `world`.
+Known content types today: `material`, `item`, `biome`, `world`, `service`.
 
 ## Terrain generator (`TERR`)
 
@@ -83,11 +84,14 @@ Reported by `SettlementPlacer` and `SettlementValidator` during `bake-terrain` (
 | Code | Severity | Meaning | Typical fix |
 |---|---|---|---|
 | SETL001 | Error | The settlement settings are invalid (negative counts, fewer than 3 houses, non-positive blend, candidate step below 16 m, minimum height not below maximum height, non-positive relief limit). | Fix the `SettlementSettings` value named in the message. |
-| SETL002 | Warning | Fewer settlements were placed than requested: the land had no more sites that are flat enough, above the minimum height, clear of water and far enough from the others. | Allow steeper ground (`MaxReliefPerRadius`), reduce the spacing, or ask for fewer or smaller settlements. |
+| SETL002 | Warning | Fewer settlements were placed than requested: the land had no more sites that are gentle enough, above the minimum height, clear of water and far enough from the others. | Allow steeper ground (`MaxReliefPerRadius`), reduce the spacing, or ask for fewer or smaller settlements. |
 | SETL003 | Error | Two settlements are closer than the minimum spacing. | Increase the spacing or ask for fewer settlements. |
-| SETL004 | Error | A settlement's pad is not level (more than 0.5 m off), lies below the minimum height, or its ground is above the maximum. | Flatten after placing; keep sites above sea level. |
+| SETL004 | Error | The ground under a settlement is steeper than allowed (relief over `MaxReliefPerRadius` x pad radius, or `MountainMaxReliefPerRadius` for a mountain city) or outside the allowed height range. | Choose a flatter, higher or lower site, or raise the relief limit. |
 | SETL005 | Error | A river or lake reaches a settlement's pad. | Move the settlement away from water or raise `WaterClearanceMeters`. |
-| SETL006 | Error | `settlements.json` is damaged, has an unknown tier or centrepiece, or an unsupported format. | Re-run `bake-terrain`. |
+| SETL006 | Error | `settlements.json` or `settlements_ground.bin` is damaged, has an unknown tier, centrepiece, ward or room word, or an unsupported format. | Re-run `bake-terrain`. |
+| SETL007 | Error | A generated city has fewer of a service building than its settlement asks for. The message names the service and the counts. | Lower the service's `counts`, or give the city more lots (inside the wall) or room beside the wall (outside). |
+| SETL008 | Warning | A service building's footprint is smaller than the service's `min_area_m2` (no lot was big enough, so the largest free lot was used). | Lower `min_area_m2` or give the city larger lots. |
+| SETL009 | Error | A service meant to stand outside the wall stands inside it, or the other way round. | A bug in the generator or a hand-edited manifest; re-bake. |
 
 ## Road validators
 
@@ -97,7 +101,7 @@ Reported by `RoadPlanner` and `RoadValidator` during `bake-terrain` ([ADR 0013](
 |---|---|---|---|
 | ROAD001 | Error | The road settings are invalid. | Fix the `RoadSettings` value named in the message. |
 | ROAD002 | Warning | A settlement is not connected to the first one by road (no route found: sea, lakes, or too many obstacles). | Allow steeper roads or more river crossings, or check the land between them. |
-| ROAD003 | Error | The terrain under a road differs from its graded surface by more than 1 m (checked only when the vertex spacing is no coarser than the road width), or a cut or fill is deeper than 20 m. | Raise `MaxCutFillMeters`, raise `SlopePenalty` so the road avoids hills. |
+| ROAD003 | Error | The terrain under a road differs from its graded surface by more than 1 m (checked only when the vertex spacing is no coarser than the road width), or a cut or fill is deeper than 20 m. A road that ends at a mountain city gets looser limits: 8 m and 45 m (`HighlandBedToleranceMeters`, `HighlandMaxCutFillMeters`). The message names where the worst mismatch is. | Raise `MaxCutFillMeters`, raise `SlopePenalty` so the road avoids hills. |
 | ROAD004 | Error | A road runs through the sea or a lake. | Route around the water or raise `MinHeightMeters`. |
 | ROAD005 | Error | A bridge is longer than 80 m. | Raise `MaxBridgeMeters` or `RiverCrossingPenaltyMeters`. |
 | ROAD006 | Error | `roads.json` is damaged or has an unsupported format. | Re-run `bake-terrain`. |

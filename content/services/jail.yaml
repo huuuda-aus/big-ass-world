@@ -1,0 +1,9 @@
+id: service.jail
+name: Jail
+tags: [civic]
+counts: { city: 1 }
+wards: [slum, craftsmen]
+near: wall
+min_area_m2: 70
+foundation: stone
+main_room: hall

@@ -6,7 +6,7 @@ Loads hand-edited YAML content, validates it against schemas and exposes it by s
 ## 2. Status
 | Feature | State |
 |---|---|
-| YAML loading of `material`, `item`, `biome` and `world` (macro map) records, strict schema | Implemented |
+| YAML loading of `material`, `item`, `biome`, `world` (macro map) and `service` records, strict schema | Implemented |
 | Duplicate ID, ID/directory mismatch, file name checks | Implemented |
 | Dangling reference (`DATA013`) and wrong-type reference (`DATA014`) checks | Implemented for `item.material` and `region.biome` |
 | Polygon, world size and bounds checks for the macro map (`DATA015`-`DATA017`) | Implemented |
@@ -20,7 +20,7 @@ Loads hand-edited YAML content, validates it against schemas and exposes it by s
 ## 3. Architecture
 ```mermaid
 flowchart LR
-  F["content/materials, items,<br/>biomes, world (*.yaml)"] --> L[ContentLoader]
+  F["content/materials, items,<br/>biomes, world, services (*.yaml)"] --> L[ContentLoader]
   L --> P["Material / Item / Biome / MacroMap parsers<br/>(ParserSupport helpers)"]
   P -->|valid| D[ContentDatabase]
   P -->|problems| R[ValidationReport]
@@ -36,7 +36,7 @@ flowchart LR
 - Single-threaded; no async.
 
 ## 4. Data
-Consumes: [`material`](../reference/content/material.md), [`item`](../reference/content/item.md), [`biome`](../reference/content/biome.md), [`world`](../reference/content/world.md) (macro map). `item` and `biome` schemas are placeholders. Produces nothing on disk.
+Consumes: [`material`](../reference/content/material.md), [`item`](../reference/content/item.md), [`biome`](../reference/content/biome.md), [`world`](../reference/content/world.md) (macro map), [`service`](../reference/content/service.md) (service buildings; the words they may use are in `ServiceVocabulary`). `item` and `biome` schemas are placeholders. Produces nothing on disk.
 
 ## 5. Determinism and persistence notes
 Sorted file visiting makes issue order and "first duplicate wins" independent of the file system. Saves reference content only by `ContentId` string (Planned, M2+); nothing is saved yet.

@@ -45,6 +45,12 @@
 - **Seed sweep**: running a generator over many seeds with all validators. **Planned.**
 - **Settlement**: a city or town placed on the map; baked as an entry in `settlements.json`.
 - **Soak test** (traversal): automated fly-through of the full world that records frame times, streaming cost, GC and memory to prove seamless streaming. The M1 gate.
+- **Foundation**: what holds a building up where the ground falls away below its floor: a stone plinth, wooden pilings, or a pier with a deck ([ADR 0014](decisions/0014-cities-on-natural-ground-and-service-buildings.md)).
+- **Ground grid** (`GroundGrid`): the terrain heights around one settlement on an 8 m grid, baked to `settlements_ground.bin` so a city can be built on a worker thread.
+- **Highland settlement**: a city in mountainous terrain (`Settlement.Highland`); steeper and higher ground is allowed.
+- **Pier**: a wooden foundation with a deck round the house, used where a wooden foundation is more than 3.5 m tall.
+- **Service building** (`service` content type): a building every settlement of a tier must contain, such as an inn or a blacksmith.
+- **Site** (`BuildingSite`): where a building's floor sits on the ground and which foundation holds it up.
 - **Stable slope** (`max_slope_deg`): biome property; steepest slope in degrees that stays put. Steeper slopes slump during thermal erosion.
 - **Stream**: PCG selector that gives an independent sequence for the same seed.
 - **System** (`ISystem`): logic that runs once per tick over components. Systems run in registration order.

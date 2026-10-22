@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Realm.Gen.Settlements.Generation;
 using Realm.Gen.Settlements.Geometry;
 using Realm.Gen.Settlements.Model;
@@ -22,6 +23,8 @@ namespace Realm.Gen.Settlements.Placement;
 /// <param name="MaxBuildings">Upper limit on houses.</param>
 /// <param name="Cathedral">Whether the ward beside the central square holds a cathedral.</param>
 /// <param name="Centre">What stands in the central square.</param>
+/// <param name="Services">The service buildings the city must contain (empty for none).</param>
+/// <param name="Highland">Whether it stands in the mountains (steeper, higher ground is allowed).</param>
 public sealed record Settlement(
     string Id,
     string Name,
@@ -35,8 +38,13 @@ public sealed record Settlement(
     int CitySeed,
     int MaxBuildings,
     bool Cathedral,
-    CentrepieceKind Centre)
+    CentrepieceKind Centre,
+    IReadOnlyList<ServiceSpec>? Services = null,
+    bool Highland = false)
 {
+    /// <summary>The service buildings this settlement contains; never null.</summary>
+    public IReadOnlyList<ServiceSpec> ServiceList => Services ?? Array.Empty<ServiceSpec>();
+
     /// <summary>The generator options that reproduce this city exactly.</summary>
     /// <returns>Options for <see cref="CityGenerator.Generate"/>.</returns>
     public CityParams ToCityParams() => new()
@@ -45,6 +53,7 @@ public sealed record Settlement(
         MaxBuildings = MaxBuildings,
         Cathedral = Cathedral,
         Centre = Centre,
+        Services = ServiceList,
     };
 
     /// <summary>Converts a point of the city plan (plane x, y) to world coordinates.</summary>

@@ -9,7 +9,7 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
   "format": 1,
   "world": "world.main",
   "seed": 1,
-  "generators": ["settlement.placement v1"],
+  "generators": ["settlement.placement v3"],
   "settlements": [
     {
       "id": "settlement.city_1",
@@ -24,13 +24,18 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
       "citySeed": 1234567890,
       "maxBuildings": 1200,
       "cathedral": true,
-      "centre": "Fountain"
+      "centre": "Fountain",
+      "highland": false,
+      "services": [
+        {"id": "service.inn", "name": "Inn", "count": 2, "wards": ["Merchant", "Craftsmen"], "near": "Gate",
+         "outsideWall": false, "minArea": 80, "foundation": null, "mainRoom": "Kitchen"}
+      ]
     }
   ]
 }
 ```
 
-(Numbers are illustrative; the real file has 8 entries.)
+(Numbers are illustrative; the real file has 9 entries and 9 services per city.)
 
 ## Fields
 
@@ -39,23 +44,29 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
 | `format` | File format version; currently 1. Other values are rejected (`SETL006`). |
 | `world`, `seed` | The world map ID and the world seed the settlements were placed with. |
 | `generators` | Generator versions that produced the list. |
-| `id` | Stable identifier. Cities are `settlement.city_N`, towns `settlement.town_N`. |
+| `id` | Stable identifier. Cities are `settlement.city_N`, the mountain city `settlement.mountain_N`, towns `settlement.town_N`. |
 | `name` | Display name, generated from syllables (`Thornford`, `Oakley`); a placeholder until names are designed. |
 | `tier` | `City` or `Town`. |
 | `x`, `z` | World position of the central square in metres. |
 | `rotation` | Rotation of the city plan about its centre in radians (counter-clockwise in plan coordinates; the game node turns by minus this angle about the vertical axis). |
-| `groundHeight` | Height of the flat ground under the city, metres above sea level. |
+| `groundHeight` | Mean height of the natural ground under the city, metres above sea level; the city's origin. The ground itself is not level: see `settlements_ground.bin` below. |
 | `wallRadius` | Distance from the centre to the farthest wall corner. |
-| `padRadius` | Radius of the flattened ground (wall radius plus 30 m). |
+| `padRadius` | Radius of the area the site was surveyed over (wall radius plus 30 m); the load distance is measured from it. |
+| `highland` | `true` for a mountain city (steeper, higher ground allowed). Optional; default `false`. |
+| `services` | The [service buildings](content/service.md) this city must contain, copied from the content records so the game needs no content loader. Each: `id`, `name`, `count`, `wards` (the ward names the generator uses), `near`, `outsideWall`, `minArea`, `foundation` (or `null`), `mainRoom`. Optional; default none. |
 | `citySeed`, `maxBuildings`, `cathedral`, `centre` | The inputs of `CityGenerator.Generate` (`Settlement.ToCityParams()`). `centre` is `None`, `Fountain`, `Pyre`, `ExecutionBlock` or `Market`. |
 
 ## Coordinates
 
-A city is generated in its own plane (metres, central square at the origin, plan x and y). `Settlement.ToWorld(plan)` rotates by `rotation` and moves to (`x`, `z`); plan y becomes world Z. Meshes (`Realm.Gen.Settlements.Meshing`) use a local frame with X = plan x, Y = height, Z = plan y, so the game puts a node at (`x`, `groundHeight`, `z`) rotated by minus `rotation` about Y.
+A city is generated in its own plane (metres, central square at the origin, plan x and y). `Settlement.ToWorld(plan)` rotates by `rotation` and moves to (`x`, `z`); plan y becomes world Z. Meshes (`Realm.Gen.Settlements.Meshing`) use a local frame with X = plan x, Y = height, Z = plan y, so the game puts a node at (`x`, `groundHeight`, `z`) rotated by minus `rotation` about Y. Heights in that frame are metres above `groundHeight`; each building mesh has its floor at 0 and is placed at its own `BaseY`.
 
 ## Settings
 
-`SettlementSettings` (all placeholders): 3 cities of 1,200 houses (wall radius about 290 to 310 m) and 5 towns of 400 houses (about 190 m); minimum spacing 2,500 m; pad margin 30 m and blend 100 m; candidate grid 128 m; height range 15 to 320 m; relief limit 0.1 x radius; water clearance 40 m; river bonus 0.25 within 1,500 m; world edge margin 400 m.
+`SettlementSettings` (all placeholders): 3 cities of 1,200 houses (wall radius about 290 to 310 m), 1 mountain city and 5 towns of 400 houses (about 190 m); minimum spacing 2,500 m; pad margin 30 m and blend 100 m; candidate grid 128 m; height range 15 to 320 m; relief limit 0.2 x radius; mountain city: 330 to 1,100 m, relief limit 0.35 x radius; `FlattenStrength` 0 (0 builds on the natural ground, 1 levels the pad as before ADR 0014); water clearance 40 m; river bonus 0.25 within 1,500 m; world edge margin 400 m.
+
+# Baked ground (`settlements_ground.bin`)
+
+The terrain under each settlement after the roads were graded, on an 8 m grid reaching 150 m beyond the wall, so the game can build a city on a worker thread without asking the terrain engine. Code: `GroundGridFile`, `GroundGrid`; the game reads it into a `SettlementGround`. Little endian: magic `SGRD`, format (int, currently 1), count (int); then for each settlement its ID (length-prefixed UTF-8), origin X and Z of the first grid point (double), spacing (double), points per side (int) and side x side heights in metres above sea level (float), row by row. About 360 KB for 9 settlements. If it is missing the game warns and builds cities on level ground.
 
 # Baked roads (`roads.json`)
 

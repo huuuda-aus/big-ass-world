@@ -1,0 +1,8 @@
+id: service.trader
+name: Trader
+tags: [trade]
+counts: { city: 3, town: 1 }
+wards: [market, merchant]
+near: square
+min_area_m2: 60
+main_room: shop

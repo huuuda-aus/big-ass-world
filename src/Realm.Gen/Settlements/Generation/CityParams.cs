@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Realm.Gen.Settlements.Model;
 
 namespace Realm.Gen.Settlements.Generation;
@@ -38,4 +39,7 @@ public sealed class CityParams
 
     /// <summary>What stands in the central square. None leaves it empty.</summary>
     public CentrepieceKind Centre { get; set; } = CentrepieceKind.None;
+
+    /// <summary>Service buildings the city must contain; empty leaves every building an ordinary house.</summary>
+    public IReadOnlyList<ServiceSpec> Services { get; set; } = System.Array.Empty<ServiceSpec>();
 }

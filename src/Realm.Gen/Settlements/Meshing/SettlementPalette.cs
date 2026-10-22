@@ -78,6 +78,25 @@ public static class SettlementPalette
         _ => Hex(0x8a4a3a),
     };
 
+    private static readonly int[] SignColours =
+    {
+        0xb23a2e, 0x2e6fb2, 0x3a8a46, 0xc99a2e, 0x7a3a8a, 0xc9572e, 0x2e8a8a, 0x8a8a2e, 0xa04a6a,
+    };
+
+    /// <summary>Colour of the sign over a service building's door; the same service always gets the same colour.</summary>
+    /// <param name="serviceId">Content ID of the service, for example <c>service.inn</c>.</param>
+    /// <returns>The colour.</returns>
+    public static Vector3 Sign(string serviceId)
+    {
+        uint hash = 17;
+        foreach (char c in serviceId)
+        {
+            hash = unchecked((hash * 31) + c);
+        }
+
+        return Hex(SignColours[hash % (uint)SignColours.Length]);
+    }
+
     /// <summary>Floor colour of a room type.</summary>
     /// <param name="type">The room type.</param>
     /// <returns>The colour.</returns>

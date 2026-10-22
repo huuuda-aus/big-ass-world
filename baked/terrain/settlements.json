@@ -3,38 +3,284 @@
   "world": "world.main",
   "seed": 1,
   "generators": [
-    "settlement.placement v2"
+    "settlement.placement v3"
   ],
   "settlements": [
     {
       "id": "settlement.city_1",
       "name": "Thornford",
       "tier": "City",
-      "x": 5685.876972363623,
-      "z": 565.8769723636233,
+      "x": 5958.466761349009,
+      "z": 582.4667613490092,
       "rotation": 1.441085,
-      "groundHeight": 114.9,
-      "wallRadius": 291.88,
-      "padRadius": 321.88,
+      "groundHeight": 114.93,
+      "wallRadius": 308.47,
+      "padRadius": 338.47,
       "citySeed": 556170729,
       "maxBuildings": 1200,
       "cathedral": true,
-      "centre": "Fountain"
+      "centre": "Fountain",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.city_hall",
+          "name": "City hall",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 2,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 2,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.jail",
+          "name": "Jail",
+          "count": 1,
+          "wards": [
+            "Slum",
+            "Craftsmen"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 70,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 3,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": false
     },
     {
       "id": "settlement.city_2",
       "name": "Hollowgate",
       "tier": "City",
-      "x": 3006.1999972922076,
-      "z": -1089.8000027077924,
+      "x": 3017.250811774764,
+      "z": -1078.7491882252361,
       "rotation": 3.336904,
       "groundHeight": 116.83,
-      "wallRadius": 300.2,
-      "padRadius": 330.2,
+      "wallRadius": 311.25,
+      "padRadius": 341.25,
       "citySeed": 228403923,
       "maxBuildings": 1200,
       "cathedral": true,
-      "centre": "Fountain"
+      "centre": "Fountain",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.city_hall",
+          "name": "City hall",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 2,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 2,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.jail",
+          "name": "Jail",
+          "count": 1,
+          "wards": [
+            "Slum",
+            "Craftsmen"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 70,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 3,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": false
     },
     {
       "id": "settlement.city_3",
@@ -49,82 +295,818 @@
       "citySeed": 2007034524,
       "maxBuildings": 1200,
       "cathedral": true,
-      "centre": "Fountain"
+      "centre": "Fountain",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.city_hall",
+          "name": "City hall",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 2,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 2,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.jail",
+          "name": "Jail",
+          "count": 1,
+          "wards": [
+            "Slum",
+            "Craftsmen"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 70,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 3,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": false
+    },
+    {
+      "id": "settlement.mountain_1",
+      "name": "Briarhaven",
+      "tier": "City",
+      "x": 2888.5977561320906,
+      "z": -4279.402243867909,
+      "rotation": 0.299762,
+      "groundHeight": 468.8,
+      "wallRadius": 310.6,
+      "padRadius": 340.6,
+      "citySeed": 708937147,
+      "maxBuildings": 1200,
+      "cathedral": true,
+      "centre": "Fountain",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.city_hall",
+          "name": "City hall",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 2,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 2,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.jail",
+          "name": "Jail",
+          "count": 1,
+          "wards": [
+            "Slum",
+            "Craftsmen"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 70,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 3,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": true
     },
     {
       "id": "settlement.town_1",
       "name": "Oakley",
       "tier": "Town",
-      "x": -1962.089213550782,
-      "z": -1578.089213550782,
+      "x": -1948.0879574681185,
+      "z": -1564.0879574681185,
       "rotation": 4.820122,
-      "groundHeight": 69.61,
-      "wallRadius": 195.91,
-      "padRadius": 225.91,
+      "groundHeight": 69.78,
+      "wallRadius": 209.91,
+      "padRadius": 239.91,
       "citySeed": 1497950613,
       "maxBuildings": 400,
       "cathedral": false,
-      "centre": "Market"
+      "centre": "Market",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 1,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": false
     },
     {
       "id": "settlement.town_2",
       "name": "Amberby",
       "tier": "Town",
-      "x": -6963.221387953714,
-      "z": 1740.778612046286,
+      "x": -2204.1772232329695,
+      "z": 1251.8227767670305,
       "rotation": 5.823938,
-      "groundHeight": 72.62,
-      "wallRadius": 186.78,
-      "padRadius": 216.78,
+      "groundHeight": 47.42,
+      "wallRadius": 209.82,
+      "padRadius": 239.82,
       "citySeed": 1048366520,
       "maxBuildings": 400,
       "cathedral": false,
-      "centre": "Market"
+      "centre": "Market",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 1,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": false
     },
     {
       "id": "settlement.town_3",
       "name": "Frostby",
       "tier": "Town",
-      "x": -2226.3779231699173,
-      "z": 1357.6220768300827,
+      "x": -6938.001098129693,
+      "z": 1765.9989018703072,
       "rotation": 4.326979,
-      "groundHeight": 47.74,
-      "wallRadius": 187.62,
-      "padRadius": 217.62,
+      "groundHeight": 72.38,
+      "wallRadius": 212,
+      "padRadius": 242,
       "citySeed": 583090390,
       "maxBuildings": 400,
       "cathedral": false,
-      "centre": "Market"
+      "centre": "Market",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 1,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": false
     },
     {
       "id": "settlement.town_4",
       "name": "Redfield",
       "tier": "Town",
-      "x": 1108.2705122707193,
-      "z": 1364.2705122707193,
+      "x": 1135.7405375169183,
+      "z": 1391.7405375169183,
       "rotation": 6.005746,
-      "groundHeight": 138.39,
-      "wallRadius": 194.27,
-      "padRadius": 224.27,
+      "groundHeight": 138.25,
+      "wallRadius": 221.74,
+      "padRadius": 251.74,
       "citySeed": 1302143198,
       "maxBuildings": 400,
       "cathedral": false,
-      "centre": "Market"
+      "centre": "Market",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 1,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": false
     },
     {
       "id": "settlement.town_5",
       "name": "Redham",
       "tier": "Town",
-      "x": 3536.1626340966486,
-      "z": 2128.1626340966486,
+      "x": 612.6450529658778,
+      "z": -2075.3549470341222,
       "rotation": 4.658647,
-      "groundHeight": 111.25,
-      "wallRadius": 190.16,
-      "padRadius": 220.16,
+      "groundHeight": 116.51,
+      "wallRadius": 210.65,
+      "padRadius": 240.65,
       "citySeed": 780571735,
       "maxBuildings": 400,
       "cathedral": false,
-      "centre": "Market"
+      "centre": "Market",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 1,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 1,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": false
     }
   ]
 }

@@ -57,6 +57,7 @@ public partial class WorldScene : Node3D
     private RegionStreamer _streamer = null!; // Safe: set in _Ready.
     private Camera3D _camera = null!; // Safe: set in _Ready.
     private CharacterBody3D _body = null!; // Safe: set in _Ready; origin at the player's feet, the camera is its child.
+    private StepClimber _steps = null!; // Safe: set in _Ready next to the body it drives.
     private MeshInstance3D _water = null!; // Safe: set in _Ready.
     private SettlementStreamer? _cities;
     private RoadsLayer? _roads;
@@ -118,6 +119,7 @@ public partial class WorldScene : Node3D
         TerrainManifestInfo(out int regionSize, out float spacing);
         _camera = new Camera3D { Far = FarPlane, Current = true, Fov = 75 };
         _body = BuildBody();
+        _steps = new StepClimber(_body);
         _world.AddChild(_body);
         _body.AddChild(_camera);
         _camera.Position = new Vector3(0, EyeHeight, 0);
@@ -200,6 +202,7 @@ public partial class WorldScene : Node3D
 
         _hud.Visible = !_args.Flag("no-hud", false);
         _water.Visible = !_args.Flag("no-water", false);
+        _steps.Enabled = !_args.Flag("no-step", false);
         if (!_args.Flag("no-capture", false) && !_args.Has("screenshot"))
         {
             Input.MouseMode = Input.MouseModeEnum.Captured;
@@ -340,7 +343,7 @@ public partial class WorldScene : Node3D
             {
                 seconds = Math.Round(_autowalkElapsed, 1),
                 speed = _args.Flag("autowalk-run", false) ? RunSpeed : WalkSpeed,
-                end = new { x = Math.Round(_body.Position.X, 1), z = Math.Round(_body.Position.Z, 1) },
+                end = new { x = Math.Round(_body.Position.X, 1), y = Math.Round(_body.Position.Y, 2), z = Math.Round(_body.Position.Z, 1) },
                 worstHeightAboveGroundErrorMetres = Math.Round(_worstGroundError, 3),
                 largestSingleFrameStepMetres = Math.Round(_maxStepMetres, 3),
             },
@@ -378,13 +381,16 @@ public partial class WorldScene : Node3D
         GetTree().Quit();
     }
 
+    // A movement direction is held when either of its two keys (letter or arrow) is down.
+    private static bool Held(Key letter, Key arrow) => Input.IsPhysicalKeyPressed(letter) || Input.IsPhysicalKeyPressed(arrow);
+
     private void Move(float delta)
     {
         bool sprint = Input.IsPhysicalKeyPressed(Key.Shift) || (_autowalkSeconds > 0 && _args.Flag("autowalk-run", false));
         float forwardInput = _autowalkSeconds > 0
             ? 1
-            : (Input.IsPhysicalKeyPressed(Key.W) ? 1 : 0) - (Input.IsPhysicalKeyPressed(Key.S) ? 1 : 0);
-        float sideInput = (Input.IsPhysicalKeyPressed(Key.D) ? 1 : 0) - (Input.IsPhysicalKeyPressed(Key.A) ? 1 : 0);
+            : (Held(Key.W, Key.Up) ? 1 : 0) - (Held(Key.S, Key.Down) ? 1 : 0);
+        float sideInput = (Held(Key.D, Key.Right) ? 1 : 0) - (Held(Key.A, Key.Left) ? 1 : 0);
 
         if (_fly)
         {
@@ -433,10 +439,10 @@ public partial class WorldScene : Node3D
         }
 
         _body.Velocity = velocity;
-        _body.MoveAndSlide();
+        _steps.MoveAndSlide(delta);
     }
 
-    private static CharacterBody3D BuildBody()
+    internal static CharacterBody3D BuildBody()
     {
         var body = new CharacterBody3D
         {
@@ -630,6 +636,6 @@ public partial class WorldScene : Node3D
             $"x {p.X:F0}  z {p.Z:F0}  ground {groundText}  region ({region.X}, {region.Y})\n" +
             $"terrain: {_streamer.LoadedCount} loaded, {_streamer.PendingCount} loading, last rebuild {_lastUpdateMs:F1} ms\n" +
             CityHudLine() +
-            "WASD move  Shift run  Space jump  F fly  F1 hide  Esc mouse";
+            "WASD/arrows move  Shift run  Space jump  F fly  F1 hide  Esc mouse";
     }
 }

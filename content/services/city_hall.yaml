@@ -1,0 +1,9 @@
+id: service.city_hall
+name: City hall
+tags: [civic]
+counts: { city: 1 }
+wards: [market, merchant]
+near: square
+min_area_m2: 90
+foundation: stone
+main_room: hall

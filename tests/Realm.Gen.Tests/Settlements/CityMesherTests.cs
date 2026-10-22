@@ -50,22 +50,6 @@ public class CityMesherTests
     }
 
     [Fact]
-    public void Ground_WardsHaveExactlyThePatchAreas_AndStreetsTheirLength()
-    {
-        City city = Make(CentrepieceKind.None);
-
-        PropMesh ground = CityMesher.Ground(city);
-
-        double wards = ground.Triangles.Where(t => MathF.Abs(t.A.Y - CityMesher.GroundLift) < 1e-5f).Sum(t => (double)Area(t));
-        double streets = ground.Triangles.Where(t => MathF.Abs(t.A.Y - CityMesher.StreetLift) < 1e-5f).Sum(t => (double)Area(t));
-        double expectedStreets = city.Streets.Sum(s => Enumerable.Range(0, s.Points.Count - 1).Sum(i => Vec2.Distance(s.Points[i], s.Points[i + 1]))) * CityMesher.StreetWidthMeters;
-
-        Assert.Equal(city.CityPatches.Sum(p => p.Shape.Area), wards, 2);
-        Assert.Equal(expectedStreets, streets, 2);
-        Assert.All(ground.Triangles, t => Assert.True(Normal(t).Y > 0.99f, "ground faces up"));
-    }
-
-    [Fact]
     public void Wall_HasTowersAtEveryCorner_AndAnOpenGapAtEveryGate()
     {
         City city = Make(CentrepieceKind.None);
@@ -84,8 +68,8 @@ public class CityMesherTests
             Assert.DoesNotContain(tops, t => ContainsPlan(t, gate.X, gate.Y));
         }
 
-        Assert.Equal(CityMesher.WallHeight + 4, wall.HeightMeters, 3); // the gate towers are the tallest (wall height plus 4 m)
-        Assert.True(wall.Min.Y >= -1e-6f);
+        Assert.Equal(CityMesher.WallHeight + 4, (double)wall.Max.Y, 3); // the gate towers are the tallest (wall height plus 4 m)
+        Assert.Equal(-2.0, (double)wall.Min.Y, 3); // the wall is sunk 2 m into the ground so no gap shows on slopes
     }
 
     [Fact]

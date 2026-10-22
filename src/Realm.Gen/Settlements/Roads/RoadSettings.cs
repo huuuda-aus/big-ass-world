@@ -16,7 +16,7 @@ public sealed record RoadSettings
     public double SampleMeters { get; init; } = 8;
 
     /// <summary>Extra cost per unit of squared slope; higher makes roads avoid hills.</summary>
-    public double SlopePenalty { get; init; } = 25;
+    public double SlopePenalty { get; init; } = 300; // 300 keeps roads off ridges; 25 was enough on flat pads (ADR 0014)
 
     /// <summary>Extra cost, in metres of detour, for each search cell that lies in a river (a bridge is needed there).</summary>
     public double RiverCrossingPenaltyMeters { get; init; } = 400;
@@ -32,6 +32,12 @@ public sealed record RoadSettings
 
     /// <summary>Deepest allowed cut or fill under a road, in metres.</summary>
     public double MaxCutFillMeters { get; init; } = 20;
+
+    /// <summary>Deepest allowed cut or fill under a road that ends at a mountain city, in metres (mountain roads need more earthwork).</summary>
+    public double HighlandMaxCutFillMeters { get; init; } = 45;
+
+    /// <summary>Largest allowed difference between the carved terrain and the surface of a road that ends at a mountain city, in metres. Roads in a steep shared corridor lie a few metres apart on the slope, so the later road's bed wins where they cross.</summary>
+    public double HighlandBedToleranceMeters { get; init; } = 8;
 
     /// <summary>Distance from a settlement's wall that a road starts at, outside the gate, in metres.</summary>
     public double GateApproachMeters { get; init; } = 40;

@@ -18,4 +18,6 @@ public enum WardType
     Slum,
     /// <summary>An open park without buildings.</summary>
     Park,
+    /// <summary>Farmland outside the wall; only service buildings such as a farm stand there.</summary>
+    Outskirts,
 }

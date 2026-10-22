@@ -54,7 +54,7 @@ public class SettlementPlacementTests
         SettlementPlacer.Place(field, network, seed, settings, report ?? new ValidationReport());
 
     private static SettlementSettings Small(int cities, int towns) =>
-        new() { Cities = cities, Towns = towns, CityBuildings = 60, TownBuildings = 24 };
+        new() { Cities = cities, Towns = towns, MountainCities = 0, CityBuildings = 60, TownBuildings = 24 };
 
     [Fact]
     public void PlacesTheRequestedNumber_CitiesFirst_OnAGenerousPlateau()

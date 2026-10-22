@@ -23,62 +23,71 @@ public static class RoadTerrain
         settings ??= new RoadSettings();
 
         float[] heights = field.Heights.ToArray();
-        int side = field.VerticesPerSide;
-        int spacing = field.SpacingMeters;
-        double half = field.WorldSizeMeters / 2.0;
-        double halfWidth = settings.WidthMeters / 2;
-        double reach = halfWidth + settings.ShoulderMeters;
-
         foreach (Road road in roads)
         {
-            var closest = new Dictionary<int, (double Distance, double Height)>();
-            for (int i = 0; i + 1 < road.Points.Count; i++)
-            {
-                if (InsideBridge(road, i))
-                {
-                    continue;
-                }
-
-                RoadPoint a = road.Points[i];
-                RoadPoint b = road.Points[i + 1];
-                int col0 = Math.Max(0, (int)Math.Floor((Math.Min(a.X, b.X) - reach + half) / spacing));
-                int col1 = Math.Min(side - 1, (int)Math.Ceiling((Math.Max(a.X, b.X) + reach + half) / spacing));
-                int row0 = Math.Max(0, (int)Math.Floor((Math.Min(a.Z, b.Z) - reach + half) / spacing));
-                int row1 = Math.Min(side - 1, (int)Math.Ceiling((Math.Max(a.Z, b.Z) + reach + half) / spacing));
-                double dx = b.X - a.X;
-                double dz = b.Z - a.Z;
-                double lengthSquared = (dx * dx) + (dz * dz);
-                for (int row = row0; row <= row1; row++)
-                {
-                    double z = -half + (row * (double)spacing);
-                    for (int col = col0; col <= col1; col++)
-                    {
-                        double x = -half + (col * (double)spacing);
-                        double t = lengthSquared <= 0 ? 0 : Math.Clamp((((x - a.X) * dx) + ((z - a.Z) * dz)) / lengthSquared, 0, 1);
-                        double distance = Math.Sqrt(((x - (a.X + (dx * t))) * (x - (a.X + (dx * t)))) + ((z - (a.Z + (dz * t))) * (z - (a.Z + (dz * t)))));
-                        if (distance > reach)
-                        {
-                            continue;
-                        }
-
-                        int index = (row * side) + col;
-                        double surface = a.Height + ((b.Height - a.Height) * t);
-                        if (!closest.TryGetValue(index, out (double Distance, double Height) best) || distance < best.Distance)
-                        {
-                            closest[index] = (distance, surface);
-                        }
-                    }
-                }
-            }
-
-            foreach ((int index, (double distance, double surface)) in closest)
-            {
-                double weight = Weight(distance, halfWidth, settings.ShoulderMeters);
-                heights[index] = (float)(heights[index] + (weight * (surface - heights[index])));
-            }
+            ApplyRoad(heights, field.WorldSizeMeters, field.SpacingMeters, road, settings);
         }
 
         return new HeightField(field.WorldSizeMeters, field.SpacingMeters, heights);
+    }
+
+    /// <summary>Moves the terrain under one road to its surface, in place.</summary>
+    /// <param name="heights">The height array of a field (row by row), changed in place.</param>
+    /// <param name="worldSizeMeters">World side length of the field.</param>
+    /// <param name="spacing">Vertex spacing of the field.</param>
+    /// <param name="road">The road.</param>
+    /// <param name="settings">Width and shoulder.</param>
+    internal static void ApplyRoad(float[] heights, int worldSizeMeters, int spacing, Road road, RoadSettings settings)
+    {
+        int side = (worldSizeMeters / spacing) + 1;
+        double half = worldSizeMeters / 2.0;
+        double halfWidth = settings.WidthMeters / 2;
+        double reach = halfWidth + settings.ShoulderMeters;
+        var closest = new Dictionary<int, (double Distance, double Height)>();
+        for (int i = 0; i + 1 < road.Points.Count; i++)
+        {
+            if (InsideBridge(road, i))
+            {
+                continue;
+            }
+
+            RoadPoint a = road.Points[i];
+            RoadPoint b = road.Points[i + 1];
+            int col0 = Math.Max(0, (int)Math.Floor((Math.Min(a.X, b.X) - reach + half) / spacing));
+            int col1 = Math.Min(side - 1, (int)Math.Ceiling((Math.Max(a.X, b.X) + reach + half) / spacing));
+            int row0 = Math.Max(0, (int)Math.Floor((Math.Min(a.Z, b.Z) - reach + half) / spacing));
+            int row1 = Math.Min(side - 1, (int)Math.Ceiling((Math.Max(a.Z, b.Z) + reach + half) / spacing));
+            double dx = b.X - a.X;
+            double dz = b.Z - a.Z;
+            double lengthSquared = (dx * dx) + (dz * dz);
+            for (int row = row0; row <= row1; row++)
+            {
+                double z = -half + (row * (double)spacing);
+                for (int col = col0; col <= col1; col++)
+                {
+                    double x = -half + (col * (double)spacing);
+                    double t = lengthSquared <= 0 ? 0 : Math.Clamp((((x - a.X) * dx) + ((z - a.Z) * dz)) / lengthSquared, 0, 1);
+                    double distance = Math.Sqrt(((x - (a.X + (dx * t))) * (x - (a.X + (dx * t)))) + ((z - (a.Z + (dz * t))) * (z - (a.Z + (dz * t)))));
+                    if (distance > reach)
+                    {
+                        continue;
+                    }
+
+                    int index = (row * side) + col;
+                    double surface = a.Height + ((b.Height - a.Height) * t);
+                    if (!closest.TryGetValue(index, out (double Distance, double Height) best) || distance < best.Distance)
+                    {
+                        closest[index] = (distance, surface);
+                    }
+                }
+            }
+        }
+
+        foreach ((int index, (double distance, double surface)) in closest)
+        {
+            double weight = Weight(distance, halfWidth, settings.ShoulderMeters);
+            heights[index] = (float)(heights[index] + (weight * (surface - heights[index])));
+        }
     }
 
     /// <summary>How strongly a vertex at a distance from the road centre line is pulled to the road surface.</summary>

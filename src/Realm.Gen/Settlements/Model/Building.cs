@@ -18,6 +18,9 @@ public sealed class Building
     /// <summary>The ward the building belongs to.</summary>
     public WardType Ward { get; }
 
+    /// <summary>The service this building provides (inn, blacksmith, ...), or null for an ordinary house.</summary>
+    public ServiceSpec? Service { get; internal set; }
+
     /// <summary>Creates a building.</summary>
     /// <param name="id">Identifier, stable within a city.</param>
     /// <param name="footprint">Outline on the ground.</param>

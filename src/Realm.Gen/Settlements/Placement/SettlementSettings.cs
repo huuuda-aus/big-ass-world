@@ -12,8 +12,14 @@ public sealed record SettlementSettings
     /// <summary>Number of large cities to place.</summary>
     public int Cities { get; init; } = DefaultCities;
 
+    /// <summary>Default number of cities in the mountains.</summary>
+    public const int DefaultMountainCities = 1;
+
     /// <summary>Number of smaller towns to place.</summary>
     public int Towns { get; init; } = DefaultTowns;
+
+    /// <summary>Number of extra large cities built in mountainous terrain (see <see cref="MountainMinHeightMeters"/>).</summary>
+    public int MountainCities { get; init; } = DefaultMountainCities;
 
     /// <summary>Houses in a city (about 291 m wall radius at 1,200).</summary>
     public int CityBuildings { get; init; } = 1200;
@@ -39,8 +45,23 @@ public sealed record SettlementSettings
     /// <summary>Highest allowed ground height of a settlement above sea level, in metres.</summary>
     public double MaxHeightMeters { get; init; } = 320;
 
-    /// <summary>Largest allowed height difference across the pad, as a fraction of the pad radius (0.1 means 33 m over 330 m).</summary>
-    public double MaxReliefPerRadius { get; init; } = 0.1;
+    /// <summary>Lowest ground height of a mountain city above sea level, in metres. Also the height that counts as mountainous when no region data is given.</summary>
+    public double MountainMinHeightMeters { get; init; } = 330;
+
+    /// <summary>Highest ground height of a mountain city above sea level, in metres.</summary>
+    public double MountainMaxHeightMeters { get; init; } = 1100;
+
+    /// <summary>Largest allowed height difference across the pad of a mountain city, as a fraction of the pad radius.</summary>
+    public double MountainMaxReliefPerRadius { get; init; } = 0.35;
+
+    /// <summary>
+    /// How much the terrain under a settlement is pulled toward a level pad, from 0 (not at all: the city is built on the natural
+    /// ground, with foundations where it slopes) to 1 (fully level, as before ADR 0014).
+    /// </summary>
+    public double FlattenStrength { get; init; }
+
+    /// <summary>Largest allowed height difference across the pad, as a fraction of the pad radius (0.2 means 66 m over 330 m).</summary>
+    public double MaxReliefPerRadius { get; init; } = 0.2;
 
     /// <summary>Open ground kept between the pad and any river or lake, in metres.</summary>
     public double WaterClearanceMeters { get; init; } = 40;
@@ -59,9 +80,9 @@ public sealed record SettlementSettings
     /// <returns><c>true</c> when valid.</returns>
     public bool TryValidate(out string? problem)
     {
-        if (Cities < 0 || Towns < 0 || Cities + Towns > 64)
+        if (Cities < 0 || Towns < 0 || MountainCities < 0 || Cities + Towns + MountainCities > 64)
         {
-            problem = "Cities and Towns must not be negative and together at most 64.";
+            problem = "Cities, MountainCities and Towns must not be negative and together at most 64.";
         }
         else if (CityBuildings < 3 || TownBuildings < 3)
         {
@@ -78,6 +99,10 @@ public sealed record SettlementSettings
         else if (!(MinHeightMeters < MaxHeightMeters) || !(MaxReliefPerRadius > 0))
         {
             problem = "MinHeightMeters must be below MaxHeightMeters and MaxReliefPerRadius positive.";
+        }
+        else if (!(MountainMinHeightMeters < MountainMaxHeightMeters) || !(MountainMaxReliefPerRadius > 0) || !(FlattenStrength >= 0 && FlattenStrength <= 1))
+        {
+            problem = "MountainMinHeightMeters must be below MountainMaxHeightMeters, MountainMaxReliefPerRadius positive and FlattenStrength between 0 and 1.";
         }
         else
         {

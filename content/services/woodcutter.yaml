@@ -1,0 +1,8 @@
+id: service.woodcutter
+name: Woodcutter
+tags: [crafting, rural]
+counts: { city: 1, town: 1 }
+outside_wall: true
+min_area_m2: 40
+foundation: wood
+main_room: workshop

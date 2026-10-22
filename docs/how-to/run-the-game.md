@@ -53,7 +53,7 @@ Pass them after `--`, for example `<godot> --path src/Realm.Game -- --fly --pos=
 | `--screenshot=PNG`, `--screenshot-after=FRAMES` | Save a screenshot and quit |
 | `--autowalk=SECONDS`, `--autowalk-run`, `--report=JSON` | Walk forward automatically, print and save a frame-time report, quit |
 | `--vsync=true/false` | Vertical sync. On by default; measurement runs (`--autowalk`, `--screenshot`) switch it off unless you pass `--vsync=true`, because vsync adds compositor noise to frame times and can stall a hidden window |
-| `--no-capture`, `--no-hud`, `--no-water`, `--flat-ground` | Debugging switches |
+| `--no-capture`, `--no-hud`, `--no-water`, `--flat-ground`, `--no-step` (turn off automatic step climbing) | Debugging switches |
 
 ## What you are looking at
 - Terrain is the baked eroded height field; colours come from the baked colour map (height palette, baked shading, rivers and lakes). There are no textures, vegetation, buildings or characters yet.
@@ -63,7 +63,7 @@ Pass them after `--`, for example `<godot> --path src/Realm.Game -- --fly --pos=
 - Walk mode loads terrain within 480 m and uses thick fog; fly mode loads 1,600 m and uses thin fog.
 
 ## Verify
-In walk mode, hold W: you move at about 5.5 m/s and stay on the ground. Walking west for a couple of minutes crosses into a new region without a visible stall. `--autowalk=60 --yaw=90 --no-capture` does this for you and prints frame statistics.
+In walk mode, hold W (or the Up arrow): you move at about 5.5 m/s and stay on the ground. Walking west for a couple of minutes crosses into a new region without a visible stall. `--autowalk=60 --yaw=90 --no-capture` does this for you and prints frame statistics.
 
 ## Troubleshooting
 - `No baked terrain at ...`: run step 1.
@@ -73,3 +73,11 @@ In walk mode, hold W: you move at about 5.5 m/s and stay on the ground. Walking 
 
 ## Related
 - [Baked terrain format](../reference/baked-terrain.md), [Game system](../systems/game.md), [Run the streaming spike](run-the-streaming-spike.md)
+
+## Check step climbing
+The walker's automatic stepping has a headless physics test: a staircase with risers from 0.1 to 0.6 m, with and without a door opening.
+```bash
+cd src/Realm.Game && <godot> --headless --path . res://scenes/step_test.tscn
+```
+You should see `PASS` for risers up to 0.35 m (climbed) and for 0.4 m and above (blocked), then `[step-test] all passed` (exit code 1 and `FAILED` otherwise). Run it after changing `StepClimber` or the walker's capsule, mass or floor settings.
+

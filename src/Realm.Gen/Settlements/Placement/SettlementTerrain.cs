@@ -4,7 +4,10 @@ using Realm.Gen.Terrain;
 
 namespace Realm.Gen.Settlements.Placement;
 
-/// <summary>Flattens the ground under settlements so streets and houses can stand on level land.</summary>
+/// <summary>
+/// Optionally levels the ground under settlements. Since ADR 0014 the default strength is 0, so cities stand on the natural ground
+/// and use foundations where it slopes; a positive <see cref="SettlementSettings.FlattenStrength"/> brings the old behaviour back, partly or fully.
+/// </summary>
 /// <remarks>Determinism: pure. Thread-safety: pure.</remarks>
 public static class SettlementTerrain
 {
@@ -15,12 +18,16 @@ public static class SettlementTerrain
     /// <param name="field">The terrain.</param>
     /// <param name="settlements">The settlements (their pads must not overlap, which the placer guarantees).</param>
     /// <param name="settings">Blend settings; defaults when null.</param>
-    /// <returns>A new height field; the input is not changed.</returns>
+    /// <returns>A new height field; the input is not changed. When <see cref="SettlementSettings.FlattenStrength"/> is 0 (the default) the input itself is returned.</returns>
     public static HeightField Flatten(HeightField field, IReadOnlyList<Settlement> settlements, SettlementSettings? settings = null)
     {
         ArgumentNullException.ThrowIfNull(field);
         ArgumentNullException.ThrowIfNull(settlements);
         settings ??= new SettlementSettings();
+        if (settings.FlattenStrength <= 0)
+        {
+            return field; // ADR 0014: cities are built on the natural ground
+        }
 
         float[] heights = field.Heights.ToArray();
         int side = field.VerticesPerSide;
@@ -39,7 +46,7 @@ public static class SettlementTerrain
                 for (int col = col0; col <= col1; col++)
                 {
                     double d = s.DistanceTo(-half + (col * (double)spacing), z);
-                    double weight = Weight(d, s.PadRadiusMeters, settings.BlendMeters);
+                    double weight = settings.FlattenStrength * Weight(d, s.PadRadiusMeters, settings.BlendMeters);
                     if (weight > 0)
                     {
                         int i = (row * side) + col;

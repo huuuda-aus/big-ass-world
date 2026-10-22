@@ -21,17 +21,17 @@ Loads and validates all content under `dir` (default `content`). Prints one line
 
 ```
 $ dotnet run --project src/Realm.Cli -- content-lint
-[Info] Data.Loader: Loaded 3 material(s), 3 item(s), 7 biome(s), 1 world map(s) with 7 region(s) from 'content'.
-3 material(s), 3 item(s), 7 biome(s), 7 region(s), 0 error(s), 0 warning(s).
+[Info] Data.Loader: Loaded 3 material(s), 3 item(s), 7 biome(s), 1 world map(s) with 7 region(s), 9 service(s) from 'content'.
+3 material(s), 3 item(s), 7 biome(s), 7 region(s), 9 service(s), 0 error(s), 0 warning(s).
 ```
 
 With a typo in a file:
 
 ```
 $ dotnet run --project src/Realm.Cli -- content-lint /tmp/broken
-[Info] Data.Loader: Loaded 0 material(s), 0 item(s), 0 biome(s), 0 world map(s) with 0 region(s) from '/tmp/broken'.
+[Info] Data.Loader: Loaded 0 material(s), 0 item(s), 0 biome(s), 0 world map(s) with 0 region(s), 0 service(s) from '/tmp/broken'.
 Error DATA001 materials/x.yaml:3: Unknown field 'bogus'. (fix: Check the field names and value types against docs/reference/content/material.md.)
-0 material(s), 0 item(s), 0 biome(s), 0 region(s), 1 error(s), 0 warning(s).
+0 material(s), 0 item(s), 0 biome(s), 0 region(s), 0 service(s), 1 error(s), 0 warning(s).
 ```
 
 ## `macro-map [dir]`
@@ -99,25 +99,26 @@ Error TERR014 height field: 1088 step(s) across region borders are steeper than 
 
 ## `bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--no-settlements] [--no-roads]`
 
-Runs the whole terrain pipeline (macro map, height field, erosion and rivers, then settlements) and bakes the result to region tiles and a manifest for the game ([format](baked-terrain.md)). Defaults: `dir` is `content`, output `baked/terrain`, seed 1, spacing 4 m, region size 256 vertices (1,024 m regions), erosion on, 3 cities and 5 towns. The settlement step places the cities on flat land, flattens the ground under them, validates them (`SETL`), writes `settlements.json` next to the tiles ([format](settlements.md)) and puts the player's spawn in the first city's central square. `--cities` and `--towns` change the counts; `--no-settlements` skips the step. Unless `--no-roads` is given, the roads between the settlements are then planned, graded into the terrain and painted ([ADR 0013](../decisions/0013-roads-and-bridges.md)), and `roads.json` and `map.png` (an overview image for the in-game map) are written next to the tiles. Exit codes: `0` ok, `1` errors, `2` bad arguments.
+Runs the whole terrain pipeline (macro map, height field, erosion and rivers, then settlements) and bakes the result to region tiles and a manifest for the game ([format](baked-terrain.md)). Defaults: `dir` is `content`, output `baked/terrain`, seed 1, spacing 4 m, region size 256 vertices (1,024 m regions), erosion on, 3 cities, 1 mountain city and 5 towns. The settlement step places the cities on the natural ground (nothing is flattened, [ADR 0014](../decisions/0014-cities-on-natural-ground-and-service-buildings.md)), gives each the service buildings of its tier from `content/services/`, validates them (`SETL`), writes `settlements.json` and the terrain around each city `settlements_ground.bin` next to the tiles ([format](settlements.md)) and puts the player's spawn in the first city's central square. `--cities` and `--towns` change the counts; `--no-settlements` skips the step. Unless `--no-roads` is given, the roads between the settlements are then planned, graded into the terrain and painted ([ADR 0013](../decisions/0013-roads-and-bridges.md)), and `roads.json` and `map.png` (an overview image for the in-game map) are written next to the tiles. Exit codes: `0` ok, `1` errors, `2` bad arguments.
 
 ```
-$ dotnet run --project src/Realm.Cli -- bake-terrain
-  height field: 5121 x 5121 vertices at 4 m (9.8 s)
-  erosion: deepest carve 69.2 m, 18 river(s), 1 lake(s) (26.6 s)
-  settlements: 8 placed and the ground flattened under them (3.5 s)
-    settlement.city_1      Thornford      City  at (5686, 566), ground 115 m, wall radius 292 m, up to 1200 houses
-    settlement.city_2      Hollowgate     City  at (3006, -1090), ground 117 m, wall radius 300 m, up to 1200 houses
-    settlement.city_3      Langton        City  at (-4922, -442), ground 71 m, wall radius 308 m, up to 1200 houses
-    settlement.town_1      Oakley         Town  at (-1962, -1578), ground 70 m, wall radius 196 m, up to 400 houses
+$ dotnet run --project src/Realm.Cli -c Release -- bake-terrain
+  height field: 5121 x 5121 vertices at 4 m (3.1 s)
+  erosion: deepest carve 63.1 m, 16 river(s), 2 lake(s) (9.9 s)
+  settlements: 9 placed on the natural ground (2.1 s)
+    settlement.city_1      Thornford      City  at (5686, 566), ground 115 m, wall radius 292 m, up to 1200 houses, 16 service building(s)
+    settlement.city_2      Hollowgate     City  at (3006, -1090), ground 117 m, wall radius 300 m, up to 1200 houses, 16 service building(s)
+    settlement.city_3      Langton        City  at (-4922, -442), ground 71 m, wall radius 308 m, up to 1200 houses, 16 service building(s)
+    settlement.mountain_1  Briarhaven     City  at (2877, -4291), ground 469 m (mountain), wall radius 299 m, up to 1200 houses, 16 service building(s)
+    settlement.town_1      Oakley         Town  at (-1962, -1578), ground 70 m, wall radius 196 m, up to 400 houses, 7 service building(s)
     ... (towns 2 to 5)
-  roads: 15 road(s), 53.5 km, 10 bridge(s), terrain graded under them (3.2 s)
-  baked 400 region tile(s) of 256 x 256 vertices (1024 m each) to 'baked/terrain' (1.8 s)
-  height range -218.2 m to 913.6 m; spawn (5687, 576); checksum ef3aa0f261d24329
-0 error(s), 0 warning(s) (53.3 s total).
+  roads: 17 road(s), 66.6 km, 13 bridge(s), terrain graded under them (1.6 s)
+  baked 400 region tile(s) of 256 x 256 vertices (1024 m each) to 'baked/terrain' (1.3 s)
+  height range -218.2 m to 913.6 m; spawn (5687, 576); checksum 39c69dbc42230ea7
+0 error(s), 0 warning(s) (19.8 s total).
 ```
 
-`--region-size` must divide the world and give an even number of regions per axis, at most 32 (Terrain3D's limit); otherwise `TERR018` is reported and nothing is written. Timings are from the development machine.
+`--region-size` must divide the world and give an even number of regions per axis, at most 32 (Terrain3D's limit); otherwise `TERR018` is reported and nothing is written. Timings are from the development machine with the Release build (Debug is several times slower).
 
 ## `help`
 

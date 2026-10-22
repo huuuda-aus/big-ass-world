@@ -25,13 +25,15 @@ public sealed partial class SettlementStreamer : Node3D
     public const double UnloadMarginMeters = 800;
 
     private readonly IReadOnlyList<Settlement> _settlements;
+    private readonly IReadOnlyDictionary<string, GroundGrid> _ground;
     private readonly Dictionary<string, CityInstance> _live = new();
     private readonly Dictionary<string, Task<CityBuild>> _building = new();
     private readonly Dictionary<string, ulong> _started = new();
 
-    private SettlementStreamer(IReadOnlyList<Settlement> settlements)
+    private SettlementStreamer(IReadOnlyList<Settlement> settlements, IReadOnlyDictionary<string, GroundGrid> ground)
     {
         _settlements = settlements;
+        _ground = ground;
         Name = "Settlements";
     }
 
@@ -67,7 +69,24 @@ public sealed partial class SettlementStreamer : Node3D
             return null;
         }
 
-        return new SettlementStreamer(manifest.Settlements);
+        // The terrain under each city (so houses can stand on slopes). Without it cities are built on level ground.
+        IReadOnlyDictionary<string, GroundGrid> ground = new Dictionary<string, GroundGrid>();
+        string groundPath = Path.Combine(directory, GroundGridFile.FileName);
+        if (File.Exists(groundPath))
+        {
+            var groundReport = new ValidationReport();
+            ground = GroundGridFile.FromBytes(File.ReadAllBytes(groundPath), groundReport) ?? ground;
+            foreach (ValidationIssue issue in groundReport.Issues)
+            {
+                GD.PushError(issue.ToString());
+            }
+        }
+        else
+        {
+            GD.PushWarning($"{GroundGridFile.FileName} is missing; cities are built on level ground. Run 'realm bake-terrain'.");
+        }
+
+        return new SettlementStreamer(manifest.Settlements, ground);
     }
 
     /// <summary>Finds the settlement whose wall encloses a world position.</summary>
@@ -104,7 +123,8 @@ public sealed partial class SettlementStreamer : Node3D
             {
                 Settlement captured = s;
                 _started[s.Id] = Time.GetTicksMsec();
-                _building[s.Id] = Task.Run(() => CityBuild.Create(captured));
+                _ground.TryGetValue(s.Id, out GroundGrid? grid);
+                _building[s.Id] = Task.Run(() => CityBuild.Create(captured, grid));
             }
             else if (live && distance > s.PadRadiusMeters + unloadMargin)
             {

@@ -1,0 +1,8 @@
+id: service.warehouse
+name: Warehouse
+tags: [trade, storage]
+counts: { city: 2, town: 1 }
+wards: [craftsmen, slum]
+near: gate
+min_area_m2: 90
+main_room: storage

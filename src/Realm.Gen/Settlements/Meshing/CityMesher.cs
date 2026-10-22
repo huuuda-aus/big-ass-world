@@ -9,7 +9,7 @@ using Realm.Gen.Settlements.Model;
 namespace Realm.Gen.Settlements.Meshing;
 
 /// <summary>
-/// Turns the city plan into meshes: ward ground, streets, the wall with its towers and gates, and the centrepiece. Ported from
+/// Turns the city plan into meshes: the wall with its towers and gates, and the centrepiece. There is no ground or street mesh: houses stand on the natural terrain (roads and paths come later). Ported from
 /// the three.js viewer; the gates are an improvement: the viewer left a whole wall edge open, here each gate is a gap of
 /// <see cref="GateWidthMeters"/> flanked by two gate towers.
 /// </summary>
@@ -28,11 +28,11 @@ public static class CityMesher
     /// <summary>Width of a street in metres.</summary>
     public const double StreetWidthMeters = 6;
 
-    /// <summary>Height above the terrain of the ward ground colours, in metres (avoids flicker against the terrain).</summary>
-    public const float GroundLift = 0.1f;
+    /// <summary>Longest piece of wall built in one go, in metres; shorter pieces follow the slope more closely.</summary>
+    private const double DrapeMeters = 8;
 
-    /// <summary>Height above the terrain of the street surface, in metres.</summary>
-    public const float StreetLift = 0.16f;
+    /// <summary>How far the wall and towers are sunk into the ground, in metres, so no gap shows on slopes.</summary>
+    private const double WallSink = 2.0;
 
     private const double TowerRadius = 2.8;
     private const double GateTowerRadius = 2.4;
@@ -44,46 +44,27 @@ public static class CityMesher
     /// <summary>Builds the meshes of a city.</summary>
     /// <param name="city">The generated city.</param>
     /// <param name="citySeed">The seed the city was generated from.</param>
+    /// <param name="ground">The ground under the city; level ground when null.</param>
     /// <returns>The meshes.</returns>
-    public static CityMeshes Build(City city, int citySeed)
+    public static CityMeshes Build(City city, int citySeed, IGroundSampler? ground = null)
     {
         ArgumentNullException.ThrowIfNull(city);
-        return new CityMeshes(Ground(city), Wall(city), city.Landmark is null ? null : LandmarkMesher.Build(city.Landmark, citySeed));
+        ground ??= FlatGround.Instance;
+        double landmarkBase = city.Landmark is null ? 0 : ground.HeightAt(city.Landmark.Center.X, city.Landmark.Center.Y);
+        return new CityMeshes(
+            Wall(city, ground),
+            city.Landmark is null ? null : LandmarkMesher.Build(city.Landmark, citySeed, ground, landmarkBase),
+            landmarkBase);
     }
 
-    /// <summary>Builds the ground: one flat polygon per ward and a strip per street segment.</summary>
+    /// <summary>Builds the wall, its towers and the gate towers, following the ground.</summary>
     /// <param name="city">The city.</param>
-    /// <returns>The mesh (never empty: a city has wards).</returns>
-    public static PropMesh Ground(City city)
-    {
-        ArgumentNullException.ThrowIfNull(city);
-        var b = new PropMeshBuilder();
-        foreach (Patch patch in city.CityPatches)
-        {
-            b.FacingPolygon(patch.Shape.Points.Select(p => new Vector3((float)p.X, GroundLift, (float)p.Y)).ToList(), Vector3.UnitY, SettlementPalette.WardGround(patch.Ward));
-        }
-
-        foreach (Street street in city.Streets)
-        {
-            for (int i = 0; i + 1 < street.Points.Count; i++)
-            {
-                Vec2 a = street.Points[i];
-                Vec2 c = street.Points[i + 1];
-                Vec2 d = (c - a).Normalized();
-                Vec2 n = new Vec2(-d.Y, d.X) * (StreetWidthMeters / 2);
-                b.FacingQuad(P(a - n, StreetLift), P(c - n, StreetLift), P(c + n, StreetLift), P(a + n, StreetLift), Vector3.UnitY, SettlementPalette.Street);
-            }
-        }
-
-        return b.Build("city.ground");
-    }
-
-    /// <summary>Builds the wall, its towers and the gate towers.</summary>
-    /// <param name="city">The city.</param>
+    /// <param name="ground">The ground under the city; level ground when null.</param>
     /// <returns>The mesh, or null when the city has no wall.</returns>
-    public static PropMesh? Wall(City city)
+    public static PropMesh? Wall(City city, IGroundSampler? ground = null)
     {
         ArgumentNullException.ThrowIfNull(city);
+        ground ??= FlatGround.Instance;
         IReadOnlyList<Vec2> wall = city.Wall;
         if (wall.Count < 3)
         {
@@ -108,29 +89,56 @@ public static class CityMesher
             double end = length - (gateVertices.Contains(next) ? GateWidthMeters / 2 : 0);
             if (end - start > 0.5)
             {
-                Vec2 from = a + (dir * start);
-                Vec2 to = a + (dir * end);
-                Vec2 mid = (from + to) * 0.5;
-                b.YawBox(P(mid, 0), (float)Math.Atan2(dir.Y, dir.X), new Vector3((float)(end - start), height, (float)WallThickness), SettlementPalette.Wall);
+                WallRun(b, ground, a + (dir * start), a + (dir * end));
             }
 
             if (gateVertices.Contains(i))
             {
                 Vec2 back = (wall[previous] - a).Normalized();
-                Tower(b, a + (dir * (GateWidthMeters / 2)), GateTowerRadius, height + (float)GateTowerRise);
-                Tower(b, a + (back * (GateWidthMeters / 2)), GateTowerRadius, height + (float)GateTowerRise);
+                Tower(b, ground, a + (dir * (GateWidthMeters / 2)), GateTowerRadius, height + (float)GateTowerRise);
+                Tower(b, ground, a + (back * (GateWidthMeters / 2)), GateTowerRadius, height + (float)GateTowerRise);
             }
             else
             {
-                Tower(b, a, TowerRadius, height + (float)TowerRise);
+                Tower(b, ground, a, TowerRadius, height + (float)TowerRise);
             }
         }
 
         return b.Build("city.wall");
     }
 
-    private static void Tower(PropMeshBuilder b, Vec2 at, double radius, float height) =>
-        b.Tube(P(at, 0), P(at, height), (float)radius * 1.1f, (float)radius * 0.93f, TowerSides, SettlementPalette.Wall);
+    // A stretch of wall cut into pieces no longer than DrapeMeters, each tilted to follow the ground and sunk into it.
+    private static void WallRun(PropMeshBuilder b, IGroundSampler ground, Vec2 from, Vec2 to)
+    {
+        int pieces = Math.Max(1, (int)Math.Ceiling(Vec2.Distance(from, to) / DrapeMeters));
+        for (int k = 0; k < pieces; k++)
+        {
+            Vec2 a = Vec2.Lerp(from, to, k / (double)pieces);
+            Vec2 c = Vec2.Lerp(from, to, (k + 1) / (double)pieces);
+            Vector3 pa = P(a, ground.HeightAt(a.X, a.Y));
+            Vector3 pc = P(c, ground.HeightAt(c.X, c.Y));
+            Vector3 along = Vector3.Normalize(pc - pa);
+            Vector3 across = Vector3.Normalize(new Vector3(-along.Z, 0, along.X));
+            Vector3 up = Vector3.Normalize(Vector3.Cross(along, across));
+            if (up.Y < 0)
+            {
+                up = -up;
+            }
+
+            float thickness = (float)WallThickness;
+            float tall = (float)(WallHeight + WallSink);
+            // Overlap the pieces a little so a bend in the ground leaves no gap.
+            float length = (pc - pa).Length() + 0.3f;
+            Vector3 centre = ((pa + pc) / 2) + (up * (tall / 2 - (float)WallSink));
+            b.OrientedBox(centre, along, up, across, new Vector3(length, tall, thickness), SettlementPalette.Wall);
+        }
+    }
+
+    private static void Tower(PropMeshBuilder b, IGroundSampler ground, Vec2 at, double radius, float height)
+    {
+        double h = ground.HeightAt(at.X, at.Y);
+        b.Tube(P(at, h - WallSink), P(at, h + height), (float)radius * 1.1f, (float)radius * 0.93f, TowerSides, SettlementPalette.Wall);
+    }
 
     private static Vector3 P(Vec2 p, double y) => new((float)p.X, (float)y, (float)p.Y);
 }

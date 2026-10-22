@@ -1,0 +1,8 @@
+id: service.baker
+name: Baker
+tags: [food, trade]
+counts: { city: 2, town: 1 }
+wards: [craftsmen, merchant]
+near: any
+min_area_m2: 45
+main_room: kitchen

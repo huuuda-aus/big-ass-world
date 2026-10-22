@@ -25,6 +25,21 @@ public sealed class City
     /// <summary>The centrepiece of the central square, or null when it is left empty.</summary>
     public Landmark? Landmark { get; }
 
+    /// <summary>Every building, inside and outside the wall, in patch order.</summary>
+    public IEnumerable<Building> AllBuildings
+    {
+        get
+        {
+            foreach (Patch patch in Patches)
+            {
+                foreach (Building building in patch.Buildings)
+                {
+                    yield return building;
+                }
+            }
+        }
+    }
+
     /// <summary>Creates a city.</summary>
     /// <param name="seed">The generation seed.</param>
     /// <param name="patches">All patches, inside and outside the wall.</param>

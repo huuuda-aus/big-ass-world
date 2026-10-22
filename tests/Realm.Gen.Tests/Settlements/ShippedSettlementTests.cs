@@ -30,22 +30,23 @@ public class ShippedSettlementTests
         HeightField source = HeightFieldGenerator.Generate(map, regions, db.Biomes, 1, new HeightFieldSettings { SpacingMeters = Spacing }, report)!;
         ErodedTerrain eroded = ErosionGenerator.Apply(map, regions, db.Biomes, source, new ErosionSettings { WorkingSpacingMeters = Spacing }, report)!;
         var settings = new SettlementSettings();
-        var settlements = SettlementPlacer.Place(eroded.Field, eroded.Network, 1, settings, report);
+        var mountainRegions = map.Regions.Where(x => db.Biomes[x.Biome].Tags.Contains("mountainous")).Select(x => x.Id).ToHashSet();
+        var settlements = SettlementPlacer.Place(eroded.Field, eroded.Network, 1, settings, report, (x, z) => mountainRegions.Contains(regions.RegionAt(x, z)));
         HeightField flattened = SettlementTerrain.Flatten(eroded.Field, settlements, settings);
         SettlementValidator.Validate(settlements, flattened, eroded.Network, settings, report);
         var roads = RoadPlanner.Plan(flattened, eroded.Network, settlements, null, report);
         HeightField graded = RoadTerrain.Carve(flattened, roads);
-        RoadValidator.Validate(roads, flattened, graded, eroded.Network, null, report);
+        RoadValidator.Validate(roads, flattened, graded, eroded.Network, null, report, settlements);
         return new Result(flattened, eroded, settlements, roads, graded, report);
     }
 
     [Fact]
-    public void ShippedWorld_GetsThreeCitiesAndFiveTowns_WithNoIssues()
+    public void ShippedWorld_GetsFourCitiesAndFiveTowns_WithNoIssues()
     {
         Result r = Shared.Value;
 
         Assert.Empty(r.Report.Issues);
-        Assert.Equal(3, r.Settlements.Count(s => s.Tier == SettlementTier.City));
+        Assert.Equal(4, r.Settlements.Count(s => s.Tier == SettlementTier.City)); // three plus the mountain city
         Assert.Equal(5, r.Settlements.Count(s => s.Tier == SettlementTier.Town));
     }
 
@@ -80,44 +81,53 @@ public class ShippedSettlementTests
     }
 
     [Fact]
-    public void EverySettlement_IsOnLandAboveTheSeaAndFlat()
+    public void EverySettlement_IsOnLandAboveTheSea_WithinTheReliefLimit_OnNaturalGround()
     {
         Result r = Shared.Value;
+        var settings = new SettlementSettings();
 
+        Assert.Same(r.Eroded.Field, r.Flattened); // ADR 0014: nothing is flattened by default
         foreach (Settlement s in r.Settlements)
         {
-            Assert.InRange(s.GroundHeightMeters, 15, 320);
-            for (int i = 0; i < 16; i++)
+            double highest = double.MinValue;
+            double lowest = double.MaxValue;
+            for (int ring = 0; ring <= 3; ring++)
             {
-                double angle = i * Math.PI / 8;
-                Assert.Equal(s.GroundHeightMeters, r.Flattened.Sample(s.X + ((s.PadRadiusMeters - Spacing) * Math.Cos(angle)), s.Z + ((s.PadRadiusMeters - Spacing) * Math.Sin(angle))), 0.5);
+                for (int i = 0; i < 16; i++)
+                {
+                    double angle = i * Math.PI / 8;
+                    double h = r.Flattened.Sample(s.X + (s.PadRadiusMeters * ring / 3.0 * Math.Cos(angle)), s.Z + (s.PadRadiusMeters * ring / 3.0 * Math.Sin(angle)));
+                    highest = Math.Max(highest, h);
+                    lowest = Math.Min(lowest, h);
+                }
             }
+
+            double limit = (s.Highland ? settings.MountainMaxReliefPerRadius : settings.MaxReliefPerRadius) * s.PadRadiusMeters;
+            Assert.InRange(highest - lowest, 0, limit + 0.5);
+            Assert.InRange(s.GroundHeightMeters, s.Highland ? settings.MountainMinHeightMeters : settings.MinHeightMeters, s.Highland ? settings.MountainMaxHeightMeters : settings.MaxHeightMeters);
         }
     }
 
     [Fact]
-    public void SameSeed_SamePlacement_AndFlattenOnlyChangesGroundNearSettlements()
+    public void ShippedWorld_HasOneMountainCity_InTheMountains()
+    {
+        Result r = Shared.Value;
+
+        Settlement mountain = Assert.Single(r.Settlements, s => s.Highland);
+        Assert.Equal(SettlementTier.City, mountain.Tier);
+        Assert.True(mountain.GroundHeightMeters >= new SettlementSettings().MountainMinHeightMeters);
+        Assert.Equal(4, r.Settlements.Count(s => s.Tier == SettlementTier.City));
+    }
+
+    [Fact]
+    public void SameSeed_SamePlacement()
     {
         Result a = Shared.Value;
         Result b = Run();
 
         Assert.Equal(a.Settlements, b.Settlements);
         Assert.Equal(a.Flattened.Checksum(), b.Flattened.Checksum());
-        // Far from every settlement the terrain is exactly the eroded terrain.
-        int side = a.Flattened.VerticesPerSide;
-        double half = a.Flattened.WorldSizeMeters / 2.0;
-        for (int row = 0; row < side; row += 7)
-        {
-            for (int col = 0; col < side; col += 7)
-            {
-                double x = -half + (col * (double)Spacing);
-                double z = -half + (row * (double)Spacing);
-                if (a.Settlements.All(s => s.DistanceTo(x, z) > s.PadRadiusMeters + 100 + 1))
-                {
-                    Assert.Equal(a.Eroded.Field.At(col, row), a.Flattened.At(col, row));
-                }
-            }
-        }
+        Assert.Equal(a.Graded.Checksum(), b.Graded.Checksum());
     }
 
     [Fact]
@@ -147,5 +157,5 @@ public class ShippedSettlementTests
     }
 
     // Captured from the accepted implementation (settlement.placement v1, 128 m grid, seed 1, six-region sample world).
-    private const ulong GoldenChecksum = 1233424748731408796UL;
+    private const ulong GoldenChecksum = 3579729590801705064UL;
 }

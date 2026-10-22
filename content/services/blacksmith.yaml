@@ -1,0 +1,8 @@
+id: service.blacksmith
+name: Blacksmith
+tags: [crafting, trade]
+counts: { city: 2, town: 1 }
+wards: [craftsmen, slum]
+near: wall
+min_area_m2: 60
+main_room: workshop

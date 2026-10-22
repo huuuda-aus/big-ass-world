@@ -82,7 +82,7 @@ public static class InteriorGenerator
 
             var windows = windowsByFloor[level];
             floors.Add(new Floor(level, doors, windows,
-                AssignRoomTypes(rooms, level, floorCount, entrance, building.Ward, cathedral, rng)));
+                AssignRoomTypes(rooms, level, floorCount, entrance, building.Ward, cathedral, building.Service?.MainRoom, rng)));
         }
 
         return new Interior(building.Id, cathedral ? 8.0 : 3.0, ExteriorWallThickness, InteriorWallThickness,
@@ -374,7 +374,7 @@ public static class InteriorGenerator
     // ---- room uses -----------------------------------------------------------------
 
     private static List<RoomType> AssignRoomTypes(List<Room> rooms, int level, int floorCount,
-        int entrance, WardType ward, bool cathedral, Rng rng)
+        int entrance, WardType ward, bool cathedral, RoomType? serviceRoom, Rng rng)
     {
         var types = new RoomType[rooms.Count];
         if (cathedral)
@@ -399,6 +399,19 @@ public static class InteriorGenerator
                 else
                     types[i] = rng.NextDouble() < 0.5 ? RoomType.LivingRoom : RoomType.Storage;
                 first = false;
+            }
+
+            // A service building's main room is what the service is for: a shop or hall at the door, anything else in the biggest room.
+            if (serviceRoom is RoomType main)
+            {
+                if (main is RoomType.Shop or RoomType.Hall)
+                {
+                    types[entrance] = main;
+                }
+                else
+                {
+                    types[bySize.FirstOrDefault(i => i != entrance, entrance)] = main;
+                }
             }
         }
         else

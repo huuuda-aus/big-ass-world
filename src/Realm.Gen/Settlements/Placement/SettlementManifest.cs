@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text.Json;
 using Realm.Core.Validation;
 using Realm.Gen.Settlements.Model;
@@ -51,6 +52,7 @@ public sealed class SettlementManifest
                 Id = s.Id, Name = s.Name, Tier = s.Tier.ToString(), X = s.X, Z = s.Z, Rotation = s.RotationRadians,
                 GroundHeight = s.GroundHeightMeters, WallRadius = s.WallRadiusMeters, PadRadius = s.PadRadiusMeters,
                 CitySeed = s.CitySeed, MaxBuildings = s.MaxBuildings, Cathedral = s.Cathedral, Centre = s.Centre.ToString(),
+                Services = s.ServiceList.Select(ServiceDto.From).ToList(), Highland = s.Highland,
             });
         }
 
@@ -83,7 +85,20 @@ public sealed class SettlementManifest
                     return null;
                 }
 
-                list.Add(new Settlement(s.Id, s.Name, tier, s.X, s.Z, s.Rotation, s.GroundHeight, s.WallRadius, s.PadRadius, s.CitySeed, s.MaxBuildings, s.Cathedral, centre));
+                var services = new List<ServiceSpec>();
+                foreach (ServiceDto service in s.Services)
+                {
+                    ServiceSpec? spec = service.ToSpec();
+                    if (spec is null)
+                    {
+                        report.Error(SettlementCodes.ManifestInvalid, FileName, $"Settlement '{s.Id}' has a service '{service.Id}' with an unknown ward, placement, foundation or room word.");
+                        return null;
+                    }
+
+                    services.Add(spec);
+                }
+
+                list.Add(new Settlement(s.Id, s.Name, tier, s.X, s.Z, s.Rotation, s.GroundHeight, s.WallRadius, s.PadRadius, s.CitySeed, s.MaxBuildings, s.Cathedral, centre, services.Count == 0 ? null : services, s.Highland));
             }
 
             return new SettlementManifest { Format = dto.Format, World = dto.World, Seed = dto.Seed, Generators = dto.Generators, Settlements = list };
@@ -135,5 +150,68 @@ public sealed class SettlementManifest
         public bool Cathedral { get; set; }
 
         public string Centre { get; set; } = string.Empty;
+
+        public List<ServiceDto> Services { get; set; } = new();
+
+        public bool Highland { get; set; }
+    }
+
+    private sealed class ServiceDto
+    {
+        public string Id { get; set; } = string.Empty;
+
+        public string Name { get; set; } = string.Empty;
+
+        public int Count { get; set; }
+
+        public List<string> Wards { get; set; } = new();
+
+        public string Near { get; set; } = nameof(ServiceNear.Any);
+
+        public bool OutsideWall { get; set; }
+
+        public double MinArea { get; set; }
+
+        public string? Foundation { get; set; }
+
+        public string MainRoom { get; set; } = nameof(RoomType.Hall);
+
+        public static ServiceDto From(ServiceSpec spec) => new()
+        {
+            Id = spec.Id, Name = spec.Name, Count = spec.Count, Wards = spec.Wards.Select(w => w.ToString()).ToList(), Near = spec.Near.ToString(),
+            OutsideWall = spec.OutsideWall, MinArea = spec.MinAreaMeters2, Foundation = spec.Foundation?.ToString(), MainRoom = spec.MainRoom.ToString(),
+        };
+
+        public ServiceSpec? ToSpec()
+        {
+            var wards = new List<WardType>();
+            foreach (string w in Wards)
+            {
+                if (!Enum.TryParse(w, out WardType ward))
+                {
+                    return null;
+                }
+
+                wards.Add(ward);
+            }
+
+            FoundationStyle? foundation = null;
+            if (Foundation is not null)
+            {
+                if (!Enum.TryParse(Foundation, out FoundationStyle style))
+                {
+                    return null;
+                }
+
+                foundation = style;
+            }
+
+            if (!Enum.TryParse(Near, out ServiceNear near) || !Enum.TryParse(MainRoom, out RoomType room))
+            {
+                return null;
+            }
+
+            return new ServiceSpec(Id, Name, Count, wards, near, OutsideWall, MinArea, foundation, room);
+        }
     }
 }

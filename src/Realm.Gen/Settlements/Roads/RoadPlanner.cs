@@ -67,6 +67,10 @@ public static class RoadPlanner
         var grid = new SearchGrid(field, raster, settings);
         var gates = settlements.ToDictionary(s => s.Id, s => GatePoints(s));
         var roads = new List<Road>();
+
+        // Each road is graded on the terrain left by the roads before it, so roads that share a corridor share a surface.
+        float[] working = field.Heights.ToArray();
+        var current = new HeightField(field.WorldSizeMeters, field.SpacingMeters, working);
         int number = 1;
         foreach ((int a, int b) in Links(settlements, settings))
         {
@@ -86,8 +90,9 @@ public static class RoadPlanner
             var polyline = new List<(double X, double Z)> { gateFrom };
             polyline.AddRange(route);
             polyline.Add(gateTo);
-            Road road = Build($"road.{number}", from.Id, to.Id, polyline, field, raster, settings);
+            Road road = Build($"road.{number}", from.Id, to.Id, polyline, current, raster, settings);
             roads.Add(road);
+            RoadTerrain.ApplyRoad(working, field.WorldSizeMeters, field.SpacingMeters, road, settings);
             number++;
         }
 

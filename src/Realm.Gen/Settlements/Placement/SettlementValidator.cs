@@ -10,27 +10,27 @@ namespace Realm.Gen.Settlements.Placement;
 /// <remarks>Determinism: pure.</remarks>
 public static class SettlementValidator
 {
-    private const double FlatToleranceMeters = 0.5;
+    private const double ReliefToleranceMeters = 0.5;
     private const int RingPoints = 16;
 
-    /// <summary>Validates settlements on the flattened terrain.</summary>
+    /// <summary>Validates settlements on the terrain they stand on.</summary>
     /// <param name="settlements">The settlements.</param>
-    /// <param name="flattened">The terrain after <see cref="SettlementTerrain.Flatten"/>.</param>
+    /// <param name="terrain">The terrain the settlements stand on (natural ground unless <see cref="SettlementSettings.FlattenStrength"/> is positive).</param>
     /// <param name="network">Rivers and lakes, or null.</param>
     /// <param name="settings">The settings used to place them; defaults when null.</param>
     /// <param name="report">Receives SETL003 to SETL005 issues.</param>
     public static void Validate(
         IReadOnlyList<Settlement> settlements,
-        HeightField flattened,
+        HeightField terrain,
         RiverNetwork? network,
         SettlementSettings? settings,
         ValidationReport report)
     {
         ArgumentNullException.ThrowIfNull(settlements);
-        ArgumentNullException.ThrowIfNull(flattened);
+        ArgumentNullException.ThrowIfNull(terrain);
         ArgumentNullException.ThrowIfNull(report);
         settings ??= new SettlementSettings();
-        var water = new WaterMask(flattened.WorldSizeMeters, network);
+        var water = new WaterMask(terrain.WorldSizeMeters, network);
 
         for (int i = 0; i < settlements.Count; i++)
         {
@@ -48,29 +48,32 @@ public static class SettlementValidator
                 }
             }
 
-            double worst = 0;
+            double highest = double.MinValue;
             double lowest = double.MaxValue;
-            // Sample inside the pad by one grid cell: right at its edge a bilinear sample already mixes in blended vertices.
-            double checkRadius = Math.Max(0, s.PadRadiusMeters - flattened.SpacingMeters);
+            // Sample on rings across the pad, the way the placer surveys it.
             for (int ring = 0; ring <= 3; ring++)
             {
-                double radius = checkRadius * ring / 3.0;
+                double radius = s.PadRadiusMeters * ring / 3.0;
                 for (int p = 0; p < (ring == 0 ? 1 : RingPoints); p++)
                 {
                     double angle = 2 * Math.PI * p / RingPoints;
-                    double h = flattened.Sample(s.X + (radius * Math.Cos(angle)), s.Z + (radius * Math.Sin(angle)));
-                    worst = Math.Max(worst, Math.Abs(h - s.GroundHeightMeters));
+                    double h = terrain.Sample(s.X + (radius * Math.Cos(angle)), s.Z + (radius * Math.Sin(angle)));
+                    highest = Math.Max(highest, h);
                     lowest = Math.Min(lowest, h);
                 }
             }
 
-            if (worst > FlatToleranceMeters || lowest < settings.MinHeightMeters - FlatToleranceMeters || s.GroundHeightMeters > settings.MaxHeightMeters)
+            double reliefLimit = (s.Highland ? settings.MountainMaxReliefPerRadius : settings.MaxReliefPerRadius) * s.PadRadiusMeters;
+            double minHeight = s.Highland ? settings.MountainMinHeightMeters : settings.MinHeightMeters;
+            double maxHeight = s.Highland ? settings.MountainMaxHeightMeters : settings.MaxHeightMeters;
+            double relief = highest - lowest;
+            if (relief > reliefLimit + ReliefToleranceMeters || lowest < minHeight - ReliefToleranceMeters || highest > maxHeight + ReliefToleranceMeters)
             {
                 report.Error(
                     SettlementCodes.PadUnsuitable,
                     s.Id,
-                    $"The pad of '{s.Id}' is not level (worst difference {worst:F2} m) or lies outside {settings.MinHeightMeters:F0} to {settings.MaxHeightMeters:F0} m (ground {s.GroundHeightMeters:F1} m, lowest point {lowest:F1} m).",
-                    "Flatten the terrain after placing, and keep sites above sea level.");
+                    $"The ground under '{s.Id}' is too steep or out of range: relief {relief:F1} m (limit {reliefLimit:F1} m), lowest {lowest:F1} m, highest {highest:F1} m (allowed {minHeight:F0} to {maxHeight:F0} m).",
+                    "Choose a flatter, higher or lower site, or raise MaxReliefPerRadius.");
             }
 
             if (water.AnyWithin(s.X, s.Z, s.PadRadiusMeters))

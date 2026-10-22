@@ -56,4 +56,7 @@ public static class ValidatorCodes
 
     /// <summary>A region polygon extends outside the world square.</summary>
     public const string PolygonOutsideWorld = "DATA017";
+
+    /// <summary>A <c>service</c> record has an unknown tier, ward, placement, foundation or room word, or an out-of-range number.</summary>
+    public const string InvalidServiceField = "DATA018";
 }

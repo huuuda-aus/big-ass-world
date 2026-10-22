@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Realm.Gen.Settlements.Generation;
@@ -278,5 +279,63 @@ public class CityGeneratorTests
         for (int i = 0; i < poly.Count; i++)
             if (Vec2.Cross(poly.Edge(i), p - poly.Points[i]) < -1e-6) return false;
         return true;
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(42)]
+    public void EveryBuildingHasARectangularFloorPlan_WithItsDoorOnTheFront(int seed)
+    {
+        City city = CityGenerator.Generate(new CityParams { Seed = seed, MaxBuildings = 400 });
+
+        foreach (Building b in city.AllBuildings)
+        {
+            ConvexPoly fp = b.Footprint;
+            Assert.Equal(4, fp.Count);
+            Assert.Equal(0, b.DoorEdge);
+            for (int i = 0; i < 4; i++)
+            {
+                Vec2 e = fp.Edge(i).Normalized();
+                Vec2 next = fp.Edge((i + 1) % 4).Normalized();
+                Assert.True(Math.Abs(Vec2.Dot(e, next)) < 1e-6, $"building {b.Id}: corner {i} is not a right angle");
+            }
+
+            Assert.True(Math.Abs(fp.EdgeLength(0) - fp.EdgeLength(2)) < 1e-6 && Math.Abs(fp.EdgeLength(1) - fp.EdgeLength(3)) < 1e-6);
+            Assert.True(fp.EdgeLength(0) >= 3.5 - 1e-6 && fp.EdgeLength(1) >= 3.0 - 1e-6, $"building {b.Id} is too small");
+        }
+    }
+
+    [Fact]
+    public void NeighbouringBuildings_StandAtLeastAboutThreeMetresApart()
+    {
+        City city = CityGenerator.Generate(new CityParams { Seed = 5, MaxBuildings = 300 });
+        var buildings = city.CityPatches.SelectMany(p => p.Buildings).ToList();
+
+        double closest = double.MaxValue;
+        for (int i = 0; i < buildings.Count; i++)
+        for (int j = i + 1; j < buildings.Count; j++)
+        {
+            if (Vec2.Distance(buildings[i].Footprint.Centroid, buildings[j].Footprint.Centroid) > 60) continue;
+            closest = Math.Min(closest, Gap(buildings[i].Footprint, buildings[j].Footprint));
+        }
+
+        Assert.True(closest >= 2.7, $"two buildings are only {closest:F2} m apart");
+    }
+
+    // Distance between two non-overlapping convex polygons: the shortest vertex-to-edge distance either way.
+    private static double Gap(ConvexPoly a, ConvexPoly b)
+    {
+        double best = double.MaxValue;
+        foreach ((ConvexPoly p, ConvexPoly q) in new[] { (a, b), (b, a) })
+        foreach (Vec2 v in p.Points)
+        for (int k = 0; k < q.Count; k++)
+        {
+            Vec2 s = q.Points[k], e = q.Edge(k);
+            double t = Math.Clamp(Vec2.Dot(v - s, e) / Vec2.Dot(e, e), 0, 1);
+            best = Math.Min(best, Vec2.Distance(v, s + (e * t)));
+        }
+
+        return best;
     }
 }
