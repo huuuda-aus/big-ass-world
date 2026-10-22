@@ -17,6 +17,7 @@ using Realm.Gen.Settlements.Roads;
 using Realm.Gen.Terrain;
 using Realm.Gen.Terrain.Erosion;
 using Realm.Gen.Terrain.Water;
+using Realm.Gen.Weather;
 
 namespace Realm.Cli;
 
@@ -194,6 +195,11 @@ internal static class BakeTerrainCommand
             File.WriteAllBytes(Path.Combine(outputDirectory, FoliageFile.FileName), FoliageFile.ToBytes(foliage));
             generators += $", {FoliageGenerator.GeneratorId} v{FoliageGenerator.GeneratorVersion}";
             output.WriteLine($"  foliage: {foliage.Instances.Count} tree(s) and bush(es), {foliage.GrassTufts.Count(t => t > 0)} grass cell(s) ({step.Elapsed.TotalSeconds:F1} s)");
+
+            CloudClimate clouds = CloudClimateGenerator.Generate(map, regions, db.Biomes, field, seed);
+            File.WriteAllBytes(Path.Combine(outputDirectory, CloudFile.FileName), CloudFile.ToBytes(clouds));
+            generators += $", {CloudClimateGenerator.GeneratorId} v{CloudClimateGenerator.GeneratorVersion}";
+            output.WriteLine($"  clouds: mean cover {clouds.Cover.Average(b => b / 255.0):P0}, mean thickness {clouds.Thickness.Average(b => b / 255.0):P0}");
 
             step.Restart();
             TerrainManifest? manifest = TerrainBaker.Bake(

@@ -5,10 +5,12 @@ using System.Linq;
 using System.Text.Json;
 using Godot;
 using Realm.Core.Geometry;
+using Realm.Sim.Time;
 using Realm.Core.Diagnostics;
 using Realm.Game.Bridge;
 using Realm.Game.World.Settlements;
 using Realm.Gen.Textures;
+using Realm.Gen.Weather;
 
 namespace Realm.Game.World;
 
@@ -20,7 +22,8 @@ namespace Realm.Game.World;
 /// Run: <c>godot --path src/Realm.Game</c> after <c>realm bake-terrain</c>. Options (after <c>--</c>):
 /// baked (directory), pos (x,z metres), yaw/pitch (degrees), fly, fly-speed, screenshot (png path), map (start with the world map open), render-scale (3D resolution relative to the window, default 0.75),
 /// screenshot-after (frames), no-capture, autowalk (seconds of automatic forward walking, then a report), autowalk-run, report (json path), vsync (default on; off for measurement runs). Controls: W A S D move, Shift run, Space jump (fly: rise),
-/// Q/E down/up in fly mode, F toggles fly, F1 toggles the HUD, Esc releases or recaptures the mouse.
+/// Q/E down/up in fly mode, F toggles fly, T changes the speed of time, F1 toggles the HUD,
+/// time (start hour, default 9), day-minutes (real minutes per game day, default 20), time-scale, Esc releases or recaptures the mouse.
 /// The walker is a <c>CharacterBody3D</c> colliding with Terrain3D's dynamic collision (slope limit 50 degrees).
 /// </remarks>
 public partial class WorldScene : Node3D
@@ -68,6 +71,8 @@ public partial class WorldScene : Node3D
     private Node3D _world = null!; // Safe: set in _Ready; parent of every 3D node, inside the low-resolution viewport.
     private Label _hud = null!; // Safe: set in _Ready.
     private CompassBar _compass = null!; // Safe: set in _Ready with the HUD.
+    private WorldClock _clock = null!; // Safe: set in _Ready by BuildEnvironment.
+    private DayNightCycle _cycle = null!; // Safe: set in _Ready by BuildEnvironment.
     private Godot.Environment _environment = null!; // Safe: set in _Ready by BuildEnvironment.
     private LaunchArguments _args = new(Array.Empty<string>());
     private float _renderScale = DefaultRenderScale;
@@ -257,6 +262,10 @@ public partial class WorldScene : Node3D
                 case Key.M when _map is not null:
                     _map.Visible = !_map.Visible;
                     break;
+                case Key.T:
+                    // Cycle the speed of time: normal, 30 times, 300 times, paused.
+                    _clock.TimeScale = _clock.TimeScale switch { < 0.5 => 1, < 2 => 30, < 100 => 300, _ => 0 };
+                    break;
                 case Key.F1:
                     _hud.Visible = !_hud.Visible;
                     _compass.Visible = _hud.Visible;
@@ -311,6 +320,7 @@ public partial class WorldScene : Node3D
         _compass.SetHeading(CompassMath.BearingDegrees(_yaw)); // every frame: it turns with the mouse
         _streamer.Update(_body.Position, _frame);
         _foliage?.Update(_body.Position, delta);
+        _cycle.Update(delta, _body.Position);
         _cities?.Process(_body.Position, delta, _streamer.Options.LoadDistanceMeters);
         if (_map is { Visible: true })
         {
@@ -598,27 +608,14 @@ public partial class WorldScene : Node3D
 
     private void BuildEnvironment()
     {
-        _world.AddChild(new DirectionalLight3D { RotationDegrees = new Vector3(-45, -135, 0), LightEnergy = 1.1f, ShadowEnabled = true, DirectionalShadowMaxDistance = 150f });
-        var fog = new Color(0.64f, 0.74f, 0.84f);
-        _environment = new Godot.Environment
-            {
-                BackgroundMode = Godot.Environment.BGMode.Sky,
-                Sky = new Sky
-                {
-                    SkyMaterial = new ProceduralSkyMaterial
-                    {
-                        SkyTopColor = new Color(0.30f, 0.50f, 0.82f),
-                        SkyHorizonColor = fog,
-                        GroundHorizonColor = fog,
-                        GroundBottomColor = new Color(0.30f, 0.36f, 0.42f),
-                    },
-                },
-                AmbientLightSource = Godot.Environment.AmbientSource.Sky,
-                FogEnabled = true,
-                FogLightColor = fog,
-                FogDensity = WalkFogDensity,
-                FogSkyAffect = 0.6f,
-            };
+        _clock = new WorldClock(_args.Number("time", WorldClock.DefaultStartHour), _args.Number("day-minutes", WorldClock.DefaultRealSecondsPerGameDay / 60) * 60)
+        {
+            TimeScale = _args.Number("time-scale", 1),
+        };
+        _cycle = new DayNightCycle(_clock, LoadClouds(), _source.Manifest.Seed);
+        _world.AddChild(_cycle);
+        _environment = _cycle.Environment;
+        _environment.FogDensity = WalkFogDensity;
         _world.AddChild(new WorldEnvironment { Environment = _environment });
 
         _water = new MeshInstance3D
@@ -658,10 +655,42 @@ public partial class WorldScene : Node3D
         float ground = _bridge.HeightAt(new Vector3(p.X, 0, p.Z));
         string groundText = float.IsNaN(ground) ? "?" : $"{ground:F0} m";
         _hud.Text =
+            $"{_clock.Time}{(_clock.TimeScale == 1 ? string.Empty : _clock.TimeScale == 0 ? " (paused)" : $" (x{_clock.TimeScale:0})")}   moon {MoonName(_cycle.Sky.MoonPhase)}\n" +
             $"{Engine.GetFramesPerSecond()} fps   {_smoothedFrameMs:F1} ms   {(_fly ? "FLY" : "WALK")}\n" +
             $"x {p.X:F0}  z {p.Z:F0}  ground {groundText}  region ({region.X}, {region.Y})\n" +
             $"terrain: {_streamer.LoadedCount} loaded, {_streamer.PendingCount} loading, last rebuild {_lastUpdateMs:F1} ms\n" +
             CityHudLine() +
-            "WASD/arrows move  Shift run  Space jump  F fly  F1 hide  Esc mouse";
+            "WASD/arrows move  Shift run  Space jump  F fly  T time  F1 hide  Esc mouse";
     }
+
+    // The baked cloud climate, or an even partly cloudy one when the world has none.
+    private CloudClimate LoadClouds()
+    {
+        string path = Path.Combine(_source.Directory, CloudFile.FileName);
+        if (File.Exists(path))
+        {
+            try
+            {
+                return CloudFile.FromBytes(File.ReadAllBytes(path));
+            }
+            catch (InvalidDataException e)
+            {
+                GD.PushError($"[clouds] {e.Message}");
+            }
+        }
+
+        return CloudClimate.Uniform(_source.Manifest.WorldSizeMeters, 0.45, 0.35);
+    }
+
+    private static string MoonName(double phase) => phase switch
+    {
+        < 0.0625 or >= 0.9375 => "new",
+        < 0.1875 => "waxing crescent",
+        < 0.3125 => "first quarter",
+        < 0.4375 => "waxing gibbous",
+        < 0.5625 => "full",
+        < 0.6875 => "waning gibbous",
+        < 0.8125 => "last quarter",
+        _ => "waning crescent",
+    };
 }

@@ -65,6 +65,8 @@
 - **Pier**: a wooden foundation with a deck round the house, used where a wooden foundation is more than 3.5 m tall.
 - **Foliage** (`foliage` content type): a species of tree, bush or grass the generator scatters over the world.
 - **Grass cell**: a 32 m square of the baked grass density map; the game scatters its tufts at run time.
+- **Cloud climate**: two coarse world maps (cover and thickness of cloud) baked from the biomes' rainfall and the terrain height; the sky shader draws the clouds from them.
+- **World clock** (`WorldClock`): the continuous time of day of the game world, advanced by real time; the sun, the moon and later NPC schedules read it.
 - **Service building** (`service` content type): a building every settlement of a tier must contain, such as an inn or a blacksmith.
 - **Site** (`BuildingSite`): where a building's floor sits on the ground and which foundation holds it up.
 - **Stable slope** (`max_slope_deg`): biome property; steepest slope in degrees that stays put. Steeper slopes slump during thermal erosion.

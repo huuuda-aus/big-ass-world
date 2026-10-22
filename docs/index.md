@@ -69,6 +69,8 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [0018 Wider rivers with a wobble, and a city halved by a river](decisions/0018-wider-rivers-and-the-river-city.md)
   - [0019 River channels and flowing water surfaces](decisions/0019-river-channels-and-flowing-water.md)
   - [0020 Foliage: baked trees and bushes, scattered grass](decisions/0020-foliage.md)
+  - [0021 Day and night: a world clock, a sun and a moon](decisions/0021-day-night-cycle.md)
+  - [0022 Clouds: a climate map and a shader-drawn sky](decisions/0022-clouds.md)
 - [Devlog](devlog/)
   - [2026-10-20 Solution skeleton](devlog/2026-10-20-solution-skeleton.md)
   - [2026-10-20 Core and Data foundations](devlog/2026-10-20-core-data-foundations.md)

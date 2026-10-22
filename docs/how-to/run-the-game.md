@@ -34,10 +34,11 @@ Goal: bake the terrain, start Godot and walk around the 20 km world.
 | Space | jump | rise |
 | Q / E | | down / up |
 | F | toggle fly | toggle fly |
+| T | change the speed of time: normal, 30 times, 300 times, paused | |
 | F1 | hide or show the HUD | |
 | Esc | release or recapture the mouse | |
 
-A compass strip at the top of the screen shows the bearing you look along (degrees clockwise from north, with N, NE, E ... marked and a tick every 5 degrees); it hides with the rest of the HUD (F1). The HUD shows frames per second, frame time, position, ground height, the region you are in, how many regions are loaded or loading, and the cost of the last shared-texture rebuild.
+A compass strip at the top of the screen shows the bearing you look along (degrees clockwise from north, with N, NE, E ... marked and a tick every 5 degrees); it hides with the rest of the HUD (F1). The HUD shows the game day, time and moon phase, frames per second, frame time, position, ground height, the region you are in, how many regions are loaded or loading, and the cost of the last shared-texture rebuild.
 
 ## Options
 
@@ -52,6 +53,7 @@ Pass them after `--`, for example `<godot> --path src/Realm.Game -- --fly --pos=
 | `--view-distance=M`, `--fog=DENSITY` | Override how far terrain is loaded and how thick the fog is |
 | `--screenshot=PNG`, `--screenshot-after=FRAMES` | Save a screenshot and quit |
 | `--autowalk=SECONDS`, `--autowalk-run`, `--report=JSON` | Walk forward automatically, print and save a frame-time report, quit |
+| `--time=HOUR`, `--day-minutes=M`, `--time-scale=X` | Start hour of day (default 9), real minutes per game day (default 20), speed of time (0 pauses) |
 | `--vsync=true/false` | Vertical sync. On by default; measurement runs (`--autowalk`, `--screenshot`) switch it off unless you pass `--vsync=true`, because vsync adds compositor noise to frame times and can stall a hidden window |
 | `--no-capture`, `--no-hud`, `--no-water`, `--flat-ground`, `--no-step` (turn off automatic step climbing) | Debugging switches |
 

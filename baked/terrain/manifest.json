@@ -10,7 +10,7 @@
   "maxRegion": 9,
   "seed": 1,
   "generators": [
-    "terrain.height_field v2, terrain.erosion v3, settlement.placement v9, road.planner v1, gen.foliage v2"
+    "terrain.height_field v2, terrain.erosion v3, settlement.placement v9, road.planner v1, gen.foliage v2, gen.weather.clouds v1"
   ],
   "minHeight": -218.16136169433594,
   "maxHeight": 913.61572265625,

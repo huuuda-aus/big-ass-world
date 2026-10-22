@@ -50,7 +50,7 @@ Read by the erosion step (not by the loader). Required on land biomes; ocean bio
 
 | Property | Rules | Meaning |
 |---|---|---|
-| `rainfall` | required, 0 to 1 | How much water each area adds to the flow. Drives how many rivers there are. |
+| `rainfall` | required, 0 to 1 | How much water each area adds to the flow. Drives how many rivers there are, and how cloudy the sky is over the biome ([ADR 0022](../../decisions/0022-clouds.md)). |
 | `erodibility` | required, 0 to 1 | How strongly flowing water carves the ground; 0 is bedrock. |
 | `max_slope_deg` | required, above 0 and at most 90 | Steepest slope in degrees that stays stable; steeper slopes slump. Low values give soft, rounded hills. |
 | `river_loss` | required, 0 to 1 | Fraction of a river's flow lost per kilometre while it crosses this biome. 0 loses nothing; high values make rivers thin out (and, with `ErosionSettings.RiversReachWater` off, dry up). |

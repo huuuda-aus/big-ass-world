@@ -150,7 +150,7 @@ public static class SurfaceTextureGenerator
     }
 
     // Periodic fractal value noise in [0, 1]: each octave doubles the lattice, which always wraps at the image edge.
-    private static double Fbm(ulong key, double u, double v, int baseCells)
+    internal static double Fbm(ulong key, double u, double v, int baseCells)
     {
         double sum = 0;
         double amplitude = 1;
@@ -167,7 +167,7 @@ public static class SurfaceTextureGenerator
         return sum / total;
     }
 
-    private static double ValueNoise(ulong key, double x, double y, int period)
+    internal static double ValueNoise(ulong key, double x, double y, int period)
     {
         int x0 = (int)Math.Floor(x);
         int y0 = (int)Math.Floor(y);
@@ -180,7 +180,7 @@ public static class SurfaceTextureGenerator
         return Lerp(Lerp(a, b, fx), Lerp(c, d, fx), fy);
     }
 
-    private static double Lattice(ulong key, int x, int y, int period)
+    internal static double Lattice(ulong key, int x, int y, int period)
     {
         ulong h = key;
         h ^= (ulong)(((x % period) + period) % period) * 0x9E3779B97F4A7C15UL;
