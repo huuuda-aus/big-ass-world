@@ -9,7 +9,7 @@ using Realm.Gen.Settlements.Model;
 namespace Realm.Gen.Settlements.Meshing;
 
 /// <summary>
-/// Turns the city plan into meshes: the wall with its towers and gates, and the centrepiece. There is no ground or street mesh: houses stand on the natural terrain (roads and paths come later). Ported from
+/// Turns the city plan into meshes: the wall (stone with towers, or a wooden palisade, by the settlement's fortification) and the centrepiece. There is no ground or street mesh: houses stand on the natural terrain (roads and paths come later). Ported from
 /// the three.js viewer; the gates are an improvement: the viewer left a whole wall edge open, here each gate is a gap of
 /// <see cref="GateWidthMeters"/> flanked by two gate towers.
 /// </summary>
@@ -34,6 +34,15 @@ public static class CityMesher
     /// <summary>How far the wall and towers are sunk into the ground, in metres, so no gap shows on slopes.</summary>
     private const double WallSink = 2.0;
 
+    private const double LogSpacingMeters = 0.42;
+    private const float LogRadius = 0.22f;
+    private const float LogTipRadius = 0.05f;
+    private const int LogSides = 5;
+    private const double PalisadeHeight = 3.2;
+    private const double PalisadeHeightSpread = 0.8;
+    private const double WatchtowerSide = 3.4;
+    private const double WatchtowerHeight = 6.5;
+    private const double WatchtowerPlatformHeight = 4.8;
     private const double TowerRadius = 2.8;
     private const double GateTowerRadius = 2.4;
     private const double TowerRise = 3;
@@ -45,14 +54,15 @@ public static class CityMesher
     /// <param name="city">The generated city.</param>
     /// <param name="citySeed">The seed the city was generated from.</param>
     /// <param name="ground">The ground under the city; level ground when null.</param>
+    /// <param name="fortification">What protects the settlement (a stone wall by default).</param>
     /// <returns>The meshes.</returns>
-    public static CityMeshes Build(City city, int citySeed, IGroundSampler? ground = null)
+    public static CityMeshes Build(City city, int citySeed, IGroundSampler? ground = null, Fortification fortification = Fortification.Stone)
     {
         ArgumentNullException.ThrowIfNull(city);
         ground ??= FlatGround.Instance;
         double landmarkBase = city.Landmark is null ? 0 : ground.HeightAt(city.Landmark.Center.X, city.Landmark.Center.Y);
         return new CityMeshes(
-            Wall(city, ground),
+            Wall(city, ground, fortification),
             city.Landmark is null ? null : LandmarkMesher.Build(city.Landmark, citySeed, ground, landmarkBase),
             landmarkBase);
     }
@@ -60,15 +70,21 @@ public static class CityMesher
     /// <summary>Builds the wall, its towers and the gate towers, following the ground.</summary>
     /// <param name="city">The city.</param>
     /// <param name="ground">The ground under the city; level ground when null.</param>
-    /// <returns>The mesh, or null when the city has no wall.</returns>
-    public static PropMesh? Wall(City city, IGroundSampler? ground = null)
+    /// <param name="fortification">Stone wall with towers (default), wooden palisade with wooden gate towers, or none.</param>
+    /// <returns>The mesh, or null when the city has no wall or the fortification is <see cref="Fortification.None"/>.</returns>
+    public static PropMesh? Wall(City city, IGroundSampler? ground = null, Fortification fortification = Fortification.Stone)
     {
         ArgumentNullException.ThrowIfNull(city);
         ground ??= FlatGround.Instance;
         IReadOnlyList<Vec2> wall = city.Wall;
-        if (wall.Count < 3)
+        if (wall.Count < 3 || fortification == Fortification.None)
         {
             return null;
+        }
+
+        if (fortification == Fortification.Palisade)
+        {
+            return Palisade(city, ground);
         }
 
         var b = new PropMeshBuilder();
@@ -105,6 +121,69 @@ public static class CityMesher
         }
 
         return b.Build("city.wall");
+    }
+
+    // ---- palisade ------------------------------------------------------------------------------------------------
+
+    // A fence of sharpened logs along the wall line with a gap at every gate, and a wooden watchtower either side of each gate.
+    private static PropMesh Palisade(City city, IGroundSampler ground)
+    {
+        var b = new PropMeshBuilder();
+        IReadOnlyList<Vec2> wall = city.Wall;
+        HashSet<int> gateVertices = Enumerable.Range(0, wall.Count).Where(i => city.Gates.Any(g => Vec2.Distance(g, wall[i]) < SameCorner)).ToHashSet();
+        for (int i = 0; i < wall.Count; i++)
+        {
+            int next = (i + 1) % wall.Count;
+            int previous = (i + wall.Count - 1) % wall.Count;
+            Vec2 a = wall[i];
+            Vec2 c = wall[next];
+            double length = Vec2.Distance(a, c);
+            Vec2 dir = (c - a).Normalized();
+            double start = gateVertices.Contains(i) ? GateWidthMeters / 2 : 0;
+            double end = length - (gateVertices.Contains(next) ? GateWidthMeters / 2 : 0);
+            if (end - start > 0.5)
+            {
+                Logs(b, ground, a + (dir * start), a + (dir * end));
+            }
+
+            if (gateVertices.Contains(i))
+            {
+                Vec2 back = (wall[previous] - a).Normalized();
+                Watchtower(b, ground, a + (dir * (GateWidthMeters / 2 + WatchtowerSide / 2)));
+                Watchtower(b, ground, a + (back * (GateWidthMeters / 2 + WatchtowerSide / 2)));
+            }
+        }
+
+        return b.Build("city.palisade");
+    }
+
+    // Upright logs side by side, each sharpened to a point and a little different in height.
+    private static void Logs(PropMeshBuilder b, IGroundSampler ground, Vec2 from, Vec2 to)
+    {
+        int count = Math.Max(1, (int)Math.Ceiling(Vec2.Distance(from, to) / LogSpacingMeters));
+        for (int k = 0; k < count; k++)
+        {
+            Vec2 at = Vec2.Lerp(from, to, (k + 0.5) / count);
+            double h = ground.HeightAt(at.X, at.Y);
+            uint hash = unchecked((uint)((int)(at.X * 31) ^ (int)(at.Y * 17)) * 2654435761u);
+            double height = PalisadeHeight + ((hash >> 8) % 100 / 100.0 * PalisadeHeightSpread);
+            b.Tube(P(at, h - WallSink / 2), P(at, h + height), LogRadius, LogTipRadius, LogSides, SettlementPalette.Log(hash));
+        }
+    }
+
+    // Four posts, a platform and a pointed roof.
+    private static void Watchtower(PropMeshBuilder b, IGroundSampler ground, Vec2 at)
+    {
+        double h = ground.HeightAt(at.X, at.Y);
+        double half = WatchtowerSide / 2 - 0.25;
+        foreach ((int sx, int sz) in new[] { (-1, -1), (1, -1), (1, 1), (-1, 1) })
+        {
+            Vec2 post = new(at.X + (sx * half), at.Y + (sz * half));
+            b.Tube(P(post, h - WallSink / 2), P(post, h + WatchtowerHeight), 0.26f, 0.22f, LogSides, SettlementPalette.Log(0));
+        }
+
+        b.YawBox(P(at, h + WatchtowerPlatformHeight), 0, new Vector3((float)WatchtowerSide, 0.3f, (float)WatchtowerSide), SettlementPalette.Plank);
+        b.Cone((float)at.X, (float)at.Y, (float)(h + WatchtowerHeight), (float)(WatchtowerSide * 0.85), 2.2f, 4, SettlementPalette.SlumRoof);
     }
 
     // A stretch of wall cut into pieces no longer than DrapeMeters, each tilted to follow the ground and sunk into it.

@@ -6,7 +6,7 @@ namespace Realm.Gen.Settlements.Placement;
 
 /// <summary>
 /// Makes placeholder names for settlements from syllables: a stem and an ending, such as <c>Ashminster</c> or <c>Thornby</c>.
-/// Cities and towns use different endings, so the size of a place can be guessed from its name. Real names are a design task.
+/// Cities, towns and hamlets use different endings, so the size of a place can be guessed from its name. Real names are a design task.
 /// </summary>
 /// <remarks>Determinism: depends only on the generator passed in and the names already used. Thread-safety: pure.</remarks>
 public static class SettlementNamer
@@ -24,16 +24,23 @@ public static class SettlementNamer
 
     private static readonly string[] TownEndings = { "by", "wick", "stead", "ham", "dale", "field", "worth", "ley", "combe", "marsh" };
 
+    private static readonly string[] HamletEndings = { "thorpe", "cot", "holt", "fold", "end", "shaw", "green", "side", "well", "wyke" };
+
     /// <summary>Makes a name that is not in <paramref name="used"/>.</summary>
     /// <param name="rng">Source of randomness; derive it with <see cref="Rng.ForKey"/>.</param>
-    /// <param name="tier">City or town (chooses the endings).</param>
+    /// <param name="tier">City, town or hamlet (chooses the endings).</param>
     /// <param name="used">Names already given out; the new name is added to it.</param>
     /// <returns>A capitalised name of letters only. When 100 attempts all collide, a number is appended.</returns>
     public static string Generate(Rng rng, SettlementTier tier, ISet<string> used)
     {
         ArgumentNullException.ThrowIfNull(rng);
         ArgumentNullException.ThrowIfNull(used);
-        string[] endings = tier == SettlementTier.City ? CityEndings : TownEndings;
+        string[] endings = tier switch
+        {
+            SettlementTier.City => CityEndings,
+            SettlementTier.Town => TownEndings,
+            _ => HamletEndings,
+        };
         for (int attempt = 0; attempt < Attempts; attempt++)
         {
             string stem = Stems[rng.NextInt(Stems.Length)];

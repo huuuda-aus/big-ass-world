@@ -16,15 +16,15 @@ public static class CityGenerator
     private const double StreetInset = 4.5;
     private const double AlleyInset = 2.2;
     private const double WallInset = 6.0;
+    /// <summary>Houses per ward at the default settings, roughly; the first guess of the ward count for a house cap.</summary>
+    private const int GuessBuildingsPerWard = 13;
+
     private const int OnStreetTag = 1;
     private const double MinFrontage = 3.5;
     private const double MaxLotDepth = 22;
 
     /// <summary>Each side of a house is set back this far from the lot line; neighbours stand twice this apart.</summary>
     private const double SideGap = 1.4;
-
-    /// <summary>Average houses per ward at the default settings; used to guess a ward count for a target size.</summary>
-    private const int TypicalBuildingsPerWard = 18;
 
     /// <summary>Slum lots are cut about this small (square metres) so the dwellings can be small and many.</summary>
     private const double SlumLotArea = 34;
@@ -41,33 +41,47 @@ public static class CityGenerator
         if (p.CityPatchCount is int fixedWards) return Build(p, fixedWards, p.MaxBuildings);
         if (p.MaxBuildings is not int max) return Build(p, CityParams.DefaultWardCount, null);
 
-        // Find the smallest number of wards that holds `max` houses (Build trims any excess): start from a guess, grow while short,
-        // then shrink while still enough. The excess is trimmed from the outermost ward first, so a city that is too big would lose its
-        // slums; the smallest sufficient city keeps its outskirts.
+        // Size by whole wards, not by trimming houses: build with n wards and keep the largest n that holds at most `max` houses. The wall
+        // is the outline of those wards, so it hugs the outermost houses instead of enclosing wards trimmed bare (a city that is too big
+        // for its cap would otherwise lose its outer houses one by one and keep its wall). The count is not strictly rising with n, but
+        // close enough for a binary search; the result is always one that was built and counted.
         int limit = Math.Max(3, p.SiteCount / 3);
-        int wards = Math.Min(limit, Math.Max(3, (int)Math.Ceiling(max / (double)TypicalBuildingsPerWard)));
-        City city = Build(p, wards, max);
-        while (BuildingCount(city) < max && wards < limit)
+        var built = new Dictionary<int, City>();
+        City Try(int wards)
         {
-            int missing = max - BuildingCount(city);
-            wards = Math.Min(limit, wards + Math.Max(1, missing / TypicalBuildingsPerWard));
-            city = Build(p, wards, max);
-        }
-
-        while (wards > 3)
-        {
-            City smaller = Build(p, wards - 1, max);
-            if (BuildingCount(smaller) < max)
+            if (!built.TryGetValue(wards, out City? city))
             {
-                break;
+                built[wards] = city = Build(p, wards, null);
             }
 
-            wards--;
-            city = smaller;
+            return city;
         }
 
-        return city;
+        if (BuildingCount(Try(3)) > max)
+        {
+            return Build(p, 3, max); // even the smallest city is over the cap: trim its outermost houses
+        }
+
+        // Start from a guess and walk to the largest n that fits (a handful of builds).
+        int wards = Math.Min(limit, Math.Max(3, (int)Math.Round(max / (double)GuessBuildingsPerWard)));
+        if (BuildingCount(Try(wards)) <= max)
+        {
+            while (wards < limit && BuildingCount(Try(wards + 1)) <= max)
+            {
+                wards++;
+            }
+        }
+        else
+        {
+            while (wards > 3 && BuildingCount(Try(wards)) > max)
+            {
+                wards--;
+            }
+        }
+
+        return Try(wards);
     }
+
 
     private static int BuildingCount(City city) => city.CityPatches.Sum(x => x.Buildings.Count);
 
@@ -96,7 +110,7 @@ public static class CityGenerator
         for (int i = 0; i < wall.Count; i++)
             wallEdges.Add(EdgeKey(wall[i], wall[(i + 1) % wall.Count]));
 
-        AssignWards(cityPatches, rng, p.Cathedral);
+        AssignWards(cityPatches, rng, p.Cathedral, p.Humble, p.Parks);
         foreach (Patch patch in cityPatches)
             BuildLots(patch, streetEdges, wallEdges, rng);
 
@@ -254,7 +268,7 @@ public static class CityGenerator
 
     // ---- wards ---------------------------------------------------------------------
 
-    private static void AssignWards(Patch[] cityPatches, Rng rng, bool cathedral)
+    private static void AssignWards(Patch[] cityPatches, Rng rng, bool cathedral, bool humble, bool parks)
     {
         // cityPatches is already sorted by distance from the centre.
         for (int i = 0; i < cityPatches.Length; i++)
@@ -262,8 +276,9 @@ public static class CityGenerator
             double rank = (double)i / cityPatches.Length;
             WardType w;
             if (i == 0) w = WardType.Market;
+            else if (humble) w = WardType.Slum;
             else if (i == 1 && cathedral) w = WardType.Cathedral;
-            else if (i > 3 && rng.NextDouble() < 0.08) w = WardType.Park;
+            else if (parks && i > 3 && rng.NextDouble() < 0.08) w = WardType.Park;
             else if (rank < 0.35) w = WardType.Merchant;
             else if (rank < 0.7) w = WardType.Craftsmen;
             else w = WardType.Slum;

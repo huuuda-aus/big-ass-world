@@ -7,8 +7,8 @@ namespace Realm.Data.Content;
 /// <remarks>The generator (<c>Realm.Gen.Settlements</c>) maps these strings to its own enums; a test keeps the two lists in step.</remarks>
 public static class ServiceVocabulary
 {
-    /// <summary>Settlement tiers.</summary>
-    public static readonly IReadOnlyList<string> Tiers = Array.AsReadOnly(new[] { "city", "town" });
+    /// <summary>Settlement tiers: <c>city</c> (including the mountain city), <c>town</c>, <c>hamlet</c>.</summary>
+    public static readonly IReadOnlyList<string> Tiers = Array.AsReadOnly(new[] { "city", "town", "hamlet" });
 
     /// <summary>Wards inside the wall a service may stand in.</summary>
     public static readonly IReadOnlyList<string> Wards = Array.AsReadOnly(new[] { "market", "merchant", "craftsmen", "slum" });

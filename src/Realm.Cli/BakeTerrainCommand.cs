@@ -70,6 +70,10 @@ internal static class BakeTerrainCommand
             {
                 settlementSettings = settlementSettings with { Towns = towns };
             }
+            else if (arg == "--hamlets" && i + 1 < args.Length && int.TryParse(args[++i], NumberStyles.None, CultureInfo.InvariantCulture, out int hamlets))
+            {
+                settlementSettings = settlementSettings with { Hamlets = hamlets };
+            }
             else if (arg == "--no-roads")
             {
                 withRoads = false;
@@ -88,7 +92,7 @@ internal static class BakeTerrainCommand
             }
             else
             {
-                error.WriteLine($"Bad argument '{arg}'. Usage: realm bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--no-settlements] [--no-roads]");
+                error.WriteLine($"Bad argument '{arg}'. Usage: realm bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--hamlets N] [--no-settlements] [--no-roads]");
                 return ExitUsage;
             }
         }
@@ -145,7 +149,7 @@ internal static class BakeTerrainCommand
                 output.WriteLine($"  settlements: {settlements.Count} placed on the natural ground ({step.Elapsed.TotalSeconds:F1} s)");
                 foreach (Settlement s in settlements)
                 {
-                    output.WriteLine($"    {s.Id,-22} {s.Name,-14} {s.Tier,-5} at ({s.X:F0}, {s.Z:F0}), ground {s.GroundHeightMeters:F0} m{(s.Highland ? " (mountain)" : string.Empty)}, wall radius {s.WallRadiusMeters:F0} m, up to {s.MaxBuildings} houses, {s.ServiceList.Sum(x => x.Count)} service building(s)");
+                    output.WriteLine($"    {s.Id,-22} {s.Name,-14} {s.Tier,-5} at ({s.X:F0}, {s.Z:F0}), ground {s.GroundHeightMeters:F0} m{(s.Highland ? " (mountain)" : string.Empty)}, {(s.Fortification == Fortification.None ? "no walls" : s.Fortification.ToString().ToLowerInvariant() + " walls")}, radius {s.WallRadiusMeters:F0} m, up to {s.MaxBuildings} houses, {s.ServiceList.Sum(x => x.Count)} service building(s)");
                 }
 
                 if (settlements.Count > 0)

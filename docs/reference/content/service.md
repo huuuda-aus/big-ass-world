@@ -13,7 +13,7 @@ A building every settlement of the listed tiers must contain: city hall, inn, bl
 | `id` | string | yes | Content ID starting with `service.`. Unique across all content. |
 | `name` | string | yes | Display name. Not empty. |
 | `tags` | list of strings | no | Same grammar as [material tags](material.md). |
-| `counts` | map tier to number | yes | How many a settlement of each tier gets. Tiers: `city` (including the mountain city) and `town`. A tier that is missing gets none. Each count 1 to 8 (`DATA018` otherwise). |
+| `counts` | map tier to number | yes | How many a settlement of each tier gets. Tiers: `city` (including the mountain city), `town` and `hamlet`. A tier that is missing gets none. Each count 1 to 8 (`DATA018` otherwise). |
 | `wards` | list | no | Wards inside the wall it may stand in, most preferred first: `market`, `merchant`, `craftsmen`, `slum`. A ward not listed is allowed but ranked last. Empty means any. Not allowed with `outside_wall: true`. |
 | `near` | string | no | Where in the ward it prefers to stand: `any` (default), `square` (near the central square), `gate`, `wall`. |
 | `outside_wall` | bool | no | `true` builds it as a new house on farmland next to the wall (farmer, woodcutter). Default `false`: it takes over an existing lot. |
@@ -46,7 +46,7 @@ Error DATA018 services/inn.yaml: Field 'near' has unknown value 'moon'. (fix: Us
 
 ## Shipped services
 
-| ID | City / town | Where | Notes |
+| ID | City / town / hamlet | Where | Notes |
 |---|---|---|---|
 | `service.city_hall` | 1 / 0 | market or merchant ward, near the square | stone foundation |
 | `service.inn` | 2 / 1 | merchant or craftsmen ward, near a gate | |
@@ -55,8 +55,8 @@ Error DATA018 services/inn.yaml: Field 'near' has unknown value 'moon'. (fix: Us
 | `service.baker` | 2 / 1 | craftsmen or merchant ward | kitchen |
 | `service.jail` | 1 / 0 | slum or craftsmen ward, near the wall | stone foundation |
 | `service.warehouse` | 2 / 1 | craftsmen or slum ward, near a gate | storage |
-| `service.farmer` | 2 / 1 | outside the wall | wood foundation |
-| `service.woodcutter` | 1 / 1 | outside the wall | wood foundation |
+| `service.farmer` | 2 / 1 / 1 | outside the wall | wood foundation |
+| `service.woodcutter` | 1 / 1 / 1 | outside the wall | wood foundation |
 
 The cathedral is not a service: it is part of every city's plan.
 

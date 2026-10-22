@@ -26,7 +26,7 @@ public static class SettlementPlacer
     public const string GeneratorId = "settlement.placement";
 
     /// <summary>Bump when the output for the same input changes, and regenerate the golden tests in the same change.</summary>
-    public const int GeneratorVersion = 3; // v3: natural ground (no flattening), steeper sites, mountain city
+    public const int GeneratorVersion = 5; // v5: cities sized by whole wards; v4: hamlets; v3: natural ground (no flattening), steeper sites, mountain city
 
     private const int RingsPerCandidate = 3;
     private const int PointsPerRing = 8;
@@ -63,14 +63,15 @@ public static class SettlementPlacer
         var water = new WaterMask(field.WorldSizeMeters, network);
         var placed = new List<Settlement>();
         var usedNames = new HashSet<string>(StringComparer.Ordinal);
-        int requested = settings.Cities + settings.MountainCities + settings.Towns;
+        int requested = settings.Cities + settings.MountainCities + settings.Towns + settings.Hamlets;
         for (int i = 0; i < requested; i++)
         {
             bool city = i < settings.Cities;
             bool mountain = !city && i < settings.Cities + settings.MountainCities;
-            SettlementTier tier = city || mountain ? SettlementTier.City : SettlementTier.Town;
-            string kind = city ? "city" : mountain ? "mountain" : "town";
-            int index = city ? i : mountain ? i - settings.Cities : i - settings.Cities - settings.MountainCities;
+            bool town = !city && !mountain && i < settings.Cities + settings.MountainCities + settings.Towns;
+            SettlementTier tier = city || mountain ? SettlementTier.City : town ? SettlementTier.Town : SettlementTier.Hamlet;
+            string kind = city ? "city" : mountain ? "mountain" : town ? "town" : "hamlet";
+            int index = city ? i : mountain ? i - settings.Cities : town ? i - settings.Cities - settings.MountainCities : i - settings.Cities - settings.MountainCities - settings.Towns;
             Settlement? settlement = PlaceOne(field, water, worldSeed, settings, tier, kind, index, mountain, highlandArea, placed, usedNames);
             if (settlement is not null)
             {
@@ -97,9 +98,22 @@ public static class SettlementPlacer
         Rng seedRng = Rng.ForKey(worldSeed, "settlement", kind, index);
         int citySeed = (int)(seedRng.NextUInt64() & SeedMask);
         double rotation = seedRng.NextDouble() * 2 * Math.PI;
-        int buildings = tier == SettlementTier.City ? settings.CityBuildings : settings.TownBuildings;
-        CentrepieceKind centre = tier == SettlementTier.City ? CentrepieceKind.Fountain : CentrepieceKind.Market;
-        var cityParams = new CityParams { Seed = citySeed, MaxBuildings = buildings, Cathedral = tier == SettlementTier.City, Centre = centre };
+        int buildings = tier switch
+        {
+            SettlementTier.City => settings.CityBuildings,
+            SettlementTier.Town => settings.TownBuildings,
+            _ => settings.HamletBuildings,
+        };
+        CentrepieceKind centre = tier switch
+        {
+            SettlementTier.City => CentrepieceKind.Fountain,
+            SettlementTier.Town => CentrepieceKind.Market,
+            _ => CentrepieceKind.None,
+        };
+        var cityParams = new CityParams
+        {
+            Seed = citySeed, MaxBuildings = buildings, Cathedral = tier == SettlementTier.City, Centre = centre, Humble = tier == SettlementTier.Hamlet, Parks = false,
+        };
 
         City city = CityGenerator.Generate(cityParams);
         double wallRadius = 0;
@@ -113,7 +127,7 @@ public static class SettlementPlacer
         double edge = pad + settings.BlendMeters + settings.EdgeMarginMeters;
         double reliefLimit = (highland ? settings.MountainMaxReliefPerRadius : settings.MaxReliefPerRadius) * pad;
         double minHeight = highland ? settings.MountainMinHeightMeters : settings.MinHeightMeters;
-        double maxHeight = highland ? settings.MountainMaxHeightMeters : settings.MaxHeightMeters;
+        double maxHeight = highland ? settings.MountainMaxHeightMeters : tier == SettlementTier.Hamlet ? settings.HamletMaxHeightMeters : settings.MaxHeightMeters;
 
         double bestScore = double.NegativeInfinity;
         double bestX = 0;

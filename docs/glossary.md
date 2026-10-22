@@ -47,6 +47,9 @@
 - **Seed sweep**: running a generator over many seeds with all validators. **Planned.**
 - **Settlement**: a city or town placed on the map; baked as an entry in `settlements.json`.
 - **Soak test** (traversal): automated fly-through of the full world that records frame times, streaming cost, GC and memory to prove seamless streaming. The M1 gate.
+- **Fortification** (`Fortification`): what protects a settlement, from its tier: stone wall (city), wooden palisade (town), none (hamlet).
+- **Hamlet**: the smallest settlement tier: at most 12 poor houses, no wall.
+- **Palisade**: a fence of sharpened logs with wooden gate towers; the town wall.
 - **Foundation**: what holds a building up where the ground falls away below its floor: a stone plinth, wooden pilings, or a pier with a deck ([ADR 0014](decisions/0014-cities-on-natural-ground-and-service-buildings.md)).
 - **Ground grid** (`GroundGrid`): the terrain heights around one settlement on an 8 m grid, baked to `settlements_ground.bin` so a city can be built on a worker thread.
 - **Highland settlement**: a city in mountainous terrain (`Settlement.Highland`); steeper and higher ground is allowed.

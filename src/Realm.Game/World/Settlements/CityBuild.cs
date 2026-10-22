@@ -81,7 +81,7 @@ public sealed class CityBuild
             list.Add(new CityBuilding(building, interior, far, centre.X, centre.Y, site));
         }
 
-        CityMeshes meshes = CityMesher.Build(city, settlement.CitySeed, ground);
+        CityMeshes meshes = CityMesher.Build(city, settlement.CitySeed, ground, settlement.Fortification);
         PropMesh? wall = meshes.Wall;
         CityLandmark? landmark = null;
         if (meshes.Landmark is { } l)

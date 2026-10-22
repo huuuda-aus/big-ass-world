@@ -50,6 +50,16 @@ public static class SettlementPalette
         return Hex(0xece1c8) * StuccoShades[hash % (uint)StuccoShades.Length];
     }
 
+    private static readonly float[] LogShades = { 0.85f, 0.92f, 1.0f, 1.07f, 0.8f };
+
+    /// <summary>Colour of a palisade log or watchtower post: weathered timber, a little different for each.</summary>
+    /// <param name="hash">A number that varies from log to log.</param>
+    /// <returns>The colour.</returns>
+    public static Vector3 Log(uint hash) => Hex(0x7d6244) * LogShades[(hash >> 5) % (uint)LogShades.Length];
+
+    /// <summary>Planks of a watchtower platform.</summary>
+    public static Vector3 Plank { get; } = Hex(0x8f7550);
+
     /// <summary>Outer wall colour of a slum dwelling: mud, a little different for each building.</summary>
     /// <param name="buildingId">Building identifier within its city.</param>
     /// <returns>The colour.</returns>

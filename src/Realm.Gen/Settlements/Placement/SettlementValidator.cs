@@ -65,7 +65,7 @@ public static class SettlementValidator
 
             double reliefLimit = (s.Highland ? settings.MountainMaxReliefPerRadius : settings.MaxReliefPerRadius) * s.PadRadiusMeters;
             double minHeight = s.Highland ? settings.MountainMinHeightMeters : settings.MinHeightMeters;
-            double maxHeight = s.Highland ? settings.MountainMaxHeightMeters : settings.MaxHeightMeters;
+            double maxHeight = s.Highland ? settings.MountainMaxHeightMeters : s.Tier == SettlementTier.Hamlet ? settings.HamletMaxHeightMeters : settings.MaxHeightMeters;
             double relief = highest - lowest;
             if (relief > reliefLimit + ReliefToleranceMeters || lowest < minHeight - ReliefToleranceMeters || highest > maxHeight + ReliefToleranceMeters)
             {

@@ -153,11 +153,43 @@ public class CityGeneratorTests
     [InlineData(1, 50)]
     [InlineData(2, 150)]
     [InlineData(42, 300)]
-    public void MaxBuildingsIsHonouredExactly(int seed, int max)
+    public void MaxBuildingsIsNeverExceeded_AndMostOfItIsUsed(int seed, int max)
     {
         City city = CityGenerator.Generate(new CityParams { Seed = seed, MaxBuildings = max });
 
-        Assert.Equal(max, Houses(city));
+        // The city is made of whole wards: it lands under the limit by up to a ward's worth of houses.
+        Assert.InRange(Houses(city), max * 0.8, max);
+    }
+
+    [Theory]
+    [InlineData(1, 12)]
+    [InlineData(2, 50)]
+    [InlineData(3, 50)]
+    [InlineData(4, 250)]
+    [InlineData(5, 250)]
+    public void TheWall_HugsTheOutermostHouses_NoWardIsLeftBare(int seed, int max)
+    {
+        City city = CityGenerator.Generate(new CityParams { Seed = seed, MaxBuildings = max });
+
+        double wallRadius = city.Wall.Max(w => w.Length);
+        double farthestHouse = city.CityPatches.SelectMany(p => p.Buildings).Max(b => b.Footprint.Points.Max(v => v.Length));
+        Assert.True(wallRadius - farthestHouse < 60, $"the wall ({wallRadius:F0} m) is far outside the outermost house ({farthestHouse:F0} m)");
+        // The only wards without houses are the market square at the centre and parks.
+        Assert.All(city.CityPatches.Where(p => p.Buildings.Count == 0), p => Assert.True(p.Ward is WardType.Market or WardType.Park, $"ward {p.Index} ({p.Ward}) is empty"));
+    }
+
+    [Fact]
+    public void WithParksOff_NoWardIsLeftAsAPark()
+    {
+        for (int seed = 1; seed <= 8; seed++)
+        {
+            City city = CityGenerator.Generate(new CityParams { Seed = seed, CityPatchCount = 40, Parks = false });
+
+            Assert.DoesNotContain(city.CityPatches, p => p.Ward == WardType.Park);
+        }
+
+        // The default keeps parks, so older cities and the CityGen look are unchanged.
+        Assert.Contains(Enumerable.Range(1, 8).Select(seed => CityGenerator.Generate(new CityParams { Seed = seed, CityPatchCount = 40 })), c => c.CityPatches.Any(p => p.Ward == WardType.Park));
     }
 
     [Theory]

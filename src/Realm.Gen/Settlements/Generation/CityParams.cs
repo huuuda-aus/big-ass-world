@@ -22,8 +22,8 @@ public sealed class CityParams
     public int? CityPatchCount { get; set; }
 
     /// <summary>
-    /// Upper limit on the number of houses. Unless CityPatchCount is given, the city is grown to
-    /// roughly this size first; the excess is then removed, outermost wards first. A limit the
+    /// Upper limit on the number of houses. Unless CityPatchCount is given, the city is made of as many whole wards as fit under the
+    /// limit, so the wall follows the outermost houses; the count lands somewhat under the limit, by up to a ward's worth. A limit the
     /// site count cannot reach simply gives the biggest city possible.
     /// </summary>
     public int? MaxBuildings { get; set; }
@@ -34,8 +34,14 @@ public sealed class CityParams
     /// <summary>Number of gates in the wall (at most the number of wall corners).</summary>
     public int GateCount { get; set; } = 4;
 
+    /// <summary>Whether some outer wards are left as open parks. Off for compact settlements, where an empty ward only makes the wall enclose empty ground.</summary>
+    public bool Parks { get; set; } = true;
+
     /// <summary>Whether the ward next to the central square holds a cathedral; if not it is ordinary housing.</summary>
     public bool Cathedral { get; set; } = true;
+
+    /// <summary>Whether every ward but the market is a slum (a hamlet): only small mud dwellings.</summary>
+    public bool Humble { get; set; }
 
     /// <summary>What stands in the central square. None leaves it empty.</summary>
     public CentrepieceKind Centre { get; set; } = CentrepieceKind.None;

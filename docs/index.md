@@ -63,6 +63,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [0013 Roads, bridges, names and the world map](decisions/0013-roads-and-bridges.md)
   - [0014 Cities on natural ground, service buildings and a mountain city](decisions/0014-cities-on-natural-ground-and-service-buildings.md)
   - [0015 Modular building kit (plan)](decisions/0015-modular-building-kit.md)
+  - [0016 Fortification by tier, and hamlets](decisions/0016-fortification-by-tier-and-hamlets.md)
 - [Devlog](devlog/)
   - [2026-10-20 Solution skeleton](devlog/2026-10-20-solution-skeleton.md)
   - [2026-10-20 Core and Data foundations](devlog/2026-10-20-core-data-foundations.md)

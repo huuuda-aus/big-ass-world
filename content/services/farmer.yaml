@@ -1,7 +1,7 @@
 id: service.farmer
 name: Farmer
 tags: [food, rural]
-counts: { city: 2, town: 1 }
+counts: { city: 2, town: 1, hamlet: 1 }
 outside_wall: true
 min_area_m2: 50
 foundation: wood

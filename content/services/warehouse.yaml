@@ -4,5 +4,5 @@ tags: [trade, storage]
 counts: { city: 2, town: 1 }
 wards: [craftsmen, slum]
 near: gate
-min_area_m2: 90
+min_area_m2: 60
 main_room: storage

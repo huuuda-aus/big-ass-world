@@ -42,6 +42,14 @@ public sealed record Settlement(
     IReadOnlyList<ServiceSpec>? Services = null,
     bool Highland = false)
 {
+    /// <summary>What protects the settlement: a stone wall for a city, a wooden palisade for a town, nothing for a hamlet.</summary>
+    public Fortification Fortification => Tier switch
+    {
+        SettlementTier.City => Fortification.Stone,
+        SettlementTier.Town => Fortification.Palisade,
+        _ => Fortification.None,
+    };
+
     /// <summary>The service buildings this settlement contains; never null.</summary>
     public IReadOnlyList<ServiceSpec> ServiceList => Services ?? Array.Empty<ServiceSpec>();
 
@@ -53,6 +61,8 @@ public sealed record Settlement(
         MaxBuildings = MaxBuildings,
         Cathedral = Cathedral,
         Centre = Centre,
+        Humble = Tier == SettlementTier.Hamlet,
+        Parks = false,
         Services = ServiceList,
     };
 

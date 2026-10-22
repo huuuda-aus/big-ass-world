@@ -18,8 +18,20 @@ public sealed record SettlementSettings
     /// <summary>Number of smaller towns to place.</summary>
     public int Towns { get; init; } = DefaultTowns;
 
+    /// <summary>Default number of hamlets.</summary>
+    public const int DefaultHamlets = 5;
+
     /// <summary>Number of extra large cities built in mountainous terrain (see <see cref="MountainMinHeightMeters"/>).</summary>
     public int MountainCities { get; init; } = DefaultMountainCities;
+
+    /// <summary>Number of hamlets (a few poor houses, no wall) to place after the towns.</summary>
+    public int Hamlets { get; init; } = DefaultHamlets;
+
+    /// <summary>Highest ground a hamlet may stand on, in metres: hamlets are lowland outposts, and the roads to a hamlet in the high mountains need cuts of 60 m and more.</summary>
+    public double HamletMaxHeightMeters { get; init; } = 200;
+
+    /// <summary>Most houses in a hamlet.</summary>
+    public int HamletBuildings { get; init; } = 12;
 
     /// <summary>Most houses in a city (a city of this size has a wall radius of roughly 150 m).</summary>
     public int CityBuildings { get; init; } = 250;
@@ -80,13 +92,13 @@ public sealed record SettlementSettings
     /// <returns><c>true</c> when valid.</returns>
     public bool TryValidate(out string? problem)
     {
-        if (Cities < 0 || Towns < 0 || MountainCities < 0 || Cities + Towns + MountainCities > 64)
+        if (Cities < 0 || Towns < 0 || MountainCities < 0 || Hamlets < 0 || Cities + Towns + MountainCities + Hamlets > 64)
         {
-            problem = "Cities, MountainCities and Towns must not be negative and together at most 64.";
+            problem = "Cities, MountainCities, Towns and Hamlets must not be negative and together at most 64.";
         }
-        else if (CityBuildings < 3 || TownBuildings < 3)
+        else if (CityBuildings < 3 || TownBuildings < 3 || HamletBuildings < 3)
         {
-            problem = "CityBuildings and TownBuildings must be at least 3.";
+            problem = "CityBuildings, TownBuildings and HamletBuildings must be at least 3.";
         }
         else if (!(MinSpacingMeters >= 0) || !(PadMarginMeters >= 0) || !(BlendMeters > 0) || !(WaterClearanceMeters >= 0) || !(EdgeMarginMeters >= 0))
         {
@@ -99,6 +111,10 @@ public sealed record SettlementSettings
         else if (!(MinHeightMeters < MaxHeightMeters) || !(MaxReliefPerRadius > 0))
         {
             problem = "MinHeightMeters must be below MaxHeightMeters and MaxReliefPerRadius positive.";
+        }
+        else if (!(HamletMaxHeightMeters > MinHeightMeters))
+        {
+            problem = "HamletMaxHeightMeters must be above MinHeightMeters.";
         }
         else if (!(MountainMinHeightMeters < MountainMaxHeightMeters) || !(MountainMaxReliefPerRadius > 0) || !(FlattenStrength >= 0 && FlattenStrength <= 1))
         {

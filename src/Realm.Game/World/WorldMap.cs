@@ -93,7 +93,7 @@ public sealed partial class WorldMap : CanvasLayer
 
         foreach (Settlement s in _settlements)
         {
-            float size = s.Tier == SettlementTier.City ? 12 : 8;
+            float size = s.Tier switch { SettlementTier.City => 12, SettlementTier.Town => 8, _ => 5 };
             Vector2 at = ToMap(s.X, s.Z);
             _overlay.AddChild(new ColorRect { Position = at - new Vector2(size / 2, size / 2), Size = new Vector2(size, size), Color = s.Tier == SettlementTier.City ? new Color(1f, 0.95f, 0.5f) : Colors.White });
             var label = new Label { Text = s.Name, Position = at + new Vector2(size / 2 + 3, -NameFontSize * 0.8f) };

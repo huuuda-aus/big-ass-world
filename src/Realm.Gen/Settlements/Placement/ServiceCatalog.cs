@@ -17,7 +17,12 @@ public static class ServiceCatalog
     public static IReadOnlyList<ServiceSpec> For(ContentDatabase database, SettlementTier tier)
     {
         ArgumentNullException.ThrowIfNull(database);
-        string word = tier == SettlementTier.City ? "city" : "town";
+        string word = tier switch
+        {
+            SettlementTier.City => "city",
+            SettlementTier.Town => "town",
+            _ => "hamlet",
+        };
         return database.Services.Values
             .Where(d => d.CountFor(word) > 0)
             .Select(d => ToSpec(d, d.CountFor(word)))

@@ -41,13 +41,15 @@ public class ShippedSettlementTests
     }
 
     [Fact]
-    public void ShippedWorld_GetsFourCitiesAndFiveTowns_WithNoIssues()
+    public void ShippedWorld_GetsFourCitiesFiveTownsAndFiveHamlets_WithNoIssues()
     {
         Result r = Shared.Value;
 
         Assert.Empty(r.Report.Issues);
         Assert.Equal(4, r.Settlements.Count(s => s.Tier == SettlementTier.City)); // three plus the mountain city
         Assert.Equal(5, r.Settlements.Count(s => s.Tier == SettlementTier.Town));
+        Assert.Equal(5, r.Settlements.Count(s => s.Tier == SettlementTier.Hamlet));
+        Assert.All(r.Settlements.Where(s => s.Tier == SettlementTier.Hamlet), s => Assert.InRange(s.GroundHeightMeters, 15, 200));
     }
 
     [Fact]
@@ -65,7 +67,7 @@ public class ShippedSettlementTests
         Result r = Shared.Value;
 
         Assert.Empty(r.Report.Issues);
-        Assert.InRange(r.Roads.Count, 7, 20);
+        Assert.InRange(r.Roads.Count, 7, 40);
         var reached = new System.Collections.Generic.HashSet<string> { r.Settlements[0].Id };
         for (int round = 0; round < r.Settlements.Count; round++)
         {
@@ -157,5 +159,5 @@ public class ShippedSettlementTests
     }
 
     // Captured from the accepted implementation (settlement.placement v1, 128 m grid, seed 1, six-region sample world).
-    private const ulong GoldenChecksum = 6244548680308317532UL;
+    private const ulong GoldenChecksum = 15096086240675034436UL;
 }

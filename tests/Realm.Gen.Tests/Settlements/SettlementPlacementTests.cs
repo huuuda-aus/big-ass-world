@@ -54,7 +54,7 @@ public class SettlementPlacementTests
         SettlementPlacer.Place(field, network, seed, settings, report ?? new ValidationReport());
 
     private static SettlementSettings Small(int cities, int towns) =>
-        new() { Cities = cities, Towns = towns, MountainCities = 0, CityBuildings = 60, TownBuildings = 24 };
+        new() { Cities = cities, Towns = towns, MountainCities = 0, Hamlets = 0, CityBuildings = 60, TownBuildings = 24 };
 
     [Fact]
     public void PlacesTheRequestedNumber_CitiesFirst_OnAGenerousPlateau()
@@ -140,7 +140,7 @@ public class SettlementPlacementTests
         HeightField tiny = Plateaus((x, z) => Math.Abs(x) < 600 && Math.Abs(z) < 600 ? Plateau : -50f);
         var report = new ValidationReport();
 
-        IReadOnlyList<Settlement> placed = Place(tiny, null, new SettlementSettings { Cities = 0, Towns = 3, TownBuildings = 12, EdgeMarginMeters = 0 }, report);
+        IReadOnlyList<Settlement> placed = Place(tiny, null, new SettlementSettings { Cities = 0, MountainCities = 0, Hamlets = 0, Towns = 3, TownBuildings = 12, EdgeMarginMeters = 0 }, report);
 
         Assert.InRange(placed.Count, 0, 1);
         Assert.Equal(SettlementCodes.TooFewPlaced, Assert.Single(report.Issues).Code);

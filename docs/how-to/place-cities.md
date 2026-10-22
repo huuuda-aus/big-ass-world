@@ -11,10 +11,10 @@ Bake a world with cities, towns and the roads between them, change how many ther
    ```bash
    dotnet run --project src/Realm.Cli -- bake-terrain
    ```
-   You should see a line `settlements: 9 placed on the natural ground` followed by one line per settlement (3 cities, 1 city marked `(mountain)`, 5 towns, each with a generated name and its number of service buildings), then `roads: 17 road(s), 66.6 km, 13 bridge(s), ...` and `0 error(s), 0 warning(s)`. The player's spawn is in the first city's central square.
+   You should see a line `settlements: 9 placed on the natural ground` followed by one line per settlement (3 cities with stone walls, 1 city marked `(mountain)`, 5 towns with palisades, 5 hamlets with no walls, each with a generated name and its number of service buildings), then `roads: 17 road(s), 66.6 km, 13 bridge(s), ...` and `0 error(s), 0 warning(s)`. The player's spawn is in the first city's central square.
 2. Change the number of settlements:
    ```bash
-   dotnet run --project src/Realm.Cli -- bake-terrain --cities 2 --towns 10
+   dotnet run --project src/Realm.Cli -- bake-terrain --cities 2 --towns 10 --hamlets 8
    ```
    Other settings (sizes, spacing, how steep the land may be, the number of mountain cities, `FlattenStrength`) are in `SettlementSettings` (`src/Realm.Gen/Settlements/Placement/SettlementSettings.cs`); see [settlements](../reference/settlements.md#settings). If the land cannot hold what you asked for you get warning `SETL002` and fewer settlements.
 3. Run the game: `godot --path src/Realm.Game`. You start in a city square beside a fountain. Walk (WASD or the arrow keys) along a street; houses within 35 m turn into detailed houses.

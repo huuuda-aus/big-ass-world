@@ -9,7 +9,7 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
   "format": 1,
   "world": "world.main",
   "seed": 1,
-  "generators": ["settlement.placement v3"],
+  "generators": ["settlement.placement v5"],
   "settlements": [
     {
       "id": "settlement.city_1",
@@ -44,9 +44,9 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
 | `format` | File format version; currently 1. Other values are rejected (`SETL006`). |
 | `world`, `seed` | The world map ID and the world seed the settlements were placed with. |
 | `generators` | Generator versions that produced the list. |
-| `id` | Stable identifier. Cities are `settlement.city_N`, the mountain city `settlement.mountain_N`, towns `settlement.town_N`. |
+| `id` | Stable identifier. Cities are `settlement.city_N`, the mountain city `settlement.mountain_N`, towns `settlement.town_N`, hamlets `settlement.hamlet_N`. |
 | `name` | Display name, generated from syllables (`Thornford`, `Oakley`); a placeholder until names are designed. |
-| `tier` | `City` or `Town`. |
+| `tier` | `City`, `Town` or `Hamlet`. The fortification follows from it: stone wall, wooden palisade, none ([ADR 0016](../decisions/0016-fortification-by-tier-and-hamlets.md)). |
 | `x`, `z` | World position of the central square in metres. |
 | `rotation` | Rotation of the city plan about its centre in radians (counter-clockwise in plan coordinates; the game node turns by minus this angle about the vertical axis). |
 | `groundHeight` | Mean height of the natural ground under the city, metres above sea level; the city's origin. The ground itself is not level: see `settlements_ground.bin` below. |
@@ -62,7 +62,7 @@ A city is generated in its own plane (metres, central square at the origin, plan
 
 ## Settings
 
-`SettlementSettings` (all placeholders): 3 cities of at most 250 houses (wall radius about 180 m), 1 mountain city and 5 towns of at most 50 houses (about 100 m); minimum spacing 2,500 m; pad margin 30 m and blend 100 m; candidate grid 128 m; height range 15 to 320 m; relief limit 0.2 x radius; mountain city: 330 to 1,100 m, relief limit 0.35 x radius; `FlattenStrength` 0 (0 builds on the natural ground, 1 levels the pad as before ADR 0014); water clearance 40 m; river bonus 0.25 within 1,500 m; world edge margin 400 m.
+`SettlementSettings` (all placeholders): 3 cities of at most 250 houses (wall radius about 180 m), 1 mountain city, 5 towns of at most 50 houses (about 100 m) and 5 hamlets of at most 12 (lowland, below 200 m); minimum spacing 2,500 m; pad margin 30 m and blend 100 m; candidate grid 128 m; height range 15 to 320 m; relief limit 0.2 x radius; mountain city: 330 to 1,100 m, relief limit 0.35 x radius; `FlattenStrength` 0 (0 builds on the natural ground, 1 levels the pad as before ADR 0014); water clearance 40 m; river bonus 0.25 within 1,500 m; world edge margin 400 m.
 
 # Baked ground (`settlements_ground.bin`)
 
