@@ -9,7 +9,7 @@ namespace Realm.Gen.Settlements.Placement;
 /// <summary>Reads and writes the ground grids of all settlements (<c>settlements_ground.bin</c> next to the terrain tiles).</summary>
 /// <remarks>
 /// Layout (little endian): magic <c>SGRD</c>, format (int), count (int); then per grid: ID (length-prefixed UTF-8), origin X and Z (double),
-/// spacing (double), side (int), side x side heights (float).
+/// spacing (double), side (int), side x side heights (float), then side x side water flags (byte, 0 or 1).
 /// </remarks>
 public static class GroundGridFile
 {
@@ -17,7 +17,7 @@ public static class GroundGridFile
     public const string FileName = "settlements_ground.bin";
 
     /// <summary>The format version written and accepted.</summary>
-    public const int CurrentFormat = 1;
+    public const int CurrentFormat = 2;
 
     private const uint Magic = 0x44524753; // "SGRD" read as a little-endian uint
 
@@ -43,6 +43,11 @@ public static class GroundGridFile
                 foreach (float h in g.Heights)
                 {
                     writer.Write(h);
+                }
+
+                foreach (bool w in g.Water)
+                {
+                    writer.Write(w ? (byte)1 : (byte)0);
                 }
             }
         }
@@ -88,7 +93,13 @@ public static class GroundGridFile
                     heights[k] = reader.ReadSingle();
                 }
 
-                result[id] = new GroundGrid(id, originX, originZ, spacing, side, heights);
+                var water = new bool[heights.Length];
+                for (int k = 0; k < water.Length; k++)
+                {
+                    water[k] = reader.ReadByte() != 0;
+                }
+
+                result[id] = new GroundGrid(id, originX, originZ, spacing, side, heights, water);
             }
 
             return result;

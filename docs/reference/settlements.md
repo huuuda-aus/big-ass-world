@@ -9,7 +9,7 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
   "format": 1,
   "world": "world.main",
   "seed": 1,
-  "generators": ["settlement.placement v5"],
+  "generators": ["settlement.placement v6"],
   "settlements": [
     {
       "id": "settlement.city_1",
@@ -26,6 +26,7 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
       "cathedral": true,
       "centre": "Fountain",
       "highland": false,
+      "layout": "Radial",
       "services": [
         {"id": "service.inn", "name": "Inn", "count": 2, "wards": ["Merchant", "Craftsmen"], "near": "Gate",
          "outsideWall": false, "minArea": 80, "foundation": null, "mainRoom": "Kitchen"}
@@ -44,7 +45,7 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
 | `format` | File format version; currently 1. Other values are rejected (`SETL006`). |
 | `world`, `seed` | The world map ID and the world seed the settlements were placed with. |
 | `generators` | Generator versions that produced the list. |
-| `id` | Stable identifier. Cities are `settlement.city_N`, the mountain city `settlement.mountain_N`, towns `settlement.town_N`, hamlets `settlement.hamlet_N`. |
+| `id` | Stable identifier. Cities are `settlement.city_N`, the river city `settlement.river_N`, the mountain city `settlement.mountain_N`, towns `settlement.town_N`, hamlets `settlement.hamlet_N`. |
 | `name` | Display name, generated from syllables (`Thornford`, `Oakley`); a placeholder until names are designed. |
 | `tier` | `City`, `Town` or `Hamlet`. The fortification follows from it: stone wall, wooden palisade, none ([ADR 0016](../decisions/0016-fortification-by-tier-and-hamlets.md)). |
 | `x`, `z` | World position of the central square in metres. |
@@ -52,6 +53,7 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
 | `groundHeight` | Mean height of the natural ground under the city, metres above sea level; the city's origin. The ground itself is not level: see `settlements_ground.bin` below. |
 | `wallRadius` | Distance from the centre to the farthest wall corner. |
 | `padRadius` | Radius of the area the site was surveyed over (wall radius plus 30 m); the load distance is measured from it. |
+| `layout` | `Radial` (wards round a square) or `Cross` (two streets crossing at a square, houses thinning out along the arms; [ADR 0017](../decisions/0017-layouts-waterfront-and-second-rows.md)). Only settlements of at most 24 houses (the hamlets) are crosses. Optional; default `Radial`. |
 | `highland` | `true` for a mountain city (steeper, higher ground allowed). Optional; default `false`. |
 | `services` | The [service buildings](content/service.md) this city must contain, copied from the content records so the game needs no content loader. Each: `id`, `name`, `count`, `wards` (the ward names the generator uses), `near`, `outsideWall`, `minArea`, `foundation` (or `null`), `mainRoom`. Optional; default none. |
 | `citySeed`, `maxBuildings`, `cathedral`, `centre` | The inputs of `CityGenerator.Generate` (`Settlement.ToCityParams()`). `centre` is `None`, `Fountain`, `Pyre`, `ExecutionBlock` or `Market`. |
@@ -62,11 +64,11 @@ A city is generated in its own plane (metres, central square at the origin, plan
 
 ## Settings
 
-`SettlementSettings` (all placeholders): 3 cities of at most 250 houses (wall radius about 180 m), 1 mountain city, 5 towns of at most 50 houses (about 100 m) and 5 hamlets of at most 12 (lowland, below 200 m); minimum spacing 2,500 m; pad margin 30 m and blend 100 m; candidate grid 128 m; height range 15 to 320 m; relief limit 0.2 x radius; mountain city: 330 to 1,100 m, relief limit 0.35 x radius; `FlattenStrength` 0 (0 builds on the natural ground, 1 levels the pad as before ADR 0014); water clearance 40 m; river bonus 0.25 within 1,500 m; world edge margin 400 m.
+`SettlementSettings` (all placeholders): 3 cities and 1 river city (planned at 1.35 times the cap) of at most 250 houses (wall radius about 180 m), 1 mountain city, 5 towns of at most 50 houses (about 100 m) and 5 hamlets of at most 12 (lowland, below 200 m); minimum spacing 2,500 m; pad margin 30 m and blend 100 m; candidate grid 128 m; height range 15 to 320 m; relief limit 0.2 x radius; mountain city: 330 to 1,100 m, relief limit 0.35 x radius; `FlattenStrength` 0 (0 builds on the natural ground, 1 levels the pad as before ADR 0014); the centre (30 percent of the pad radius plus 40 m) must be dry, a waterfront bonus of 1.2 when water reaches the wall, a river bonus of 0.25 within 1,500 m, `CrossShare` 1 (all small settlements are crosses), hamlets of 8 to 22 houses chosen per hamlet, a palisade only for towns of more than 24 houses; world edge margin 400 m.
 
 # Baked ground (`settlements_ground.bin`)
 
-The terrain under each settlement after the roads were graded, on an 8 m grid reaching 150 m beyond the wall, so the game can build a city on a worker thread without asking the terrain engine. Code: `GroundGridFile`, `GroundGrid`; the game reads it into a `SettlementGround`. Little endian: magic `SGRD`, format (int, currently 1), count (int); then for each settlement its ID (length-prefixed UTF-8), origin X and Z of the first grid point (double), spacing (double), points per side (int) and side x side heights in metres above sea level (float), row by row. About 360 KB for 9 settlements. If it is missing the game warns and builds cities on level ground.
+The terrain under each settlement after the roads were graded, on an 8 m grid reaching 150 m beyond the wall, so the game can build a city on a worker thread without asking the terrain engine. Code: `GroundGridFile`, `GroundGrid`; the game reads it into a `SettlementGround`. Little endian: magic `SGRD`, format (int, currently 2; format 1 files are rejected, re-bake), count (int); then for each settlement its ID (length-prefixed UTF-8), origin X and Z of the first grid point (double), spacing (double), points per side (int), side x side heights in metres above sea level (float), row by row, then side x side water flags (byte, 1 for river, lake or sea). About 440 KB for 13 settlements. If it is missing the game warns and builds cities on level ground.
 
 # Baked roads (`roads.json`)
 

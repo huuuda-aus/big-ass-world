@@ -13,7 +13,6 @@ public static class HeightPreview
     private const double ShallowWaterDepthFraction = 1.0;
     private const double HalfDivisor = 2.0;
     private const int BorderWhiteShare = 70; // percent of the way toward white that a region border pixel is pushed
-    private const double WideRiverFlowKm2 = 20.0;
 
 
     /// <summary>Renders the field, sub-sampling so neither side exceeds a pixel limit.</summary>
@@ -130,7 +129,7 @@ public static class HeightPreview
             {
                 RiverPoint a = river.Points[i - 1];
                 RiverPoint b = river.Points[i];
-                int radius = b.FlowKm2 >= WideRiverFlowKm2 ? 1 : 0;
+                int radius = (int)Math.Round(Math.Max(a.HalfWidth, b.HalfWidth) / metresPerPixel); // the real width, so estuaries and pools show
                 Line(
                     pixels,
                     width,

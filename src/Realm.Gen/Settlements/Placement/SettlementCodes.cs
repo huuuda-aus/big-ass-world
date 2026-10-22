@@ -15,11 +15,14 @@ public static class SettlementCodes
     /// <summary>The ground under a settlement is steeper than allowed, or outside the allowed height range.</summary>
     public const string PadUnsuitable = "SETL004";
 
-    /// <summary>A river or lake reaches a settlement's pad.</summary>
+    /// <summary>A river or lake reaches the centre of a settlement (the inner part of its pad; the outer wards may touch water).</summary>
     public const string WaterOnPad = "SETL005";
 
     /// <summary>The settlements file is damaged or has an unsupported format.</summary>
     public const string ManifestInvalid = "SETL006";
+
+    /// <summary>A river city has no river near its centre.</summary>
+    public const string RiverCityWithoutRiver = "SETL010";
 
     /// <summary>A settlement has fewer of a service building than it must contain.</summary>
     public const string ServiceMissing = "SETL007";

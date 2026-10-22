@@ -100,6 +100,30 @@ public class RiverExtractorTests
     }
 
     [Fact]
+    public void WithRiversReachWater_ARiverThatLosesItsWaterGetsThinButKeepsRunningToTheEdge()
+    {
+        const int Side = 11;
+        float[] h = Grid(Side, (x, _) => x * 10f); // drains west
+        double[] rain = Uniform(Side * Side, 0);
+        rain[(5 * Side) + 9] = 4;
+        double[] loss = Uniform(Side * Side, 0);
+        for (int x = 0; x < 6; x++)
+        {
+            loss[(5 * Side) + x] = 0.9;
+        }
+
+        (FlowRouting r, double[] flow) = Route(h, Side, rain, loss);
+
+        River dries = Assert.Single(RiverExtractor.ExtractRivers(r, h, flow, 1.0, -1000));
+        River reaches = Assert.Single(RiverExtractor.ExtractRivers(r, h, flow, 1.0, -1000, riversReachWater: true));
+        Assert.Equal(RiverMouth.Dried, dries.Mouth);
+        Assert.Equal(RiverMouth.WorldEdge, reaches.Mouth);
+        Assert.Equal(-5000.0, reaches.Points[^1].X, 9); // all the way to the west edge
+        Assert.True(reaches.Points.Count > dries.Points.Count);
+        Assert.True(reaches.Points[^1].FlowKm2 < 1.0, "the water that is left is below the river threshold: a trickle, not a river");
+    }
+
+    [Fact]
     public void RiverLoss_CanDryARiverUp()
     {
         const int Side = 11;

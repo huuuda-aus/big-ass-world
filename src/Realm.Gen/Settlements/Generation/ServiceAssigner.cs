@@ -48,13 +48,17 @@ public static class ServiceAssigner
     /// <param name="gates">The gate positions.</param>
     /// <param name="services">The services to place.</param>
     /// <param name="rng">The random source for ties and jitter.</param>
+    /// <param name="water">Where the water is; farm buildings are not built in it. Null for a dry site.</param>
+    /// <param name="waterBuffer">Least distance from a farm building to the water, in metres.</param>
     public static void Assign(
         IReadOnlyList<Patch> cityPatches,
         IReadOnlyList<Patch> allPatches,
         IReadOnlyList<Vec2> wall,
         IReadOnlyList<Vec2> gates,
         IReadOnlyList<ServiceSpec> services,
-        Rng rng)
+        Rng rng,
+        IWaterSampler? water = null,
+        double waterBuffer = 0)
     {
         ArgumentNullException.ThrowIfNull(cityPatches);
         ArgumentNullException.ThrowIfNull(allPatches);
@@ -78,7 +82,7 @@ public static class ServiceAssigner
             {
                 if (spec.OutsideWall)
                 {
-                    PlaceOutside(spec, outsidePatches, gates, rng);
+                    PlaceOutside(spec, outsidePatches, gates, rng, water, waterBuffer);
                 }
                 else
                 {
@@ -182,14 +186,14 @@ public static class ServiceAssigner
             .ToList();
     }
 
-    private static void PlaceOutside(ServiceSpec spec, Queue<Patch> patches, IReadOnlyList<Vec2> gates, Rng rng)
+    private static void PlaceOutside(ServiceSpec spec, Queue<Patch> patches, IReadOnlyList<Vec2> gates, Rng rng, IWaterSampler? water, double waterBuffer)
     {
         // Skip patches it does not fit in; a patch that fits is used once.
         int tries = patches.Count;
         while (tries-- > 0)
         {
             Patch patch = patches.Dequeue();
-            ConvexPoly? footprint = FitFarm(patch, spec.MinAreaMeters2, gates, rng);
+            ConvexPoly? footprint = FitFarm(patch, spec.MinAreaMeters2, gates, rng, water, waterBuffer);
             if (footprint is null)
             {
                 patches.Enqueue(patch);
@@ -204,7 +208,7 @@ public static class ServiceAssigner
     }
 
     // A rectangle on the patch whose front (edge 0) faces the city centre, shrunk until it fits inside the patch with a margin.
-    private static ConvexPoly? FitFarm(Patch patch, double minArea, IReadOnlyList<Vec2> gates, Rng rng)
+    private static ConvexPoly? FitFarm(Patch patch, double minArea, IReadOnlyList<Vec2> gates, Rng rng, IWaterSampler? water, double waterBuffer)
     {
         ConvexPoly? inner = patch.Shape.Inset(Enumerable.Repeat(FarmMargin, patch.Shape.Count).ToArray());
         if (inner is null)
@@ -236,7 +240,7 @@ public static class ServiceAssigner
                 corners = new[] { corners[1], corners[0], corners[3], corners[2] };
             }
 
-            if (corners.All(c => Inside(inner, c)))
+            if (corners.All(c => Inside(inner, c)) && (water is null || !CityGenerator.TouchesWater(new ConvexPoly(corners, new[] { 0, 0, 0, 0 }), water, waterBuffer)))
             {
                 return new ConvexPoly(corners, new[] { 1, 0, 0, 0 });
             }

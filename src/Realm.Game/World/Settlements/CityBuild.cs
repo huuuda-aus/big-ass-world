@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Godot;
 using Realm.Game.Bridge;
 using Realm.Gen.Props;
@@ -19,6 +20,11 @@ namespace Realm.Game.World.Settlements;
 /// <param name="Site">Where the floor sits on the ground and what holds it up; the building's meshes are placed at its <see cref="BuildingSite.BaseY"/>.</param>
 public sealed record CityBuilding(Building Building, Interior Interior, ArrayMesh Far, double CentreX, double CentreY, BuildingSite Site);
 
+/// <summary>A bridge over water inside the city: its mesh and walkable collision.</summary>
+/// <param name="Mesh">The visible bridge.</param>
+/// <param name="Shape">Collision for the roadway, parapets and abutments.</param>
+public sealed record CityBridgeMesh(ArrayMesh Mesh, ConcavePolygonShape3D Shape);
+
 /// <summary>The meshes of a centrepiece as Godot resources.</summary>
 public sealed record CityLandmark(
     ArrayMesh Solid, ConcavePolygonShape3D SolidShape, ArrayMesh? Water, ArrayMesh? Flames, Vector3? FireLight, Vector3? JetOrigin);
@@ -29,7 +35,7 @@ public sealed record CityLandmark(
 /// </summary>
 public sealed class CityBuild
 {
-    private CityBuild(Settlement settlement, City city, CityBuilding[] buildings, ArrayMesh? wall, ConcavePolygonShape3D? wallShape, CityLandmark? landmark, double landmarkBaseY)
+    private CityBuild(Settlement settlement, City city, CityBuilding[] buildings, ArrayMesh? wall, ConcavePolygonShape3D? wallShape, CityLandmark? landmark, double landmarkBaseY, CityBridgeMesh[] bridges)
     {
         Settlement = settlement;
         City = city;
@@ -38,6 +44,7 @@ public sealed class CityBuild
         WallShape = wallShape;
         Landmark = landmark;
         LandmarkBaseY = landmarkBaseY;
+        Bridges = bridges;
     }
 
     /// <summary>Where and what the city is.</summary>
@@ -58,6 +65,9 @@ public sealed class CityBuild
     /// <summary>The centrepiece, or null.</summary>
     public CityLandmark? Landmark { get; }
 
+    /// <summary>The bridges where streets cross water inside the city (empty for a dry city).</summary>
+    public CityBridgeMesh[] Bridges { get; }
+
     /// <summary>Height of the centrepiece's base above the city origin, in metres.</summary>
     public double LandmarkBaseY { get; }
 
@@ -69,7 +79,8 @@ public sealed class CityBuild
     {
         ArgumentNullException.ThrowIfNull(settlement);
         IGroundSampler ground = terrain is null ? FlatGround.Instance : new SettlementGround(settlement, terrain);
-        City city = CityGenerator.Generate(settlement.ToCityParams());
+        IWaterSampler? water = ground as IWaterSampler; // the baked ground grid also knows where the rivers and lakes are
+        City city = CityGenerator.Generate(settlement.ToCityParams(water));
 
         var list = new System.Collections.Generic.List<CityBuilding>();
         foreach (Building building in city.AllBuildings)
@@ -81,8 +92,12 @@ public sealed class CityBuild
             list.Add(new CityBuilding(building, interior, far, centre.X, centre.Y, site));
         }
 
-        CityMeshes meshes = CityMesher.Build(city, settlement.CitySeed, ground, settlement.Fortification);
+        CityMeshes meshes = CityMesher.Build(city, settlement.CitySeed, ground, settlement.Fortification, water);
         PropMesh? wall = meshes.Wall;
+        CityBridgeMesh[] bridges = city.Bridges
+            .Select(b => ArchBridgeMesher.Build(b, ground))
+            .Select(m => new CityBridgeMesh(PropMeshConverter.ToArrayMesh(m), PropMeshConverter.ToCollisionShape(m)))
+            .ToArray();
         CityLandmark? landmark = null;
         if (meshes.Landmark is { } l)
         {
@@ -102,6 +117,7 @@ public sealed class CityBuild
             wall is null ? null : PropMeshConverter.ToArrayMesh(wall),
             wall is null ? null : PropMeshConverter.ToCollisionShape(wall),
             landmark,
-            meshes.LandmarkBaseY);
+            meshes.LandmarkBaseY,
+            bridges);
     }
 }

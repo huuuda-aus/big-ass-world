@@ -25,6 +25,9 @@ public sealed class City
     /// <summary>The centrepiece of the central square, or null when it is left empty.</summary>
     public Landmark? Landmark { get; }
 
+    /// <summary>Bridges where the streets cross water inside the city; empty for a dry site.</summary>
+    public IReadOnlyList<CityBridge> Bridges { get; }
+
     /// <summary>Every building, inside and outside the wall, in patch order.</summary>
     public IEnumerable<Building> AllBuildings
     {
@@ -48,10 +51,12 @@ public sealed class City
     /// <param name="gates">Gate positions.</param>
     /// <param name="streets">Streets.</param>
     /// <param name="landmark">Centrepiece of the central square, or null.</param>
+    /// <param name="bridges">Bridges over water inside the city, or null for none.</param>
     public City(int seed, IReadOnlyList<Patch> patches, IReadOnlyList<Patch> cityPatches,
         IReadOnlyList<Vec2> wall, IReadOnlyList<Vec2> gates, IReadOnlyList<Street> streets,
-        Landmark? landmark = null)
+        Landmark? landmark = null, IReadOnlyList<CityBridge>? bridges = null)
     {
+        Bridges = bridges ?? System.Array.Empty<CityBridge>();
         Landmark = landmark;
         Seed = seed;
         Patches = patches;

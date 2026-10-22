@@ -14,6 +14,7 @@ public static class RoadValidator
 {
     private const double BedToleranceMeters = 1.0;
     private const double SharedCellMeters = 16;
+    private const int HairpinPoints = 3; // points of one road this close in index (24 m) are the same stretch; further apart and within a width of each other is a hairpin crossing itself
 
     /// <summary>Validates roads on the carved terrain. The surface match (ROAD003) is only checked when the vertex spacing is no coarser than the road width.</summary>
     /// <param name="roads">The roads.</param>
@@ -39,32 +40,34 @@ public static class RoadValidator
         settings ??= new RoadSettings();
         var raster = new RiverRaster(carved.WorldSizeMeters, network);
 
-        // Where two roads run together or cross, the later road's bed wins and the junction has no design yet (known issue 51), so those
-        // places are left out of the bed check; the cut and fill check still covers them.
-        var shared = new Dictionary<(int, int), List<(string Road, RoadPoint Point)>>();
+        // Where two roads run together or cross, or one road crosses itself in a hairpin, the later stretch's bed wins and the junction has
+        // no design yet (known issue 51), so those places are left out of the bed check; the cut and fill check still covers them.
+        var shared = new Dictionary<(int, int), List<(string Road, int Index, RoadPoint Point)>>();
         foreach (Road r in roads)
         {
-            foreach (RoadPoint p in r.Points)
+            for (int k = 0; k < r.Points.Count; k++)
             {
+                RoadPoint p = r.Points[k];
                 var cell = ((int)Math.Floor(p.X / SharedCellMeters), (int)Math.Floor(p.Z / SharedCellMeters));
-                if (!shared.TryGetValue(cell, out List<(string, RoadPoint)>? list))
+                if (!shared.TryGetValue(cell, out List<(string, int, RoadPoint)>? list))
                 {
-                    shared[cell] = list = new List<(string, RoadPoint)>();
+                    shared[cell] = list = new List<(string, int, RoadPoint)>();
                 }
 
-                list.Add((r.Id, p));
+                list.Add((r.Id, k, p));
             }
         }
 
-        bool SharedWithAnother(Road own, RoadPoint p)
+        bool SharedWithAnother(Road own, int index, RoadPoint p)
         {
             int cx = (int)Math.Floor(p.X / SharedCellMeters), cz = (int)Math.Floor(p.Z / SharedCellMeters);
             for (int dx = -1; dx <= 1; dx++)
             {
                 for (int dz = -1; dz <= 1; dz++)
                 {
-                    if (shared.TryGetValue((cx + dx, cz + dz), out List<(string Road, RoadPoint Point)>? list)
-                        && list.Any(o => o.Road != own.Id && Math.Abs(o.Point.X - p.X) < own.WidthMeters && Math.Abs(o.Point.Z - p.Z) < own.WidthMeters))
+                    if (shared.TryGetValue((cx + dx, cz + dz), out List<(string Road, int Index, RoadPoint Point)>? list)
+                        && list.Any(o => (o.Road != own.Id || Math.Abs(o.Index - index) > HairpinPoints)
+                            && Math.Abs(o.Point.X - p.X) < own.WidthMeters && Math.Abs(o.Point.Z - p.Z) < own.WidthMeters))
                     {
                         return true;
                     }
@@ -102,7 +105,7 @@ public static class RoadValidator
                     continue;
                 }
 
-                double bed = SharedWithAnother(road, p) ? 0 : Math.Abs(carved.Sample(p.X, p.Z) - p.Height);
+                double bed = SharedWithAnother(road, i, p) ? 0 : Math.Abs(carved.Sample(p.X, p.Z) - p.Height);
                 if (bed > worstBed)
                 {
                     worstBed = bed;

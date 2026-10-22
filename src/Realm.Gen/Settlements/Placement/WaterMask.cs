@@ -33,7 +33,7 @@ public sealed class WaterMask
             for (int i = 0; i < river.Points.Count; i++)
             {
                 RiverPoint a = river.Points[i];
-                Mark(a.X, a.Z);
+                MarkDisc(a.X, a.Z, a.HalfWidth);
                 if (i + 1 < river.Points.Count)
                 {
                     RiverPoint b = river.Points[i + 1];
@@ -42,7 +42,7 @@ public sealed class WaterMask
                     for (int s = 1; s < steps; s++)
                     {
                         double t = s / (double)steps;
-                        Mark(a.X + ((b.X - a.X) * t), a.Z + ((b.Z - a.Z) * t));
+                        MarkDisc(a.X + ((b.X - a.X) * t), a.Z + ((b.Z - a.Z) * t), a.HalfWidth + ((b.HalfWidth - a.HalfWidth) * t));
                     }
                 }
             }
@@ -88,6 +88,24 @@ public sealed class WaterMask
         }
 
         return false;
+    }
+
+    // Marks every cell whose centre lies within the river's half width of a point on its line.
+    private void MarkDisc(double x, double z, double radius)
+    {
+        int x0 = CellOf(x - radius), x1 = CellOf(x + radius), z0 = CellOf(z - radius), z1 = CellOf(z + radius);
+        for (int cz = z0; cz <= z1; cz++)
+        {
+            for (int cx = x0; cx <= x1; cx++)
+            {
+                double dx = (-_half + ((cx + 0.5) * CellMeters)) - x;
+                double dz = (-_half + ((cz + 0.5) * CellMeters)) - z;
+                if (((dx * dx) + (dz * dz) <= radius * radius || (cx == CellOf(x) && cz == CellOf(z))) && cx >= 0 && cz >= 0 && cx < _side && cz < _side)
+                {
+                    _water[(cz * _side) + cx] = true;
+                }
+            }
+        }
     }
 
     private int CellOf(double world) => (int)Math.Floor((world + _half) / CellMeters);

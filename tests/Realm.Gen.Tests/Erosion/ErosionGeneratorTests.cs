@@ -93,7 +93,7 @@ public class ErosionGeneratorTests
         var flat = RuggedLand(relief: 0); // no noise, so no depressions to fill
         var (source, _, _, _) = World(flat);
 
-        ErodedTerrain result = Erode(flat, Settings(s => s with { Iterations = 0, ThermalIterations = 0 }));
+        ErodedTerrain result = Erode(flat, Settings(s => s with { Iterations = 0, ThermalIterations = 0, CutRiverChannels = false }));
 
         Assert.Equal(source.Heights.ToArray(), result.Field.Heights.ToArray());
         Assert.Equal(0, result.MaxCarveDepthMeters);
@@ -105,7 +105,7 @@ public class ErosionGeneratorTests
         var flat = RuggedLand(erodibility: 0, relief: 0);
         var (source, _, _, _) = World(flat);
 
-        ErodedTerrain result = Erode(flat, Settings(s => s with { ThermalIterations = 0 }));
+        ErodedTerrain result = Erode(flat, Settings(s => s with { ThermalIterations = 0, CutRiverChannels = false }));
 
         Assert.Equal(source.Heights.ToArray(), result.Field.Heights.ToArray());
         Assert.NotEmpty(result.Network.Rivers);
@@ -117,7 +117,7 @@ public class ErosionGeneratorTests
         var land = RuggedLand(relief: 150);
         var (source, _, _, _) = World(land, wavelength: SteepWavelength);
         // Catchments in this 1 km test world are tiny (carving scales with strength times the square root of the flow), so use a strong setting.
-        ErosionSettings noThermal = Settings(s => s with { ThermalIterations = 0, MinLakeAreaKm2 = 0, LakeMinDepthMeters = 2, Strength = 60 });
+        ErosionSettings noThermal = Settings(s => s with { ThermalIterations = 0, MinLakeAreaKm2 = 0, LakeMinDepthMeters = 2, Strength = 60, CutRiverChannels = false });
 
         // Keep every basin deeper than the lake depth; only shallower dents are filled in, so nothing rises by more than that.
         ErodedTerrain result = Erode(land, noThermal, wavelength: SteepWavelength);
@@ -176,7 +176,7 @@ public class ErosionGeneratorTests
     [Fact]
     public void NoRainfall_MeansNoRiversAndNoCarving()
     {
-        ErodedTerrain dry = Erode(RuggedLand(rainfall: 0), Settings(s => s with { ThermalIterations = 0 }));
+        ErodedTerrain dry = Erode(RuggedLand(rainfall: 0), Settings(s => s with { ThermalIterations = 0, CutRiverChannels = false }));
 
         Assert.Empty(dry.Network.Rivers);
         Assert.Equal(0, dry.MaxCarveDepthMeters);

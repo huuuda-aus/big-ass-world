@@ -1,5 +1,4 @@
 using System;
-using Realm.Gen.Bake;
 using Realm.Gen.Terrain.Erosion;
 
 namespace Realm.Gen.Settlements.Roads;
@@ -36,7 +35,7 @@ public sealed class RiverRaster
             {
                 RiverPoint a = river.Points[i - 1];
                 RiverPoint b = river.Points[i];
-                PaintSegment(a.X, a.Z, b.X, b.Z, TerrainBaker.RiverHalfWidthMeters(b.FlowKm2));
+                PaintSegment(a.X, a.Z, b.X, b.Z, a.HalfWidth, b.HalfWidth);
             }
         }
 
@@ -69,9 +68,9 @@ public sealed class RiverRaster
         return cx >= 0 && cz >= 0 && cx < _side && cz < _side && grid[(cz * _side) + cx];
     }
 
-    private void PaintSegment(double ax, double az, double bx, double bz, double halfWidth)
+    private void PaintSegment(double ax, double az, double bx, double bz, double halfWidthA, double halfWidthB)
     {
-        double reach = halfWidth + (CellMeters / 2);
+        double reach = Math.Max(halfWidthA, halfWidthB) + (CellMeters / 2);
         int x0 = Math.Max(0, (int)Math.Floor((Math.Min(ax, bx) - reach + _half) / CellMeters));
         int x1 = Math.Min(_side - 1, (int)Math.Ceiling((Math.Max(ax, bx) + reach + _half) / CellMeters));
         int z0 = Math.Max(0, (int)Math.Floor((Math.Min(az, bz) - reach + _half) / CellMeters));
@@ -88,7 +87,8 @@ public sealed class RiverRaster
                 double t = lengthSquared <= 0 ? 0 : Math.Clamp((((px - ax) * dx) + ((pz - az) * dz)) / lengthSquared, 0, 1);
                 double qx = ax + (dx * t);
                 double qz = az + (dz * t);
-                if (Math.Sqrt(((px - qx) * (px - qx)) + ((pz - qz) * (pz - qz))) <= reach)
+                double widthHere = halfWidthA + ((halfWidthB - halfWidthA) * t) + (CellMeters / 2);
+                if (Math.Sqrt(((px - qx) * (px - qx)) + ((pz - qz) * (pz - qz))) <= widthHere)
                 {
                     _river[(cz * _side) + cx] = true;
                 }

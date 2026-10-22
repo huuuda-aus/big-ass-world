@@ -16,7 +16,7 @@ public static class ServiceValidator
 
     /// <summary>Checks one city.</summary>
     /// <param name="settlement">The settlement (its <see cref="Settlement.ServiceList"/> is what is required).</param>
-    /// <param name="city">The city generated from <see cref="Settlement.ToCityParams"/>.</param>
+    /// <param name="city">The city generated from <see cref="Settlement.ToCityParams()"/>.</param>
     /// <param name="report">Receives <c>SETL007</c> to <c>SETL009</c> issues.</param>
     public static void Validate(Settlement settlement, City city, ValidationReport report)
     {

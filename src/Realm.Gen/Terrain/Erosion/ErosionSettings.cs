@@ -46,6 +46,18 @@ public sealed record ErosionSettings
     /// <summary>Flow in effective km2 at which a vertex becomes part of a river; positive.</summary>
     public double RiverThresholdKm2 { get; init; } = DefaultRiverThresholdKm2;
 
+    /// <summary>
+    /// Whether rivers always reach the sea, a lake or the world edge: a river that loses water in a dry biome gets thinner but does not
+    /// dry up halfway. Turn off to let rivers end where their flow falls below the threshold.
+    /// </summary>
+    public bool RiversReachWater { get; init; } = true;
+
+    /// <summary>
+    /// Whether to give rivers a falling water level and cut a bed below it (and cut the lake floors below the lake level), so the water
+    /// stands in a channel instead of floating on the slope. Turn off for the old painted-on rivers.
+    /// </summary>
+    public bool CutRiverChannels { get; init; } = true;
+
     /// <summary>Minimum fill depth in metres for a basin to count as a lake; positive (0 would make every vertex a lake).</summary>
     public double LakeMinDepthMeters { get; init; } = DefaultLakeMinDepthMeters;
 

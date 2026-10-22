@@ -130,6 +130,18 @@ public class SurfaceTextureGeneratorTests
     }
 
     [Fact]
+    public void Water_IsBluish_Glossy_AndTileable()
+    {
+        SurfaceTexture water = SurfaceTextureGenerator.Water(Seed);
+        double[] mean = MeanRgb(water);
+
+        Assert.True(mean[2] > mean[0] + 0.15, "water should be blue");
+        Assert.True(water.NormalRoughness[3] < 100, "water should be glossy");
+        Assert.Equal(water.AlbedoHeight, SurfaceTextureGenerator.Water(Seed).AlbedoHeight);
+        Assert.NotEqual(SurfaceTextureGenerator.Grass(Seed).AlbedoHeight, water.AlbedoHeight);
+    }
+
+    [Fact]
     public void Golden_ChecksumsAreStable()
     {
         Assert.Equal(GrassGolden, Fnv(SurfaceTextureGenerator.Grass(Seed)));

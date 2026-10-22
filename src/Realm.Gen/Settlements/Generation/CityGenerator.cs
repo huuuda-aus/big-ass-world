@@ -19,9 +19,23 @@ public static class CityGenerator
     /// <summary>Houses per ward at the default settings, roughly; the first guess of the ward count for a house cap.</summary>
     private const int GuessBuildingsPerWard = 13;
 
+    private const int BufferDirections = 8;
+
     private const int OnStreetTag = 1;
     private const double MinFrontage = 3.5;
     private const double MaxLotDepth = 22;
+
+    /// <summary>Rows of houses in a block (the second row faces a lane behind the first).</summary>
+    private const int RowCount = 2;
+
+    /// <summary>Depth of a row of lots in a rich ward, in metres.</summary>
+    private const double RowDepth = 10;
+
+    /// <summary>Depth of a row of lots in a slum ward, in metres.</summary>
+    private const double SlumRowDepth = 6.5;
+
+    /// <summary>Width of the lane between two rows, in metres.</summary>
+    private const double LaneWidth = 2.5;
 
     /// <summary>Each side of a house is set back this far from the lot line; neighbours stand twice this apart.</summary>
     private const double SideGap = 1.4;
@@ -38,8 +52,13 @@ public static class CityGenerator
     /// <remarks>Determinism: the same <paramref name="p"/> always gives the same city on every machine (all randomness comes from <see cref="Rng"/>). Thread-safety: pure.</remarks>
     public static City Generate(CityParams p)
     {
-        if (p.CityPatchCount is int fixedWards) return Build(p, fixedWards, p.MaxBuildings);
-        if (p.MaxBuildings is not int max) return Build(p, CityParams.DefaultWardCount, null);
+        if (p.Layout == SettlementLayout.Cross)
+        {
+            return CrossLayoutGenerator.Generate(p);
+        }
+
+        if (p.CityPatchCount is int fixedWards) return Build(p, fixedWards, p.MaxBuildings, true);
+        if (p.MaxBuildings is not int max) return Build(p, CityParams.DefaultWardCount, null, true);
 
         // Size by whole wards, not by trimming houses: build with n wards and keep the largest n that holds at most `max` houses. The wall
         // is the outline of those wards, so it hugs the outermost houses instead of enclosing wards trimmed bare (a city that is too big
@@ -51,7 +70,7 @@ public static class CityGenerator
         {
             if (!built.TryGetValue(wards, out City? city))
             {
-                built[wards] = city = Build(p, wards, null);
+                built[wards] = city = Build(p, wards, null, false); // sized on the dry plan: water never changes the ward count
             }
 
             return city;
@@ -59,7 +78,7 @@ public static class CityGenerator
 
         if (BuildingCount(Try(3)) > max)
         {
-            return Build(p, 3, max); // even the smallest city is over the cap: trim its outermost houses
+            return Build(p, 3, max, true); // even the smallest city is over the cap: trim its outermost houses
         }
 
         // Start from a guess and walk to the largest n that fits (a handful of builds).
@@ -79,14 +98,72 @@ public static class CityGenerator
             }
         }
 
-        return Try(wards);
+        // The dry plan decided the size; build it once more with the water known (the same plan, minus the houses in water).
+        return p.Water is null ? Try(wards) : Build(p, wards, null, true);
     }
 
 
+    // A building that touches water (a corner, the middle of a side, or the centre) is dropped.
+    internal static void RemoveBuildingsInWater(IEnumerable<Patch> cityPatches, IWaterSampler water, double buffer)
+    {
+        foreach (Patch patch in cityPatches)
+        {
+            patch.Buildings.RemoveAll(b => TouchesWater(b.Footprint, water, buffer));
+        }
+    }
+
+    /// <summary>Whether any corner, side midpoint or the centre of a footprint is over water, or within <paramref name="buffer"/> metres of it.</summary>
+    internal static bool TouchesWater(ConvexPoly footprint, IWaterSampler water, double buffer = 0)
+    {
+        Vec2 centre = footprint.Centroid;
+        if (NearWater(water, centre, buffer))
+        {
+            return true;
+        }
+
+        for (int i = 0; i < footprint.Count; i++)
+        {
+            Vec2 a = footprint.Points[i];
+            Vec2 mid = Vec2.Lerp(a, footprint.EdgeEnd(i), 0.5);
+            if (NearWater(water, a, buffer) || NearWater(water, mid, buffer))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Water at the point or anywhere on a ring of the buffer's radius round it (eight directions).
+    private static bool NearWater(IWaterSampler water, Vec2 p, double buffer)
+    {
+        if (water.IsWater(p.X, p.Y))
+        {
+            return true;
+        }
+
+        if (buffer <= 0)
+        {
+            return false;
+        }
+
+        for (int k = 0; k < BufferDirections; k++)
+        {
+            double angle = 2 * Math.PI * k / BufferDirections;
+            if (water.IsWater(p.X + (buffer * Math.Cos(angle)), p.Y + (buffer * Math.Sin(angle))))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static int BuildingCount(City city) => city.CityPatches.Sum(x => x.Buildings.Count);
 
-    private static City Build(CityParams p, int wardCount, int? maxBuildings)
+    private static City Build(CityParams p, int wardCount, int? maxBuildings, bool useWater)
     {
+        IWaterSampler? water = useWater ? p.Water : null;
         var rng = Rng.ForKey((ulong)(uint)p.Seed, "city");
         double halfSize = p.SiteSpacing * Math.Sqrt(p.SiteCount) * 2;
 
@@ -116,13 +193,19 @@ public static class CityGenerator
 
         if (maxBuildings is int cap) TrimBuildings(cityPatches, cap);
 
+        if (water is not null)
+        {
+            RemoveBuildingsInWater(cityPatches, water, p.WaterBufferMeters);
+        }
+
         // after the trim, so a service building is never trimmed away; its own random stream, so it never moves a house
-        ServiceAssigner.Assign(cityPatches, patches, wall, gates, p.Services, Rng.ForKey((ulong)(uint)p.Seed, "city", "services"));
+        ServiceAssigner.Assign(cityPatches, patches, wall, gates, p.Services, Rng.ForKey((ulong)(uint)p.Seed, "city", "services"), water, p.WaterBufferMeters);
 
         // placed last, so choosing a centrepiece never changes where a single house stands
         Landmark? landmark = PlaceLandmark(cityPatches[0], p.Centre, Rng.ForKey((ulong)(uint)p.Seed, "city", "landmark"));
 
-        return new City(p.Seed, patches, cityPatches, wall, gates, streets, landmark);
+        IReadOnlyList<CityBridge> bridges = water is null ? Array.Empty<CityBridge>() : CityBridgeFinder.Find(streets, water, p.MaxBridges);
+        return new City(p.Seed, patches, cityPatches, wall, gates, streets, landmark, bridges);
     }
 
     // ---- patches -------------------------------------------------------------------
@@ -291,7 +374,7 @@ public static class CityGenerator
     private const double SquareMargin = 4.0; // clear ground kept between a centrepiece and the streets
     private const double StallLength = 3.2, StallDepth = 2.2, StallPitch = 5.0, RingPitch = 5.5;
 
-    private static Landmark? PlaceLandmark(Patch square, CentrepieceKind kind, Rng rng)
+    internal static Landmark? PlaceLandmark(Patch square, CentrepieceKind kind, Rng rng)
     {
         if (kind == CentrepieceKind.None) return null;
 
@@ -361,7 +444,7 @@ public static class CityGenerator
     /// Removes houses until at most `cap` remain: outermost ward first (cityPatches is ordered by
     /// distance from the centre), farthest house first within it. The centre stays intact.
     /// </summary>
-    private static void TrimBuildings(Patch[] cityPatches, int cap)
+    internal static void TrimBuildings(Patch[] cityPatches, int cap)
     {
         int total = cityPatches.Sum(x => x.Buildings.Count);
         for (int i = cityPatches.Length - 1; i >= 0 && total > Math.Max(0, cap); i--)
@@ -413,12 +496,23 @@ public static class CityGenerator
         double minArea = MinLotArea(patch.Ward);
         if (patch.Ward == WardType.Cathedral)
         {
-            Split(inner, minArea, 0, patch, rng);
+            Split(inner, minArea, 0, patch, rng, MaxLotDepth);
             return;
         }
 
-        foreach (ConvexPoly region in FrontageRegions(inner))
-            Split(region, minArea, 0, patch, rng);
+        // Row 1 faces the street. Behind it runs a lane, and a second row of lots faces the lane from the middle of the block: the
+        // block is cut into rings, each ring a row of houses (up to RowCount), so the middle of a block is built on too.
+        double rowDepth = patch.Ward == WardType.Slum ? SlumRowDepth : RowDepth;
+        ConvexPoly? ring = inner;
+        for (int row = 0; row < RowCount && ring != null; row++)
+        {
+            foreach (ConvexPoly region in FrontageRegions(ring))
+                Split(region, minArea, 0, patch, rng, rowDepth);
+
+            double step = rowDepth + LaneWidth;
+            ConvexPoly? next = ring.Inset(Enumerable.Repeat(step, ring.Count).ToArray());
+            ring = next == null ? null : new ConvexPoly(next.Points, Enumerable.Repeat(OnStreetTag, next.Count));
+        }
     }
 
     /// <summary>
@@ -452,14 +546,14 @@ public static class CityGenerator
     /// of it. A lot with no frontage could not have a reachable door and is never produced.
     /// Lots deeper than <see cref="MaxLotDepth"/> are trimmed; the rest of the block stays yard.
     /// </summary>
-    private static void Split(ConvexPoly lot, double minArea, int depth, Patch patch, Rng rng)
+    private static void Split(ConvexPoly lot, double minArea, int depth, Patch patch, Rng rng, double maxDepth)
     {
         int front = FrontEdge(lot);
         if (front < 0) return;
 
         if (minArea != double.MaxValue)
         {
-            ConvexPoly? trimmed = TrimDepth(lot, front);
+            ConvexPoly? trimmed = TrimDepth(lot, front, maxDepth);
             if (trimmed == null) return;
             lot = trimmed;
             front = FrontEdge(lot);
@@ -486,8 +580,8 @@ public static class CityGenerator
             Emit(lot, patch, rng);
             return;
         }
-        Split(a, minArea, depth + 1, patch, rng);
-        Split(b, minArea, depth + 1, patch, rng);
+        Split(a, minArea, depth + 1, patch, rng, maxDepth);
+        Split(b, minArea, depth + 1, patch, rng, maxDepth);
     }
 
     /// <summary>Longest edge facing a street or alley, or -1 if the lot is landlocked.</summary>
@@ -504,12 +598,12 @@ public static class CityGenerator
         return best;
     }
 
-    private static ConvexPoly? TrimDepth(ConvexPoly lot, int front)
+    private static ConvexPoly? TrimDepth(ConvexPoly lot, int front, double maxDepth)
     {
         Vec2 inward = -lot.OutwardNormal(front);
         double depth = lot.Points.Max(p => Vec2.Dot(inward, p - lot.Points[front]));
-        if (depth <= MaxLotDepth) return lot;
-        return lot.Clip(lot.Points[front] + inward * MaxLotDepth, inward, 0);
+        if (depth <= maxDepth) return lot;
+        return lot.Clip(lot.Points[front] + inward * maxDepth, inward, 0);
     }
 
     /// <summary>

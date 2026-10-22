@@ -34,10 +34,22 @@ public static class CityMesher
     /// <summary>How far the wall and towers are sunk into the ground, in metres, so no gap shows on slopes.</summary>
     private const double WallSink = 2.0;
 
-    private const double LogSpacingMeters = 0.42;
-    private const float LogRadius = 0.22f;
-    private const float LogTipRadius = 0.05f;
-    private const int LogSides = 5;
+    /// <summary>How far a wall cut by water runs on into the water, in metres.</summary>
+    private const double WaterOverlapMeters = 2.5;
+
+    /// <summary>Spacing of the water tests along a wall, in metres.</summary>
+    private const double WaterStepMeters = 2;
+
+    private const float LogMinRadius = 0.18f;
+    private const float LogMaxRadius = 0.25f;
+    private const double LogSpacingFactor = 1.55; // centre spacing as a multiple of the radius; under 2 means neighbours overlap
+    private const float LogTaper = 0.9f;
+    private const int LogSides = 8;
+    private const int LogRows = 2;
+    private const double LogRowOffsetMeters = 0.2;
+    private const double LogRowStagger = 0.2;
+    private const double LogEndOverlapMeters = 0.2;
+    private const double LogSinkMeters = 0.6;
     private const double PalisadeHeight = 3.2;
     private const double PalisadeHeightSpread = 0.8;
     private const double WatchtowerSide = 3.4;
@@ -55,14 +67,15 @@ public static class CityMesher
     /// <param name="citySeed">The seed the city was generated from.</param>
     /// <param name="ground">The ground under the city; level ground when null.</param>
     /// <param name="fortification">What protects the settlement (a stone wall by default).</param>
+    /// <param name="water">Where the water is: the wall is cut where it would stand in water. Null for a dry site.</param>
     /// <returns>The meshes.</returns>
-    public static CityMeshes Build(City city, int citySeed, IGroundSampler? ground = null, Fortification fortification = Fortification.Stone)
+    public static CityMeshes Build(City city, int citySeed, IGroundSampler? ground = null, Fortification fortification = Fortification.Stone, IWaterSampler? water = null)
     {
         ArgumentNullException.ThrowIfNull(city);
         ground ??= FlatGround.Instance;
         double landmarkBase = city.Landmark is null ? 0 : ground.HeightAt(city.Landmark.Center.X, city.Landmark.Center.Y);
         return new CityMeshes(
-            Wall(city, ground, fortification),
+            Wall(city, ground, fortification, water),
             city.Landmark is null ? null : LandmarkMesher.Build(city.Landmark, citySeed, ground, landmarkBase),
             landmarkBase);
     }
@@ -71,8 +84,9 @@ public static class CityMesher
     /// <param name="city">The city.</param>
     /// <param name="ground">The ground under the city; level ground when null.</param>
     /// <param name="fortification">Stone wall with towers (default), wooden palisade with wooden gate towers, or none.</param>
+    /// <param name="water">Where the water is. The wall stops at the water (a river or lake is the defence there), running a couple of metres into it, with a tower at each cut end. Null for a dry site.</param>
     /// <returns>The mesh, or null when the city has no wall or the fortification is <see cref="Fortification.None"/>.</returns>
-    public static PropMesh? Wall(City city, IGroundSampler? ground = null, Fortification fortification = Fortification.Stone)
+    public static PropMesh? Wall(City city, IGroundSampler? ground = null, Fortification fortification = Fortification.Stone, IWaterSampler? water = null)
     {
         ArgumentNullException.ThrowIfNull(city);
         ground ??= FlatGround.Instance;
@@ -84,7 +98,7 @@ public static class CityMesher
 
         if (fortification == Fortification.Palisade)
         {
-            return Palisade(city, ground);
+            return Palisade(city, ground, water);
         }
 
         var b = new PropMeshBuilder();
@@ -105,7 +119,19 @@ public static class CityMesher
             double end = length - (gateVertices.Contains(next) ? GateWidthMeters / 2 : 0);
             if (end - start > 0.5)
             {
-                WallRun(b, ground, a + (dir * start), a + (dir * end));
+                foreach ((double u0, double u1, bool cutStart, bool cutEnd) in LandRuns(a, dir, start, end, water))
+                {
+                    WallRun(b, ground, a + (dir * (u0 - (cutStart ? WaterOverlapMeters : 0))), a + (dir * (u1 + (cutEnd ? WaterOverlapMeters : 0))));
+                    if (cutStart)
+                    {
+                        Tower(b, ground, a + (dir * (u0 - WaterOverlapMeters)), TowerRadius, height + (float)TowerRise);
+                    }
+
+                    if (cutEnd)
+                    {
+                        Tower(b, ground, a + (dir * (u1 + WaterOverlapMeters)), TowerRadius, height + (float)TowerRise);
+                    }
+                }
             }
 
             if (gateVertices.Contains(i))
@@ -114,7 +140,7 @@ public static class CityMesher
                 Tower(b, ground, a + (dir * (GateWidthMeters / 2)), GateTowerRadius, height + (float)GateTowerRise);
                 Tower(b, ground, a + (back * (GateWidthMeters / 2)), GateTowerRadius, height + (float)GateTowerRise);
             }
-            else
+            else if (water is null || !water.IsWater(a.X, a.Y))
             {
                 Tower(b, ground, a, TowerRadius, height + (float)TowerRise);
             }
@@ -123,10 +149,46 @@ public static class CityMesher
         return b.Build("city.wall");
     }
 
+    // The stretches of a wall edge (u along it from `a`) that stand on land. A stretch that ends because the water starts is flagged as
+    // cut at that end. Without water the whole edge is one stretch.
+    private static IEnumerable<(double Start, double End, bool CutStart, bool CutEnd)> LandRuns(Vec2 a, Vec2 dir, double start, double end, IWaterSampler? water)
+    {
+        if (water is null)
+        {
+            yield return (start, end, false, false);
+            yield break;
+        }
+
+        int steps = Math.Max(1, (int)Math.Ceiling((end - start) / WaterStepMeters));
+        double step = (end - start) / steps;
+        double? runStart = null;
+        bool cutStart = false;
+        for (int k = 0; k < steps; k++)
+        {
+            double u = start + ((k + 0.5) * step);
+            bool wet = water.IsWater(a.X + (dir.X * u), a.Y + (dir.Y * u));
+            if (!wet && runStart is null)
+            {
+                runStart = start + (k * step);
+                cutStart = k > 0;
+            }
+            else if (wet && runStart is not null)
+            {
+                yield return (runStart.Value, start + (k * step), cutStart, true);
+                runStart = null;
+            }
+        }
+
+        if (runStart is not null)
+        {
+            yield return (runStart.Value, end, cutStart, false);
+        }
+    }
+
     // ---- palisade ------------------------------------------------------------------------------------------------
 
-    // A fence of sharpened logs along the wall line with a gap at every gate, and a wooden watchtower either side of each gate.
-    private static PropMesh Palisade(City city, IGroundSampler ground)
+    // A fence of round logs along the wall line with a gap at every gate, and a wooden watchtower either side of each gate.
+    private static PropMesh Palisade(City city, IGroundSampler ground, IWaterSampler? water)
     {
         var b = new PropMeshBuilder();
         IReadOnlyList<Vec2> wall = city.Wall;
@@ -143,7 +205,10 @@ public static class CityMesher
             double end = length - (gateVertices.Contains(next) ? GateWidthMeters / 2 : 0);
             if (end - start > 0.5)
             {
-                Logs(b, ground, a + (dir * start), a + (dir * end));
+                foreach ((double u0, double u1, bool cutStart, bool cutEnd) in LandRuns(a, dir, start, end, water))
+                {
+                    Logs(b, ground, a + (dir * (u0 - (cutStart ? WaterOverlapMeters : 0))), a + (dir * (u1 + (cutEnd ? WaterOverlapMeters : 0))));
+                }
             }
 
             if (gateVertices.Contains(i))
@@ -157,18 +222,48 @@ public static class CityMesher
         return b.Build("city.palisade");
     }
 
-    // Upright logs side by side, each sharpened to a point and a little different in height.
+    // Upright round logs standing shoulder to shoulder: two staggered rows so no light shows between them, each log a little
+    // different in radius and height, flat-topped, and sunk below the ground so slopes show no gap underneath.
     private static void Logs(PropMeshBuilder b, IGroundSampler ground, Vec2 from, Vec2 to)
     {
-        int count = Math.Max(1, (int)Math.Ceiling(Vec2.Distance(from, to) / LogSpacingMeters));
-        for (int k = 0; k < count; k++)
+        foreach (Log log in LogsAlong(from, to))
         {
-            Vec2 at = Vec2.Lerp(from, to, (k + 0.5) / count);
-            double h = ground.HeightAt(at.X, at.Y);
-            uint hash = unchecked((uint)((int)(at.X * 31) ^ (int)(at.Y * 17)) * 2654435761u);
-            double height = PalisadeHeight + ((hash >> 8) % 100 / 100.0 * PalisadeHeightSpread);
-            b.Tube(P(at, h - WallSink / 2), P(at, h + height), LogRadius, LogTipRadius, LogSides, SettlementPalette.Log(hash));
+            double h = ground.HeightAt(log.At.X, log.At.Y);
+            b.Tube(P(log.At, h - LogSinkMeters), P(log.At, h + log.Height), log.Radius, log.Radius * LogTaper, LogSides, SettlementPalette.Log(log.Hash));
         }
+    }
+
+    /// <summary>One upright log of a palisade: where it stands, how thick and how tall.</summary>
+    internal readonly record struct Log(Vec2 At, float Radius, double Height, uint Hash);
+
+    /// <summary>Lays the logs of one palisade run; neighbours in a row overlap, the second row is staggered behind the first, and the ends reach past the run so corners close.</summary>
+    internal static IReadOnlyList<Log> LogsAlong(Vec2 from, Vec2 to)
+    {
+        var logs = new List<Log>();
+        double length = Vec2.Distance(from, to);
+        if (length < 1e-6)
+        {
+            return logs;
+        }
+
+        Vec2 dir = (to - from).Normalized();
+        Vec2 across = new(-dir.Y, dir.X);
+        for (int row = 0; row < LogRows; row++)
+        {
+            double along = row == 0 ? 0 : -LogRowStagger;
+            double offset = row * LogRowOffsetMeters;
+            while (along < length + LogEndOverlapMeters)
+            {
+                Vec2 at = from + (dir * along) + (across * offset);
+                uint hash = unchecked((uint)((int)(at.X * 31) ^ (int)(at.Y * 17) ^ (row * 7919)) * 2654435761u);
+                float radius = LogMinRadius + ((hash & 0xFF) / 255f * (LogMaxRadius - LogMinRadius));
+                double height = PalisadeHeight + ((hash >> 8) % 100 / 100.0 * PalisadeHeightSpread) - (row * 0.15);
+                logs.Add(new Log(at, radius, height, hash));
+                along += radius * LogSpacingFactor; // closer than a diameter, so the round logs overlap
+            }
+        }
+
+        return logs;
     }
 
     // Four posts, a platform and a pointed roof.

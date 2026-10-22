@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Realm.Core.Ids;
 using Realm.Core.Validation;
 using Realm.Data.Content;
+using Realm.Gen.Terrain.Water;
 
 namespace Realm.Gen.Terrain.Erosion;
 
@@ -29,7 +30,7 @@ public static class ErosionGenerator
     /// Bump when the output for the same input changes, and regenerate golden tests in the same change
     /// (CLAUDE.md section 7.4).
     /// </summary>
-    public const int GeneratorVersion = 2;
+    public const int GeneratorVersion = 3;
 
     private const float SeaLevel = 0f;
     private const double HalfDivisor = 2.0;
@@ -124,7 +125,7 @@ public static class ErosionGenerator
         working = RiverExtractor.FillSmallBasins(finalRouting, working, settings.MinLakeAreaKm2);
         double[] finalFlow = FlowAccumulator.Accumulate(finalRouting, rainfall, loss);
         var network = new RiverNetwork(
-            RiverExtractor.ExtractRivers(finalRouting, working, finalFlow, settings.RiverThresholdKm2, SeaLevel),
+            RiverExtractor.ExtractRivers(finalRouting, working, finalFlow, settings.RiverThresholdKm2, SeaLevel, settings.RiversReachWater),
             RiverExtractor.ExtractLakes(finalRouting, settings.MinLakeAreaKm2),
             settings.WorkingSpacingMeters);
 
@@ -148,6 +149,15 @@ public static class ErosionGenerator
         GorgeCarver.Carve(relaxed, side, source.SpacingMeters, source.WorldSizeMeters, network.Rivers, gorgeGrid, settings);
 
         var field = new HeightField(source.WorldSizeMeters, source.SpacingMeters, relaxed);
+        if (settings.CutRiverChannels)
+        {
+            // The field wraps the array, so the profile reads the terrain as it is before the bed is cut into it.
+            IReadOnlyList<RiverChannel> channels = RiverChannelBuilder.Profile(field, network.Rivers, network.Lakes, settings.WorkingSpacingMeters);
+            RiverChannelBuilder.Carve(relaxed, side, source.SpacingMeters, source.WorldSizeMeters, channels, network.Lakes, settings.WorkingSpacingMeters);
+            network = new RiverNetwork(network.Rivers, network.Lakes, settings.WorkingSpacingMeters, channels);
+            field = new HeightField(source.WorldSizeMeters, source.SpacingMeters, relaxed);
+        }
+
         HeightFieldValidator.Validate(field, regions, report);
         RiverValidator.Validate(network, map.WorldSizeMeters, report);
         return new ErodedTerrain(field, network, maxCarve);

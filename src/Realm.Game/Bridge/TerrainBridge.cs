@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Godot;
+using Realm.Gen.Terrain;
 using Realm.Gen.Textures;
 
 namespace Realm.Game.Bridge;
@@ -173,7 +174,25 @@ public sealed class TerrainBridge
 
             var colourBytes = new byte[colours.Length * sizeof(uint)];
             MemoryMarshal.AsBytes(colours).CopyTo(colourBytes);
+            if (_waterTextureId >= 0)
+            {
+                // The water texture carries its own colour; a neutral tint (white, mid roughness) keeps its ripples visible.
+                Span<uint> words = MemoryMarshal.Cast<byte, uint>(colourBytes);
+                for (int i = 0; i < words.Length; i++)
+                {
+                    if (words[i] == TerrainColouring.WaterPacked)
+                    {
+                        words[i] = NeutralTint;
+                    }
+                }
+            }
+
             region.Call("set_color_map", Image.CreateFromData(size, size, false, Image.Format.Rgba8, colourBytes));
+        }
+
+        if (_waterTextureId >= 0 && !colours.IsEmpty)
+        {
+            region.Call("set_control_map", WaterControlMap(size, colours));
         }
 
         region.Call("sanitize_maps"); // fills any control and colour maps still missing
@@ -241,6 +260,7 @@ public sealed class TerrainBridge
     /// <param name="uvScale">Texture repeat; larger tiles more finely (Terrain3D's <c>uv_scale</c>).</param>
     /// <param name="slopeBias">Auto-shader slope sensitivity (Terrain3D <c>auto_slope</c>, 0 to 10); higher shows rock sooner.</param>
     /// <exception cref="ArgumentException">Fewer than two textures.</exception>
+    /// <remarks>A third texture, if given, is used for water vertices (colour map equals the water colour).</remarks>
     public void SetSurfaceTextures(IReadOnlyList<SurfaceTexture> textures, float uvScale, float slopeBias)
     {
         ArgumentNullException.ThrowIfNull(textures);
@@ -264,6 +284,7 @@ public sealed class TerrainBridge
 
         Node.Set("assets", assets);
         assets.Call("update_texture_list");
+        _waterTextureId = textures.Count > WaterTextureIndex ? WaterTextureIndex : -1;
 
         GodotObject material = Node.Call("get_material").AsGodotObject();
         material.Call("set_auto_shader", true);
@@ -273,6 +294,31 @@ public sealed class TerrainBridge
         material.Call("set_shader_param", "auto_slope", slopeBias);
         material.Call("set_show_checkered", false);
         Node.Set("show_colormap", false);
+    }
+
+    // Terrain3D 1.0 control map: one 32-bit word per vertex stored in an Rf image; bit 0 is the auto-shader flag and bits 27 to 31
+    // the base texture id (verify against the Terrain3D docs when upgrading). Land stays on auto; water vertices pick the opaque
+    // water texture explicitly, so the ground texture never shows through the river or lake.
+    private const uint NeutralTint = 0x80FFFFFFu; // RGBA8 bytes ff ff ff 80: white, half roughness
+    private const uint AutoBit = 1u;
+    private const int BaseTextureShift = 27;
+
+    private const int WaterTextureIndex = 2;
+
+    private int _waterTextureId = -1;
+
+    private Image WaterControlMap(int size, ReadOnlySpan<uint> colours)
+    {
+        uint water = TerrainColouring.WaterPacked;
+        uint waterWord = (uint)_waterTextureId << BaseTextureShift;
+        var bytes = new byte[colours.Length * sizeof(float)];
+        Span<uint> words = MemoryMarshal.Cast<byte, uint>(bytes);
+        for (int i = 0; i < colours.Length; i++)
+        {
+            words[i] = colours[i] == water ? waterWord : AutoBit;
+        }
+
+        return Image.CreateFromData(size, size, false, Image.Format.Rf, bytes);
     }
 
     private const int NearestFiltering = 1; // Terrain3DMaterial.TextureFiltering.NEAREST

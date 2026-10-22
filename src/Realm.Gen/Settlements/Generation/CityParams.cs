@@ -34,11 +34,26 @@ public sealed class CityParams
     /// <summary>Number of gates in the wall (at most the number of wall corners).</summary>
     public int GateCount { get; set; } = 4;
 
+    /// <summary>
+    /// Where the water is, or null for a dry site. Buildings that touch water are left out, and service buildings are placed on land. The
+    /// plan itself (wards, wall outline, gates) does not depend on it, so a settlement keeps its size and place whether or not water is known.
+    /// </summary>
+    public Model.IWaterSampler? Water { get; set; }
+
+    /// <summary>Least distance from a house to the water's edge, in metres, when the water is known (room for a quay and a path).</summary>
+    public double WaterBufferMeters { get; set; } = 8;
+
+    /// <summary>Most bridges to build where the streets cross water inside the city.</summary>
+    public int MaxBridges { get; set; } = 2;
+
     /// <summary>Whether some outer wards are left as open parks. Off for compact settlements, where an empty ward only makes the wall enclose empty ground.</summary>
     public bool Parks { get; set; } = true;
 
     /// <summary>Whether the ward next to the central square holds a cathedral; if not it is ordinary housing.</summary>
     public bool Cathedral { get; set; } = true;
+
+    /// <summary>The shape of the plan: radial wards, or a cross of streets with houses along the arms.</summary>
+    public SettlementLayout Layout { get; set; } = SettlementLayout.Radial;
 
     /// <summary>Whether every ward but the market is a slum (a hamlet): only small mud dwellings.</summary>
     public bool Humble { get; set; }

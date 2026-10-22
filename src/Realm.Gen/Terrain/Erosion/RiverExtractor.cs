@@ -26,8 +26,9 @@ internal static class RiverExtractor
     /// <param name="flowKm2">Accumulated flow.</param>
     /// <param name="thresholdKm2">Minimum flow for a river vertex.</param>
     /// <param name="seaLevel">Height at or below which a vertex is sea.</param>
+    /// <param name="riversReachWater">When true a river never dries up: once a vertex is part of a river, every vertex downstream of it is too, down to the sea, the world edge or a river it joins, however little flow is left (water loss in a dry biome makes it thin, not extinct). When false a river ends where its flow falls below the threshold (<see cref="RiverMouth.Dried"/>).</param>
     /// <returns>Rivers, longest first.</returns>
-    public static List<River> ExtractRivers(FlowRouting routing, float[] heights, double[] flowKm2, double thresholdKm2, float seaLevel)
+    public static List<River> ExtractRivers(FlowRouting routing, float[] heights, double[] flowKm2, double thresholdKm2, float seaLevel, bool riversReachWater = false)
     {
         int side = routing.Side;
         int count = side * side;
@@ -37,6 +38,20 @@ internal static class RiverExtractor
         for (int i = 0; i < count; i++)
         {
             isRiver[i] = heights[i] > seaLevel && flowKm2[i] >= thresholdKm2;
+        }
+
+        if (riversReachWater)
+        {
+            // Routing lists receivers before their donors, so walking it backwards visits every donor before its receiver.
+            for (int k = routing.Order.Length - 1; k >= 0; k--)
+            {
+                int i = routing.Order[k];
+                int receiver = routing.Receiver[i];
+                if (isRiver[i] && receiver >= 0 && heights[receiver] > seaLevel)
+                {
+                    isRiver[receiver] = true;
+                }
+            }
         }
 
         var hasRiverDonor = new bool[count];
@@ -128,7 +143,7 @@ internal static class RiverExtractor
 
             if (points.Count >= 2)
             {
-                rivers.Add(new River(index, points, mouth, joins, length));
+                rivers.Add(new River(index, RiverWidth.Apply(points, index, mouth), mouth, joins, length));
             }
             else
             {

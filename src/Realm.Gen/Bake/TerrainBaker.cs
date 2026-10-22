@@ -36,8 +36,6 @@ public static class TerrainBaker
     private const double RoadGreen = 140;
     private const double RoadBlue = 100;
     private const double RoadPaintMargin = 0.5; // paint a little wider than the surface so a 4 m vertex grid always catches it
-    private const double RiverMinimumHalfWidthMeters = 2.0;
-    private const double RiverHalfWidthPerRootKm2 = 0.6;
     private const ulong Fnv64Offset = 14695981039346656037UL;
     private const ulong Fnv64Prime = 1099511628211UL;
 
@@ -248,9 +246,8 @@ public static class TerrainBaker
 
     /// <summary>Half the painted width of a river with the given flow, in metres.</summary>
     /// <param name="flowKm2">Flow in square kilometres of catchment.</param>
-    /// <returns>Half width: at least 2 m, growing with the square root of the flow.</returns>
-    public static double RiverHalfWidthMeters(double flowKm2) =>
-        Math.Max(RiverMinimumHalfWidthMeters, RiverHalfWidthPerRootKm2 * Math.Sqrt(Math.Max(0, flowKm2)));
+    /// <returns>The base half width (see <see cref="RiverWidth"/>): at least 7 m, growing with the square root of the flow. The painted width also wobbles along the river.</returns>
+    public static double RiverHalfWidthMeters(double flowKm2) => RiverWidth.BaseHalfWidthMeters(flowKm2);
 
     private static void PaintRoads(uint[] colours, int size, int spacing, double westX, double northZ, IReadOnlyList<Road> roads)
     {
@@ -319,7 +316,7 @@ public static class TerrainBaker
             {
                 RiverPoint a = river.Points[i - 1];
                 RiverPoint b = river.Points[i];
-                double halfWidth = Math.Max(RiverMinimumHalfWidthMeters, RiverHalfWidthPerRootKm2 * Math.Sqrt(b.FlowKm2));
+                double halfWidth = Math.Max(a.HalfWidth, b.HalfWidth);
                 double minX = Math.Min(a.X, b.X) - halfWidth;
                 double maxX = Math.Max(a.X, b.X) + halfWidth;
                 double minZ = Math.Min(a.Z, b.Z) - halfWidth;
@@ -339,7 +336,8 @@ public static class TerrainBaker
                     {
                         double x = westX + (ix * (double)spacing);
                         double z = northZ + (iz * (double)spacing);
-                        if (DistanceToSegment(x, z, a.X, a.Z, b.X, b.Z) <= halfWidth)
+                        (double distance, double t) = DistanceAndPosition(x, z, a.X, a.Z, b.X, b.Z);
+                        if (distance <= a.HalfWidth + ((b.HalfWidth - a.HalfWidth) * t)) // the width runs smoothly from one point to the next
                         {
                             colours[(iz * size) + ix] = water;
                         }
@@ -365,7 +363,10 @@ public static class TerrainBaker
         }
     }
 
-    private static double DistanceToSegment(double px, double pz, double ax, double az, double bx, double bz)
+    private static double DistanceToSegment(double px, double pz, double ax, double az, double bx, double bz) =>
+        DistanceAndPosition(px, pz, ax, az, bx, bz).Distance;
+
+    private static (double Distance, double T) DistanceAndPosition(double px, double pz, double ax, double az, double bx, double bz)
     {
         double dx = bx - ax;
         double dz = bz - az;
@@ -373,6 +374,6 @@ public static class TerrainBaker
         double t = lengthSquared == 0 ? 0 : Math.Clamp((((px - ax) * dx) + ((pz - az) * dz)) / lengthSquared, 0, 1);
         double cx = ax + (t * dx);
         double cz = az + (t * dz);
-        return Math.Sqrt(((px - cx) * (px - cx)) + ((pz - cz) * (pz - cz)));
+        return (Math.Sqrt(((px - cx) * (px - cx)) + ((pz - cz) * (pz - cz))), t);
     }
 }

@@ -97,71 +97,25 @@ Timings depend on the machine. A seam problem looks like this (here with `--blen
 Error TERR014 height field: 1088 step(s) across region borders are steeper than 2 (rise over run); the worst is 2.53, for example (-7688, -8008). (fix: Increase the blend radius, or reduce the height difference between neighbouring biomes.)
 ```
 
-## `bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--hamlets N] [--no-settlements] [--no-roads]`
+## `bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--hamlets N] [--river-cities N] [--cross-share F] [--no-settlements] [--no-roads]`
 
-Runs the whole terrain pipeline (macro map, height field, erosion and rivers, then settlements) and bakes the result to region tiles and a manifest for the game ([format](baked-terrain.md)). Defaults: `dir` is `content`, output `baked/terrain`, seed 1, spacing 4 m, region size 256 vertices (1,024 m regions), erosion on, 3 cities, 1 mountain city, 5 towns and 5 hamlets. The settlement step places the cities on the natural ground (nothing is flattened, [ADR 0014](../decisions/0014-cities-on-natural-ground-and-service-buildings.md)), gives each the service buildings of its tier from `content/services/`, validates them (`SETL`), writes `settlements.json` and the terrain around each city `settlements_ground.bin` next to the tiles ([format](settlements.md)) and puts the player's spawn in the first city's central square. `--cities`, `--towns` and `--hamlets` change the counts; `--no-settlements` skips the step. Unless `--no-roads` is given, the roads between the settlements are then planned, graded into the terrain and painted ([ADR 0013](../decisions/0013-roads-and-bridges.md)), and `roads.json` and `map.png` (an overview image for the in-game map) are written next to the tiles. Exit codes: `0` ok, `1` errors, `2` bad arguments.
+Runs the whole terrain pipeline (macro map, height field, erosion and rivers, then settlements) and bakes the result to region tiles and a manifest for the game ([format](baked-terrain.md)). Defaults: `dir` is `content`, output `baked/terrain`, seed 1, spacing 4 m, region size 256 vertices (1,024 m regions), erosion on, 3 cities, 1 river city, 1 mountain city, 5 towns and 3 hamlets. The settlement step places the cities on the natural ground (nothing is flattened, [ADR 0014](../decisions/0014-cities-on-natural-ground-and-service-buildings.md)), gives each the service buildings of its tier from `content/services/`, validates them (`SETL`), writes `settlements.json` and the terrain around each city `settlements_ground.bin` next to the tiles ([format](settlements.md)) and puts the player's spawn in the first city's central square. `--cities`, `--river-cities`, `--towns` and `--hamlets` change the counts and `--cross-share F` the share of small settlements (at most 24 houses: the hamlets) laid out as a cross of streets (0 to 1, default 1; cities and towns are always radial); `--no-settlements` skips the step. Unless `--no-roads` is given, the roads between the settlements are then planned, graded into the terrain and painted ([ADR 0013](../decisions/0013-roads-and-bridges.md)), and `roads.json` and `map.png` (an overview image for the in-game map) are written next to the tiles. Exit codes: `0` ok, `1` errors, `2` bad arguments.
 
 ```
 $ dotnet run --project src/Realm.Cli -c Release -- bake-terrain
   height field: 5121 x 5121 vertices at 4 m (3.1 s)
-  erosion: deepest carve 63.1 m, 16 river(s), 2 lake(s) (9.9 s)
+  erosion: deepest carve 63.1 m, 15 river(s), 2 lake(s) (9.5 s)
   settlements: 14 placed on the natural ground (2.1 s)
-    settlement.city_1      Thornford      City  at (5826, 450), ground 115 m, stone walls, radius 176 m, up to 250 houses, 16 service building(s)
-    settlement.city_2      Hollowgate     City  at (3151, -945), ground 117 m, stone walls, radius 189 m, up to 250 houses, 16 service building(s)
-    ... (city 3 and the mountain city)
-    settlement.town_1      Oakley         Town  at (-7171, 637), ground 49 m, palisade walls, radius 107 m, up to 50 houses, 7 service building(s)
+    settlement.city_1      Thornford      City  at (-7002, -1114), ground 53 m, radial, stone walls, radius 148 m, up to 250 houses, 16 service building(s)
+    ... (cities 2 and 3, the river city and the mountain city)
+    settlement.town_1      Oakley         Town  at (-1687, 361), ground 49 m, radial, palisade walls, radius 87 m, up to 50 houses, 7 service building(s)
     ... (towns 2 to 5)
-    settlement.hamlet_1    Elmshaw        Hamlet at (4198, 2406), ground 125 m, no walls, radius 84 m, up to 12 houses, 2 service building(s)
-    ... (hamlets 2 to 5)
-  roads: 27 road(s), 107.3 km, 13 bridge(s), terrain graded under them (4.4 s)
+    settlement.hamlet_1    Elmshaw        Hamlet at (4414, 2622), ground 123 m, cross, no walls, radius 44 m, up to 19 houses, 2 service building(s)
+    ... (hamlets 2 and 3)
+  roads: 25 road(s), 99.7 km, 34 bridge(s), terrain graded under them (4.6 s)
   baked 400 region tile(s) of 256 x 256 vertices (1024 m each) to 'baked/terrain' (1.3 s)
-  height range: -218.2 m to 651.9 m
-  region                           min m     max m    mean m
-  region.ashen_highlands           -12.7     571.4     392.3
-  region.frostpeak_range           -48.4     651.9     353.4
-  region.mistwood                  -84.8     384.3      61.4
-  region.outer_sea                -218.2     150.0    -187.7
-  region.redrock_badlands          -53.6     357.5     229.5
-  region.saltmarsh                -139.5     141.2       6.6
-  region.sunlit_steppe             -20.0     343.2     122.9
-  erosion (terrain.erosion v1, checksum be3febf89a49287a, 6.88 s): height range -218.2 m to 651.4 m, deepest carve 69.2 m
-  rivers: 18 (74.8 km total); lakes: 1
-    river 0: 15.8 km from (-2624, -1856) to Sea, max flow 33.2 km2
-    river 1: 14.7 km from (-3808, -4032) to Sea, max flow 21.0 km2
-    river 2: 2.3 km from (-3616, -736) to Confluence of river 0, max flow 9.3 km2
-    river 3: 4.8 km from (-3904, 3584) to Confluence of river 0, max flow 27.2 km2
-    river 4: 2.1 km from (960, 2848) to Confluence of river 0, max flow 17.6 km2
-  ...
-    lake 0: 4.87 km2 at 355 m near (-2933, -4630)
-  preview: terrain.png (641 x 641)
-0 error(s), 0 warning(s).
-```
-
-Timings depend on the machine. A seam problem looks like this (here with `--blend 256`):
-
-```
-Error TERR014 height field: 1088 step(s) across region borders are steeper than 2 (rise over run); the worst is 2.53, for example (-7688, -8008). (fix: Increase the blend radius, or reduce the height difference between neighbouring biomes.)
-```
-
-## `bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--hamlets N] [--no-settlements] [--no-roads]`
-
-Runs the whole terrain pipeline (macro map, height field, erosion and rivers, then settlements) and bakes the result to region tiles and a manifest for the game ([format](baked-terrain.md)). Defaults: `dir` is `content`, output `baked/terrain`, seed 1, spacing 4 m, region size 256 vertices (1,024 m regions), erosion on, 3 cities, 1 mountain city, 5 towns and 5 hamlets. The settlement step places the cities on the natural ground (nothing is flattened, [ADR 0014](../decisions/0014-cities-on-natural-ground-and-service-buildings.md)), gives each the service buildings of its tier from `content/services/`, validates them (`SETL`), writes `settlements.json` and the terrain around each city `settlements_ground.bin` next to the tiles ([format](settlements.md)) and puts the player's spawn in the first city's central square. `--cities`, `--towns` and `--hamlets` change the counts; `--no-settlements` skips the step. Unless `--no-roads` is given, the roads between the settlements are then planned, graded into the terrain and painted ([ADR 0013](../decisions/0013-roads-and-bridges.md)), and `roads.json` and `map.png` (an overview image for the in-game map) are written next to the tiles. Exit codes: `0` ok, `1` errors, `2` bad arguments.
-
-```
-$ dotnet run --project src/Realm.Cli -c Release -- bake-terrain
-  height field: 5121 x 5121 vertices at 4 m (3.1 s)
-  erosion: deepest carve 63.1 m, 16 river(s), 2 lake(s) (9.9 s)
-  settlements: 9 placed on the natural ground (2.1 s)
-    settlement.city_1      Thornford      City  at (5826, 450), ground 115 m, wall radius 176 m, up to 250 houses, 16 service building(s)
-    settlement.city_2      Hollowgate     City  at (3151, -945), ground 117 m, wall radius 189 m, up to 250 houses, 16 service building(s)
-    settlement.city_3      Langton        City  at (-3388, -572), ground 63 m, wall radius 178 m, up to 250 houses, 16 service building(s)
-    settlement.mountain_1  Briarhaven     City  at (2764, -4404), ground 469 m (mountain), wall radius 186 m, up to 250 houses, 16 service building(s)
-    settlement.town_1      Oakley         Town  at (-7171, 637), ground 49 m, wall radius 107 m, up to 50 houses, 7 service building(s)
-    ... (towns 2 to 5)
-  roads: 17 road(s), 83.7 km, 15 bridge(s), terrain graded under them (3.8 s)
-  baked 400 region tile(s) of 256 x 256 vertices (1024 m each) to 'baked/terrain' (1.3 s)
-  height range -218.2 m to 913.6 m; spawn (5828, 461); checksum b622762a08ce19a7
-0 error(s), 0 warning(s) (19.8 s total).
+  height range -218.2 m to 913.6 m; spawn (-7003, -1104)
+0 error(s), 0 warning(s) (24.8 s total).
 ```
 
 `--region-size` must divide the world and give an even number of regions per axis, at most 32 (Terrain3D's limit); otherwise `TERR018` is reported and nothing is written. Timings are from the development machine with the Release build (Debug is several times slower).

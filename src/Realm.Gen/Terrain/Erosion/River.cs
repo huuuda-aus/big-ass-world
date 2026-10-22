@@ -24,7 +24,12 @@ public enum RiverMouth
 /// <param name="Z">South coordinate in metres from the world centre.</param>
 /// <param name="Height">Water surface height in metres above sea level.</param>
 /// <param name="FlowKm2">Flow in effective square kilometres of catchment.</param>
-public readonly record struct RiverPoint(double X, double Z, double Height, double FlowKm2);
+/// <param name="HalfWidthMeters">Half the width of the water here, set by <see cref="RiverWidth.Apply"/>; 0 means "not set" (see <see cref="HalfWidth"/>).</param>
+public readonly record struct RiverPoint(double X, double Z, double Height, double FlowKm2, double HalfWidthMeters = 0)
+{
+    /// <summary>Half the width of the water at this point, in metres: the stored width, or the base width for its flow when none was set.</summary>
+    public double HalfWidth => HalfWidthMeters > 0 ? HalfWidthMeters : RiverWidth.BaseHalfWidthMeters(FlowKm2);
+}
 
 /// <summary>A river as a polyline from its source to its mouth.</summary>
 /// <remarks>Thread-safety: immutable.</remarks>

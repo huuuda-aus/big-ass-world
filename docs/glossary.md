@@ -40,13 +40,22 @@
 - **Region field** (`RegionField`): the macro map rasterised to a grid of macro cells, each holding its owning region.
 - **Relief** (`relief_m`): biome property; how far terrain rises above and falls below its base height (half the peak-to-peak range).
 - **Ring** (streaming): a distance band around the player with its own level of detail (near: simulation and collision; middle: visuals; far: terrain LOD and impostors).
-- **River**: a polyline along the path where flow reaches the river threshold, from a source to the sea, the world edge, a confluence, or until it dries up.
-- **River loss** (`river_loss`): biome property, 0 to 1; fraction of a river's flow lost per kilometre while crossing the biome, so rivers can fade out in dry regions.
+- **River**: a polyline along the path where flow reaches the river threshold, from a source to the sea, the world edge or a confluence (by default it never dries up halfway: `ErosionSettings.RiversReachWater`). Its width varies along its length (`RiverWidth`).
+- **River loss** (`river_loss`): biome property, 0 to 1; fraction of a river's flow lost per kilometre while crossing the biome, so rivers get thinner in dry regions (they only fade out completely when `RiversReachWater` is turned off).
 - **Road**: a graded, painted strip of terrain between two settlement gates, planned by `RoadPlanner` and listed in `roads.json`.
 - **Roughness** (`roughness`): biome property from 0 (smooth, rolling) to 1 (jagged); how slowly fine noise detail fades out.
 - **Seed sweep**: running a generator over many seeds with all validators. **Planned.**
 - **Settlement**: a city or town placed on the map; baked as an entry in `settlements.json`.
 - **Soak test** (traversal): automated fly-through of the full world that records frame times, streaming cost, GC and memory to prove seamless streaming. The M1 gate.
+- **Cross layout** (`SettlementLayout.Cross`): the plan of a small settlement (at most 24 houses): two streets crossing at a square, like a crossroads, with houses along each arm that thin out the further they are from the crossing.
+- **Small settlement**: one of at most `SmallSettlementMaxBuildings` (24) houses: no palisade, may be a cross.
+- **Compass** (`CompassBar`, `CompassMath`): the strip at the top of the screen showing the bearing you look along, clockwise from north.
+- **Radial layout** (`SettlementLayout.Radial`): a settlement plan of wards round a central square, enclosed by a wall that follows their outline.
+- **Row / lane**: a row of lots along a street; a second row sits behind the first and faces a 2.5 m lane.
+- **Waterfront settlement**: one whose wall reaches a river or lake; the wall is cut at the water.
+- **River city** (`settlement.river_N`, `Settlement.IsRiverCity`): a city that a river runs through, with houses on both banks and arched bridges; the river is left untouched.
+- **Bank buffer** (`CityParams.WaterBufferMeters`): the least distance from a house to the water's edge.
+- **Arched bridge** (`ArchBridgeMesher`): a stone bridge inside a city whose roadway rises to a crown over an arched underside.
 - **Fortification** (`Fortification`): what protects a settlement, from its tier: stone wall (city), wooden palisade (town), none (hamlet).
 - **Hamlet**: the smallest settlement tier: at most 12 poor houses, no wall.
 - **Palisade**: a fence of sharpened logs with wooden gate towers; the town wall.

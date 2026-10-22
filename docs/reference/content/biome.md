@@ -53,7 +53,7 @@ Read by the erosion step (not by the loader). Required on land biomes; ocean bio
 | `rainfall` | required, 0 to 1 | How much water each area adds to the flow. Drives how many rivers there are. |
 | `erodibility` | required, 0 to 1 | How strongly flowing water carves the ground; 0 is bedrock. |
 | `max_slope_deg` | required, above 0 and at most 90 | Steepest slope in degrees that stays stable; steeper slopes slump. Low values give soft, rounded hills. |
-| `river_loss` | required, 0 to 1 | Fraction of a river's flow lost per kilometre while it crosses this biome. 0 loses nothing; high values make rivers fade out. |
+| `river_loss` | required, 0 to 1 | Fraction of a river's flow lost per kilometre while it crosses this biome. 0 loses nothing; high values make rivers thin out (and, with `ErosionSettings.RiversReachWater` off, dry up). |
 
 | `gorge_depth_m` | optional, 0 to 200 | How deep the biome's big rivers cut gorges below the ground beside them, with steep cliff walls (slope 2, about 63 degrees). The depth grows with river flow and fades to nothing near sea level. 0 or absent: no gorge. |
 

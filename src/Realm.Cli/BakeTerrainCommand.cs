@@ -15,6 +15,7 @@ using Realm.Gen.Settlements.Placement;
 using Realm.Gen.Settlements.Roads;
 using Realm.Gen.Terrain;
 using Realm.Gen.Terrain.Erosion;
+using Realm.Gen.Terrain.Water;
 
 namespace Realm.Cli;
 
@@ -74,6 +75,14 @@ internal static class BakeTerrainCommand
             {
                 settlementSettings = settlementSettings with { Hamlets = hamlets };
             }
+            else if (arg == "--river-cities" && i + 1 < args.Length && int.TryParse(args[++i], NumberStyles.None, CultureInfo.InvariantCulture, out int riverCities))
+            {
+                settlementSettings = settlementSettings with { RiverCities = riverCities };
+            }
+            else if (arg == "--cross-share" && i + 1 < args.Length && double.TryParse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture, out double crossShare))
+            {
+                settlementSettings = settlementSettings with { CrossShare = crossShare };
+            }
             else if (arg == "--no-roads")
             {
                 withRoads = false;
@@ -92,7 +101,7 @@ internal static class BakeTerrainCommand
             }
             else
             {
-                error.WriteLine($"Bad argument '{arg}'. Usage: realm bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--hamlets N] [--no-settlements] [--no-roads]");
+                error.WriteLine($"Bad argument '{arg}'. Usage: realm bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--hamlets N] [--river-cities N] [--cross-share F] [--no-settlements] [--no-roads]");
                 return ExitUsage;
             }
         }
@@ -149,7 +158,7 @@ internal static class BakeTerrainCommand
                 output.WriteLine($"  settlements: {settlements.Count} placed on the natural ground ({step.Elapsed.TotalSeconds:F1} s)");
                 foreach (Settlement s in settlements)
                 {
-                    output.WriteLine($"    {s.Id,-22} {s.Name,-14} {s.Tier,-5} at ({s.X:F0}, {s.Z:F0}), ground {s.GroundHeightMeters:F0} m{(s.Highland ? " (mountain)" : string.Empty)}, {(s.Fortification == Fortification.None ? "no walls" : s.Fortification.ToString().ToLowerInvariant() + " walls")}, radius {s.WallRadiusMeters:F0} m, up to {s.MaxBuildings} houses, {s.ServiceList.Sum(x => x.Count)} service building(s)");
+                    output.WriteLine($"    {s.Id,-22} {s.Name,-14} {s.Tier,-5} at ({s.X:F0}, {s.Z:F0}), ground {s.GroundHeightMeters:F0} m{(s.Highland ? " (mountain)" : string.Empty)}, {s.Layout.ToString().ToLowerInvariant()}, {(s.Fortification == Fortification.None ? "no walls" : s.Fortification.ToString().ToLowerInvariant() + " walls")}, radius {s.WallRadiusMeters:F0} m, up to {s.MaxBuildings} houses, {s.ServiceList.Sum(x => x.Count)} service building(s)");
                 }
 
                 if (settlements.Count > 0)
@@ -183,6 +192,11 @@ internal static class BakeTerrainCommand
                 continue;
             }
 
+            RiverNetwork waterNetwork = network ?? RiverNetwork.Empty;
+            IReadOnlyList<WaterTile> waterTiles = WaterMesher.Build(waterNetwork, field.WorldSizeMeters);
+            File.WriteAllBytes(Path.Combine(outputDirectory, WaterFile.FileName), WaterFile.ToBytes(waterTiles));
+            output.WriteLine($"  water: {waterNetwork.Channels.Count} river channel(s), {waterNetwork.Lakes.Count} lake(s) in {waterTiles.Count} tile(s)");
+
             if (withSettlements)
             {
                 // A flat map of the finished world for the in-game map screen (M).
@@ -199,7 +213,7 @@ internal static class BakeTerrainCommand
                 // The terrain under each city after roads, so the game can build on it without the terrain engine.
                 File.WriteAllBytes(
                     Path.Combine(outputDirectory, GroundGridFile.FileName),
-                    GroundGridFile.ToBytes(settlements.Select(x => GroundGrid.Capture(field, x)).ToList()));
+                    GroundGridFile.ToBytes(settlements.Select(x => GroundGrid.Capture(field, x, GroundGrid.DefaultSpacingMeters, new RiverRaster(field.WorldSizeMeters, network))).ToList()));
                 var roadManifest = new RoadManifest
                 {
                     World = map.Id.Value,

@@ -114,6 +114,14 @@ public sealed partial class CityInstance : Node3D
             AddChild(body);
         }
 
+        foreach (CityBridgeMesh bridge in _build.Bridges)
+        {
+            AddChild(new MeshInstance3D { Mesh = bridge.Mesh, MaterialOverride = CityMaterials.Solid, Name = "Bridge" });
+            var bridgeBody = new StaticBody3D { Name = "BridgeBody" };
+            bridgeBody.AddChild(new CollisionShape3D { Shape = bridge.Shape });
+            AddChild(bridgeBody);
+        }
+
         if (_build.Landmark is { } landmark)
         {
             // The landmark mesh has its base at 0; the root puts it on the ground at the square's height.

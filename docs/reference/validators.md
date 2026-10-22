@@ -69,7 +69,7 @@ Produced by `Realm.Gen.Terrain.Erosion` (for example by `realm height-field --er
 | TERR016 | Error | A river's water surface rises more than 0.01 m going downstream. Routing should never allow this, so it indicates a bug. | Report it with the seed and settings. |
 | TERR017 | Error | A river ends inconsistently: marked as reaching the sea but above sea level, marked as leaving the world but not on the edge, or marked as joining a river it does not touch. Indicates a bug in river extraction. | Report it with the seed and settings. |
 
-Rivers that dry up (`Dried` mouth) are not an error: it is how river loss shows.
+Rivers that dry up (`Dried` mouth) are not an error: it is how river loss shows when `ErosionSettings.RiversReachWater` is off. By default a river keeps running to the sea, the world edge or another river however little water is left.
 
 ### Baking (also `TERR`)
 
@@ -91,6 +91,7 @@ Reported by `SettlementPlacer` and `SettlementValidator` during `bake-terrain` (
 | SETL006 | Error | `settlements.json` or `settlements_ground.bin` is damaged, has an unknown tier, centrepiece, ward or room word, or an unsupported format. | Re-run `bake-terrain`. |
 | SETL007 | Error | A generated city has fewer of a service building than its settlement asks for. The message names the service and the counts. | Lower the service's `counts`, or give the city more lots (inside the wall) or room beside the wall (outside). |
 | SETL008 | Warning | A service building's footprint is smaller than the service's `min_area_m2` (no lot was big enough, so the largest free lot was used). | Lower `min_area_m2` or give the city larger lots. |
+| SETL010 | Error | A river city has no river within `RiverCityMaxCentreDistanceMeters` (70 m) of its centre. | Place it where a river passes the centre, or ask for no river cities (`--river-cities 0`). |
 | SETL009 | Error | A service meant to stand outside the wall stands inside it, or the other way round. | A bug in the generator or a hand-edited manifest; re-bake. |
 
 ## Road validators

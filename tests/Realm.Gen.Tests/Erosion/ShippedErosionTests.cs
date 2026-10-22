@@ -187,5 +187,5 @@ public class ShippedErosionTests
     }
 
     // Captured from the accepted implementation (erosion generator version 2, 128 m grid, seed 1, six-region sample world).
-    private const ulong GoldenChecksum = 11649216531522621169UL;
+    private const ulong GoldenChecksum = 12357116102927642745UL;
 }

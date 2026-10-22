@@ -15,11 +15,38 @@ public sealed record SettlementSettings
     /// <summary>Default number of cities in the mountains.</summary>
     public const int DefaultMountainCities = 1;
 
+    /// <summary>
+    /// Settlements of at most this many houses are small: they have no palisade (<see cref="Settlement.Fortification"/>) and may be laid out
+    /// as a cross of streets (<see cref="CrossShare"/>). Larger ones, cities and towns, always have radial wards.
+    /// </summary>
+    public const int SmallSettlementMaxBuildings = 24;
+
+    /// <summary>Share of small settlements (at most <see cref="SmallSettlementMaxBuildings"/> houses) laid out as a cross of streets instead of radial wards, from 0 to 1.</summary>
+    public double CrossShare { get; init; } = 1.0;
+
     /// <summary>Number of smaller towns to place.</summary>
     public int Towns { get; init; } = DefaultTowns;
 
     /// <summary>Default number of hamlets.</summary>
-    public const int DefaultHamlets = 5;
+    public const int DefaultHamlets = 3;
+
+    /// <summary>Default number of cities that a river runs through.</summary>
+    public const int DefaultRiverCities = 1;
+
+    /// <summary>Number of extra cities that a river runs through, splitting them in two (`settlement.river_N`); the river is left untouched and bridged.</summary>
+    public int RiverCities { get; init; } = DefaultRiverCities;
+
+    /// <summary>
+    /// A river city is planned this many times larger than its house cap, because the river and the bank buffer take houses away, so that the
+    /// houses left on the two banks come to about the cap.
+    /// </summary>
+    public double RiverCityPlanFactor { get; init; } = 1.35;
+
+    /// <summary>The river must pass within this distance of a river city's centre, in metres (the centre itself, with a margin, stays dry).</summary>
+    public double RiverCityMaxCentreDistanceMeters { get; init; } = 70;
+
+    /// <summary>The square of a river city and this much round it must be dry, in metres.</summary>
+    public double RiverCityDryCentreMeters { get; init; } = 16;
 
     /// <summary>Number of extra large cities built in mountainous terrain (see <see cref="MountainMinHeightMeters"/>).</summary>
     public int MountainCities { get; init; } = DefaultMountainCities;
@@ -30,8 +57,11 @@ public sealed record SettlementSettings
     /// <summary>Highest ground a hamlet may stand on, in metres: hamlets are lowland outposts, and the roads to a hamlet in the high mountains need cuts of 60 m and more.</summary>
     public double HamletMaxHeightMeters { get; init; } = 200;
 
+    /// <summary>Fewest houses in a hamlet; each hamlet gets a number between this and <see cref="HamletBuildings"/> (small settlements, at most 24).</summary>
+    public int HamletMinBuildings { get; init; } = 8;
+
     /// <summary>Most houses in a hamlet.</summary>
-    public int HamletBuildings { get; init; } = 12;
+    public int HamletBuildings { get; init; } = 22;
 
     /// <summary>Most houses in a city (a city of this size has a wall radius of roughly 150 m).</summary>
     public int CityBuildings { get; init; } = 250;
@@ -75,7 +105,16 @@ public sealed record SettlementSettings
     /// <summary>Largest allowed height difference across the pad, as a fraction of the pad radius (0.2 means 66 m over 330 m).</summary>
     public double MaxReliefPerRadius { get; init; } = 0.2;
 
-    /// <summary>Open ground kept between the pad and any river or lake, in metres.</summary>
+    /// <summary>
+    /// How much of the pad radius, from the centre, must be free of water: the square and the streets round it stay on land, while a river or
+    /// lake may reach the outer wards, where the wall is cut at the water's edge.
+    /// </summary>
+    public double WaterFreeCentreShare { get; init; } = 0.3;
+
+    /// <summary>Score bonus for a site whose pad reaches a river or lake: settlements prefer the waterfront.</summary>
+    public double WaterfrontBonus { get; init; } = 1.2;
+
+    /// <summary>Open ground kept between the central square and any river or lake, in metres (on top of <see cref="WaterFreeCentreShare"/>).</summary>
     public double WaterClearanceMeters { get; init; } = 40;
 
     /// <summary>Settlements prefer a river within this distance beyond the clearance (cities like water), in metres.</summary>
@@ -92,13 +131,13 @@ public sealed record SettlementSettings
     /// <returns><c>true</c> when valid.</returns>
     public bool TryValidate(out string? problem)
     {
-        if (Cities < 0 || Towns < 0 || MountainCities < 0 || Hamlets < 0 || Cities + Towns + MountainCities + Hamlets > 64)
+        if (Cities < 0 || Towns < 0 || MountainCities < 0 || Hamlets < 0 || RiverCities < 0 || Cities + Towns + MountainCities + Hamlets + RiverCities > 64)
         {
-            problem = "Cities, MountainCities, Towns and Hamlets must not be negative and together at most 64.";
+            problem = "Cities, RiverCities, MountainCities, Towns and Hamlets must not be negative and together at most 64.";
         }
-        else if (CityBuildings < 3 || TownBuildings < 3 || HamletBuildings < 3)
+        else if (CityBuildings < 3 || TownBuildings < 3 || HamletBuildings < 3 || HamletMinBuildings < 3 || HamletMinBuildings > HamletBuildings)
         {
-            problem = "CityBuildings, TownBuildings and HamletBuildings must be at least 3.";
+            problem = "CityBuildings, TownBuildings, HamletBuildings and HamletMinBuildings must be at least 3, and HamletMinBuildings at most HamletBuildings.";
         }
         else if (!(MinSpacingMeters >= 0) || !(PadMarginMeters >= 0) || !(BlendMeters > 0) || !(WaterClearanceMeters >= 0) || !(EdgeMarginMeters >= 0))
         {
@@ -111,6 +150,14 @@ public sealed record SettlementSettings
         else if (!(MinHeightMeters < MaxHeightMeters) || !(MaxReliefPerRadius > 0))
         {
             problem = "MinHeightMeters must be below MaxHeightMeters and MaxReliefPerRadius positive.";
+        }
+        else if (!(RiverCityPlanFactor >= 1) || !(RiverCityMaxCentreDistanceMeters > RiverCityDryCentreMeters) || !(RiverCityDryCentreMeters >= 0))
+        {
+            problem = "RiverCityPlanFactor must be at least 1 and RiverCityMaxCentreDistanceMeters above RiverCityDryCentreMeters.";
+        }
+        else if (!(CrossShare >= 0 && CrossShare <= 1))
+        {
+            problem = "CrossShare must be between 0 and 1.";
         }
         else if (!(HamletMaxHeightMeters > MinHeightMeters))
         {

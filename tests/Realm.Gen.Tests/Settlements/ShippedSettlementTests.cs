@@ -4,6 +4,9 @@ using System.Linq;
 using Realm.Core.Ids;
 using Realm.Core.Validation;
 using Realm.Data.Content;
+using Realm.Gen.Settlements.Generation;
+using Realm.Gen.Settlements.Meshing;
+using Realm.Gen.Settlements.Model;
 using Realm.Gen.Settlements.Placement;
 using Realm.Gen.Settlements.Roads;
 using Realm.Gen.Terrain;
@@ -41,14 +44,14 @@ public class ShippedSettlementTests
     }
 
     [Fact]
-    public void ShippedWorld_GetsFourCitiesFiveTownsAndFiveHamlets_WithNoIssues()
+    public void ShippedWorld_GetsFiveCitiesFiveTownsAndThreeHamlets_WithNoIssues()
     {
         Result r = Shared.Value;
 
         Assert.Empty(r.Report.Issues);
-        Assert.Equal(4, r.Settlements.Count(s => s.Tier == SettlementTier.City)); // three plus the mountain city
+        Assert.Equal(5, r.Settlements.Count(s => s.Tier == SettlementTier.City)); // three plus the river city and the mountain city
         Assert.Equal(5, r.Settlements.Count(s => s.Tier == SettlementTier.Town));
-        Assert.Equal(5, r.Settlements.Count(s => s.Tier == SettlementTier.Hamlet));
+        Assert.Equal(3, r.Settlements.Count(s => s.Tier == SettlementTier.Hamlet));
         Assert.All(r.Settlements.Where(s => s.Tier == SettlementTier.Hamlet), s => Assert.InRange(s.GroundHeightMeters, 15, 200));
     }
 
@@ -118,7 +121,45 @@ public class ShippedSettlementTests
         Settlement mountain = Assert.Single(r.Settlements, s => s.Highland);
         Assert.Equal(SettlementTier.City, mountain.Tier);
         Assert.True(mountain.GroundHeightMeters >= new SettlementSettings().MountainMinHeightMeters);
-        Assert.Equal(4, r.Settlements.Count(s => s.Tier == SettlementTier.City));
+        Assert.Equal(5, r.Settlements.Count(s => s.Tier == SettlementTier.City));
+    }
+
+    [Fact]
+    public void ShippedWorld_HasARiverCity_WithTheRiverRunningThroughItAndBridged()
+    {
+        Result r = Shared.Value;
+
+        Settlement river = Assert.Single(r.Settlements, s => s.IsRiverCity);
+        var raster = new RiverRaster(r.Graded.WorldSizeMeters, r.Eroded.Network);
+        GroundGrid grid = GroundGrid.Capture(r.Graded, river, GroundGrid.DefaultSpacingMeters, raster);
+        var ground = new SettlementGround(river, grid);
+        City city = CityGenerator.Generate(river.ToCityParams(ground));
+
+        // The centre is dry and the river passes within reach of it.
+        Assert.False(ground.IsWater(0, 0));
+        Assert.True(grid.Water.ToArray().Count(w => w) > 40, "the river does not reach the city");
+        // The houses are on both banks, away from the water, and the streets are bridged.
+        var houses = city.CityPatches.SelectMany(p => p.Buildings).ToList();
+        Assert.True(houses.Count >= new SettlementSettings().CityBuildings * 0.6, $"only {houses.Count} houses");
+        Assert.All(houses, b => Assert.False(CityGenerator.TouchesWater(b.Footprint, ground, 8), $"building {b.Id} is by the water"));
+        Assert.InRange(city.Bridges.Count, 1, 2);
+        Assert.All(city.Bridges, b => Assert.False(ground.IsWater(b.From.X, b.From.Y) || ground.IsWater(b.To.X, b.To.Y)));
+    }
+
+    [Fact]
+    public void OnlySmallSettlements_AreCrossesAndOnlyBiggerTowns_HaveAPalisade()
+    {
+        Result r = Shared.Value;
+        int small = SettlementSettings.SmallSettlementMaxBuildings;
+
+        Assert.All(r.Settlements, s =>
+        {
+            Assert.Equal(s.MaxBuildings <= small ? SettlementLayout.Cross : SettlementLayout.Radial, s.Layout);
+            Assert.Equal(s.Tier == SettlementTier.City ? Fortification.Stone : s.Tier == SettlementTier.Town && s.MaxBuildings > small ? Fortification.Palisade : Fortification.None, s.Fortification);
+        });
+        Assert.NotEmpty(r.Settlements.Where(s => s.Layout == SettlementLayout.Cross));
+        Assert.All(r.Settlements.Where(s => s.Tier == SettlementTier.Hamlet), s => Assert.InRange(s.MaxBuildings, 8, 22));
+        Assert.True(r.Settlements.Where(s => s.Tier == SettlementTier.Hamlet).Select(s => s.MaxBuildings).Distinct().Count() > 1, "every hamlet has the same size");
     }
 
     [Fact]
@@ -159,5 +200,5 @@ public class ShippedSettlementTests
     }
 
     // Captured from the accepted implementation (settlement.placement v1, 128 m grid, seed 1, six-region sample world).
-    private const ulong GoldenChecksum = 15096086240675034436UL;
+    private const ulong GoldenChecksum = 680697116126850207UL;
 }

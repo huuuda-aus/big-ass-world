@@ -37,7 +37,7 @@ Goal: bake the terrain, start Godot and walk around the 20 km world.
 | F1 | hide or show the HUD | |
 | Esc | release or recapture the mouse | |
 
-The HUD shows frames per second, frame time, position, ground height, the region you are in, how many regions are loaded or loading, and the cost of the last shared-texture rebuild.
+A compass strip at the top of the screen shows the bearing you look along (degrees clockwise from north, with N, NE, E ... marked and a tick every 5 degrees); it hides with the rest of the HUD (F1). The HUD shows frames per second, frame time, position, ground height, the region you are in, how many regions are loaded or loading, and the cost of the last shared-texture rebuild.
 
 ## Options
 

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Godot;
+using Realm.Core.Geometry;
 using Realm.Core.Diagnostics;
 using Realm.Game.Bridge;
 using Realm.Game.World.Settlements;
@@ -65,6 +66,7 @@ public partial class WorldScene : Node3D
     private SubViewport _viewport = null!; // Safe: set in _Ready by BuildViewport.
     private Node3D _world = null!; // Safe: set in _Ready; parent of every 3D node, inside the low-resolution viewport.
     private Label _hud = null!; // Safe: set in _Ready.
+    private CompassBar _compass = null!; // Safe: set in _Ready with the HUD.
     private Godot.Environment _environment = null!; // Safe: set in _Ready by BuildEnvironment.
     private LaunchArguments _args = new(Array.Empty<string>());
     private float _renderScale = DefaultRenderScale;
@@ -135,7 +137,7 @@ public partial class WorldScene : Node3D
         else
         {
             _bridge.SetSurfaceTextures(
-                new[] { SurfaceTextureGenerator.Grass(_source.Manifest.Seed), SurfaceTextureGenerator.Rock(_source.Manifest.Seed) },
+                new[] { SurfaceTextureGenerator.Grass(_source.Manifest.Seed), SurfaceTextureGenerator.Rock(_source.Manifest.Seed), SurfaceTextureGenerator.Water(_source.Manifest.Seed) },
                 GroundTextureScale,
                 AutoSlope);
         }
@@ -182,6 +184,12 @@ public partial class WorldScene : Node3D
             }
         }
 
+        WaterLayer? water = WaterLayer.Open(_source.Directory, _source.Manifest.Seed);
+        if (water is not null)
+        {
+            _world.AddChild(water);
+        }
+
         _roads = RoadsLayer.Open(_source.Directory);
         if (_roads is not null)
         {
@@ -201,6 +209,7 @@ public partial class WorldScene : Node3D
         }
 
         _hud.Visible = !_args.Flag("no-hud", false);
+        _compass.Visible = _hud.Visible;
         _water.Visible = !_args.Flag("no-water", false);
         _steps.Enabled = !_args.Flag("no-step", false);
         if (!_args.Flag("no-capture", false) && !_args.Has("screenshot"))
@@ -240,6 +249,7 @@ public partial class WorldScene : Node3D
                     break;
                 case Key.F1:
                     _hud.Visible = !_hud.Visible;
+                    _compass.Visible = _hud.Visible;
                     break;
                 case Key.Escape:
                     Input.MouseMode = Input.MouseMode == Input.MouseModeEnum.Captured
@@ -288,6 +298,7 @@ public partial class WorldScene : Node3D
             }
         }
 
+        _compass.SetHeading(CompassMath.BearingDegrees(_yaw)); // every frame: it turns with the mouse
         _streamer.Update(_body.Position, _frame);
         _cities?.Process(_body.Position, delta, _streamer.Options.LoadDistanceMeters);
         if (_map is { Visible: true })
@@ -604,9 +615,10 @@ public partial class WorldScene : Node3D
             Mesh = new PlaneMesh { Size = new Vector2(_source.Manifest.WorldSizeMeters, _source.Manifest.WorldSizeMeters) }, // exactly the world: the sea stops where the terrain does
             MaterialOverride = new StandardMaterial3D
             {
-                AlbedoColor = new Color(0.10f, 0.32f, 0.62f, 0.72f),
+                AlbedoColor = new Color(0.08f, 0.26f, 0.50f, 0.93f),
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-                Roughness = 0.25f,
+                Roughness = 0.12f,
+                Metallic = 0.1f,
                 CullMode = BaseMaterial3D.CullModeEnum.Disabled,
             },
         };
@@ -616,7 +628,9 @@ public partial class WorldScene : Node3D
     private void BuildHud()
     {
         var layer = new CanvasLayer();
-        _hud = new Label { Position = new Vector2(HudMargin, HudMargin) };
+        _compass = new CompassBar();
+        layer.AddChild(_compass);
+        _hud = new Label { Position = new Vector2(HudMargin, HudMargin + CompassBar.StripHeight + HudMargin) }; // below the compass strip
         _hud.AddThemeFontSizeOverride("font_size", HudFontSize);
         _hud.AddThemeColorOverride("font_outline_color", Colors.Black);
         _hud.AddThemeConstantOverride("outline_size", 6);
@@ -627,6 +641,7 @@ public partial class WorldScene : Node3D
 
     private void UpdateHud()
     {
+        _compass.SetHeading(CompassMath.BearingDegrees(_yaw));
         Vector3 p = _body.Position;
         Vector2I region = _bridge.RegionAt(p);
         float ground = _bridge.HeightAt(new Vector3(p.X, 0, p.Z));

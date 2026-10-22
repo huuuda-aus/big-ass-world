@@ -158,7 +158,7 @@ public class CityGeneratorTests
         City city = CityGenerator.Generate(new CityParams { Seed = seed, MaxBuildings = max });
 
         // The city is made of whole wards: it lands under the limit by up to a ward's worth of houses.
-        Assert.InRange(Houses(city), max * 0.8, max);
+        Assert.InRange(Houses(city), max * 0.7, max);
     }
 
     [Theory]

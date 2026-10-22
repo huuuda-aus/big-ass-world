@@ -17,8 +17,28 @@ public class FortificationTests
 {
     private static readonly City Town = CityGenerator.Generate(new CityParams { Seed = 8, MaxBuildings = 50 });
 
-    private static Settlement Of(SettlementTier tier) =>
-        new($"settlement.{tier}", "Test", tier, 0, 0, 0, 100, 100, 130, 1, 12, false, CentrepieceKind.None);
+    private static Settlement Of(SettlementTier tier, int buildings = 50) =>
+        new($"settlement.{tier}", "Test", tier, 0, 0, 0, 100, 100, 130, 1, buildings, false, CentrepieceKind.None);
+
+    [Fact]
+    public void PalisadeLogs_OverlapWithNoGaps_AndVaryInSizeAndHeight()
+    {
+        var from = new Vec2(0, 0);
+        var to = new Vec2(30, 0);
+
+        var logs = CityMesher.LogsAlong(from, to);
+
+        // The front row (offset 0) is continuous: each neighbour is closer than the two radii together.
+        var front = logs.Where(l => System.Math.Abs(l.At.Y) < 0.01).OrderBy(l => l.At.X).ToList();
+        for (int i = 1; i < front.Count; i++)
+        {
+            Assert.True(front[i].At.X - front[i - 1].At.X < front[i].Radius + front[i - 1].Radius, $"gap before log {i}");
+        }
+
+        Assert.True(front[0].At.X <= 0 && front[^1].At.X >= 30, "the run ends are not covered");
+        Assert.True(logs.Select(l => l.Height).Max() - logs.Select(l => l.Height).Min() > 0.3, "heights do not vary");
+        Assert.True(logs.Select(l => l.Radius).Distinct().Count() > 5, "thickness does not vary");
+    }
 
     [Fact]
     public void TheTier_ChoosesTheFortification()
@@ -26,6 +46,18 @@ public class FortificationTests
         Assert.Equal(Fortification.Stone, Of(SettlementTier.City).Fortification);
         Assert.Equal(Fortification.Palisade, Of(SettlementTier.Town).Fortification);
         Assert.Equal(Fortification.None, Of(SettlementTier.Hamlet).Fortification);
+    }
+
+    [Theory]
+    [InlineData(24, Fortification.None)]
+    [InlineData(25, Fortification.Palisade)]
+    [InlineData(10, Fortification.None)]
+    [InlineData(80, Fortification.Palisade)]
+    public void ASmallSettlement_UnderTwentyFiveHouses_HasNoPalisade(int buildings, Fortification expected)
+    {
+        Assert.Equal(24, SettlementSettings.SmallSettlementMaxBuildings);
+        Assert.Equal(expected, Of(SettlementTier.Town, buildings).Fortification);
+        Assert.Equal(Fortification.Stone, Of(SettlementTier.City, 10).Fortification); // a city keeps its wall whatever its size
     }
 
     [Fact]
@@ -71,11 +103,12 @@ public class FortificationTests
     [Fact]
     public void Hamlets_AreSmallPoorAndHaveFewServices()
     {
-        City hamlet = CityGenerator.Generate(Of(SettlementTier.Hamlet).ToCityParams());
+        City hamlet = CityGenerator.Generate(Of(SettlementTier.Hamlet, 14).ToCityParams());
 
-        Assert.True(hamlet.AllBuildings.Count() <= 12 + 3);
+        Assert.True(hamlet.AllBuildings.Count() <= 14 + 3);
         Assert.All(hamlet.CityPatches.SelectMany(p => p.Buildings), b => Assert.Equal(BuildingStyle.Slum, b.Style));
         Assert.True(hamlet.CityPatches.All(p => p.Ward is WardType.Market or WardType.Slum));
+        Assert.Equal(SettlementLayout.Radial, Of(SettlementTier.Hamlet, 14).Layout); // a Settlement is radial unless the placer says otherwise
     }
 
     [Fact]

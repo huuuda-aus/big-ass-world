@@ -10,13 +10,13 @@
   "maxRegion": 9,
   "seed": 1,
   "generators": [
-    "terrain.height_field v2, terrain.erosion v2, settlement.placement v5, road.planner v1"
+    "terrain.height_field v2, terrain.erosion v3, settlement.placement v9, road.planner v1"
   ],
   "minHeight": -218.16136169433594,
   "maxHeight": 913.61572265625,
-  "riverCount": 16,
+  "riverCount": 15,
   "lakeCount": 2,
-  "spawnX": 5815.922333041366,
-  "spawnZ": 448.97597247288945,
-  "checksum": "f8cb06d05a46fe4f"
+  "spawnX": -7001.039971274877,
+  "spawnZ": -1103.9863318433534,
+  "checksum": "b9291d53dd3efc86"
 }

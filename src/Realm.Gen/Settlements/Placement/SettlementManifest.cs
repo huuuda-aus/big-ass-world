@@ -52,7 +52,7 @@ public sealed class SettlementManifest
                 Id = s.Id, Name = s.Name, Tier = s.Tier.ToString(), X = s.X, Z = s.Z, Rotation = s.RotationRadians,
                 GroundHeight = s.GroundHeightMeters, WallRadius = s.WallRadiusMeters, PadRadius = s.PadRadiusMeters,
                 CitySeed = s.CitySeed, MaxBuildings = s.MaxBuildings, Cathedral = s.Cathedral, Centre = s.Centre.ToString(),
-                Services = s.ServiceList.Select(ServiceDto.From).ToList(), Highland = s.Highland,
+                Services = s.ServiceList.Select(ServiceDto.From).ToList(), Highland = s.Highland, Layout = s.Layout.ToString(),
             });
         }
 
@@ -79,9 +79,9 @@ public sealed class SettlementManifest
             var list = new List<Settlement>();
             foreach (SettlementDto s in dto.Settlements)
             {
-                if (!Enum.TryParse(s.Tier, out SettlementTier tier) || !Enum.TryParse(s.Centre, out CentrepieceKind centre))
+                if (!Enum.TryParse(s.Tier, out SettlementTier tier) || !Enum.TryParse(s.Centre, out CentrepieceKind centre) || !Enum.TryParse(s.Layout, out SettlementLayout layout))
                 {
-                    report.Error(SettlementCodes.ManifestInvalid, FileName, $"Settlement '{s.Id}' has an unknown tier '{s.Tier}' or centre '{s.Centre}'.");
+                    report.Error(SettlementCodes.ManifestInvalid, FileName, $"Settlement '{s.Id}' has an unknown tier '{s.Tier}', centre '{s.Centre}' or layout '{s.Layout}'.");
                     return null;
                 }
 
@@ -98,7 +98,7 @@ public sealed class SettlementManifest
                     services.Add(spec);
                 }
 
-                list.Add(new Settlement(s.Id, s.Name, tier, s.X, s.Z, s.Rotation, s.GroundHeight, s.WallRadius, s.PadRadius, s.CitySeed, s.MaxBuildings, s.Cathedral, centre, services.Count == 0 ? null : services, s.Highland));
+                list.Add(new Settlement(s.Id, s.Name, tier, s.X, s.Z, s.Rotation, s.GroundHeight, s.WallRadius, s.PadRadius, s.CitySeed, s.MaxBuildings, s.Cathedral, centre, services.Count == 0 ? null : services, s.Highland, layout));
             }
 
             return new SettlementManifest { Format = dto.Format, World = dto.World, Seed = dto.Seed, Generators = dto.Generators, Settlements = list };
@@ -154,6 +154,8 @@ public sealed class SettlementManifest
         public List<ServiceDto> Services { get; set; } = new();
 
         public bool Highland { get; set; }
+
+        public string Layout { get; set; } = nameof(SettlementLayout.Radial);
     }
 
     private sealed class ServiceDto

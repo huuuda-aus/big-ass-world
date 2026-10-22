@@ -3,19 +3,19 @@
   "world": "world.main",
   "seed": 1,
   "generators": [
-    "settlement.placement v5"
+    "settlement.placement v9"
   ],
   "settlements": [
     {
       "id": "settlement.city_1",
       "name": "Thornford",
       "tier": "City",
-      "x": 5814.564180092706,
-      "z": 438.564180092706,
+      "x": -7002.398124223537,
+      "z": -1114.3981242235368,
       "rotation": 1.441085,
-      "groundHeight": 114.92,
-      "wallRadius": 164.56,
-      "padRadius": 194.56,
+      "groundHeight": 53.02,
+      "wallRadius": 147.6,
+      "padRadius": 177.6,
       "citySeed": 556170729,
       "maxBuildings": 250,
       "cathedral": true,
@@ -142,18 +142,19 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Radial"
     },
     {
       "id": "settlement.city_2",
       "name": "Hollowgate",
       "tier": "City",
-      "x": 3132.534068969995,
-      "z": -963.4659310300049,
+      "x": 3499.176125767166,
+      "z": -1620.823874232834,
       "rotation": 3.336904,
-      "groundHeight": 116.83,
-      "wallRadius": 170.53,
-      "padRadius": 200.53,
+      "groundHeight": 116.82,
+      "wallRadius": 153.18,
+      "padRadius": 183.18,
       "citySeed": 228403923,
       "maxBuildings": 250,
       "cathedral": true,
@@ -280,18 +281,19 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Radial"
     },
     {
       "id": "settlement.city_3",
       "name": "Langton",
       "tier": "City",
-      "x": -3388.373056487835,
-      "z": -572.3730564878351,
+      "x": 5536.735624128474,
+      "z": 288.7356241284742,
       "rotation": 1.482141,
-      "groundHeight": 62.83,
-      "wallRadius": 177.63,
-      "padRadius": 207.63,
+      "groundHeight": 114.9,
+      "wallRadius": 142.74,
+      "padRadius": 172.74,
       "citySeed": 2007034524,
       "maxBuildings": 250,
       "cathedral": true,
@@ -418,18 +420,158 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Radial"
+    },
+    {
+      "id": "settlement.river_1",
+      "name": "Highford",
+      "tier": "City",
+      "x": -2244.7723984953736,
+      "z": 699.2276015046264,
+      "rotation": 3.749439,
+      "groundHeight": 45.53,
+      "wallRadius": 169.23,
+      "padRadius": 199.23,
+      "citySeed": 319064962,
+      "maxBuildings": 338,
+      "cathedral": true,
+      "centre": "Fountain",
+      "services": [
+        {
+          "id": "service.baker",
+          "name": "Baker",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Merchant"
+          ],
+          "near": "Any",
+          "outsideWall": false,
+          "minArea": 45,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.blacksmith",
+          "name": "Blacksmith",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Workshop"
+        },
+        {
+          "id": "service.city_hall",
+          "name": "City hall",
+          "count": 1,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 90,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.farmer",
+          "name": "Farmer",
+          "count": 2,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 50,
+          "foundation": "Wood",
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.inn",
+          "name": "Inn",
+          "count": 2,
+          "wards": [
+            "Merchant",
+            "Craftsmen"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 80,
+          "foundation": null,
+          "mainRoom": "Kitchen"
+        },
+        {
+          "id": "service.jail",
+          "name": "Jail",
+          "count": 1,
+          "wards": [
+            "Slum",
+            "Craftsmen"
+          ],
+          "near": "Wall",
+          "outsideWall": false,
+          "minArea": 70,
+          "foundation": "Stone",
+          "mainRoom": "Hall"
+        },
+        {
+          "id": "service.trader",
+          "name": "Trader",
+          "count": 3,
+          "wards": [
+            "Market",
+            "Merchant"
+          ],
+          "near": "Square",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Shop"
+        },
+        {
+          "id": "service.warehouse",
+          "name": "Warehouse",
+          "count": 2,
+          "wards": [
+            "Craftsmen",
+            "Slum"
+          ],
+          "near": "Gate",
+          "outsideWall": false,
+          "minArea": 60,
+          "foundation": null,
+          "mainRoom": "Storage"
+        },
+        {
+          "id": "service.woodcutter",
+          "name": "Woodcutter",
+          "count": 1,
+          "wards": [],
+          "near": "Any",
+          "outsideWall": true,
+          "minArea": 40,
+          "foundation": "Wood",
+          "mainRoom": "Workshop"
+        }
+      ],
+      "highland": false,
+      "layout": "Radial"
     },
     {
       "id": "settlement.mountain_1",
       "name": "Briarhaven",
       "tier": "City",
-      "x": 4919.363903873593,
-      "z": -6344.636096126407,
+      "x": 6696.151032439004,
+      "z": -4823.848967560996,
       "rotation": 0.299762,
-      "groundHeight": 487.37,
-      "wallRadius": 165.36,
-      "padRadius": 195.36,
+      "groundHeight": 405.14,
+      "wallRadius": 150.15,
+      "padRadius": 180.15,
       "citySeed": 708937147,
       "maxBuildings": 250,
       "cathedral": true,
@@ -556,16 +698,17 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": true
+      "highland": true,
+      "layout": "Radial"
     },
     {
       "id": "settlement.town_1",
       "name": "Oakley",
       "tier": "Town",
-      "x": -7190.733280832117,
-      "z": -1046.733280832117,
+      "x": -4758.733280832117,
+      "z": 1129.266719167883,
       "rotation": 4.820122,
-      "groundHeight": 53.02,
+      "groundHeight": 51.56,
       "wallRadius": 87.27,
       "padRadius": 117.27,
       "citySeed": 1497950613,
@@ -666,18 +809,19 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Radial"
     },
     {
       "id": "settlement.town_2",
       "name": "Amberby",
       "tier": "Town",
-      "x": -5654.879772615035,
-      "z": 1769.120227384965,
+      "x": 7269.74268678632,
+      "z": 2149.7426867863196,
       "rotation": 5.823938,
-      "groundHeight": 46.72,
-      "wallRadius": 87.12,
-      "padRadius": 117.12,
+      "groundHeight": 116.64,
+      "wallRadius": 83.74,
+      "padRadius": 113.74,
       "citySeed": 1048366520,
       "maxBuildings": 50,
       "cathedral": false,
@@ -776,18 +920,19 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Radial"
     },
     {
       "id": "settlement.town_3",
       "name": "Frostby",
       "tier": "Town",
-      "x": -528.8669780672499,
-      "z": -400.8669780672499,
+      "x": -25.90505874606788,
+      "z": -665.9050587460679,
       "rotation": 4.326979,
-      "groundHeight": 100.18,
-      "wallRadius": 93.13,
-      "padRadius": 123.13,
+      "groundHeight": 102.58,
+      "wallRadius": 84.09,
+      "padRadius": 114.09,
       "citySeed": 583090390,
       "maxBuildings": 50,
       "cathedral": false,
@@ -886,16 +1031,17 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Radial"
     },
     {
       "id": "settlement.town_4",
       "name": "Redfield",
       "tier": "Town",
-      "x": 1515.2876780278639,
-      "z": 1899.2876780278639,
+      "x": -3988.712321972136,
+      "z": -1684.7123219721361,
       "rotation": 6.005746,
-      "groundHeight": 135.91,
+      "groundHeight": 66.82,
       "wallRadius": 89.29,
       "padRadius": 119.29,
       "citySeed": 1302143198,
@@ -996,16 +1142,17 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Radial"
     },
     {
       "id": "settlement.town_5",
       "name": "Redham",
       "tier": "Town",
-      "x": 5998.886386292626,
-      "z": 6638.886386292626,
+      "x": 1518.8863862926264,
+      "z": 1902.8863862926264,
       "rotation": 4.658647,
-      "groundHeight": 240.57,
+      "groundHeight": 135.89,
       "wallRadius": 92.89,
       "padRadius": 122.89,
       "citySeed": 780571735,
@@ -1106,20 +1253,21 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Radial"
     },
     {
       "id": "settlement.hamlet_1",
       "name": "Elmshaw",
       "tier": "Hamlet",
-      "x": 4198.331449603951,
-      "z": 2406.331449603951,
+      "x": -7234.099544421499,
+      "z": 1853.9004555785014,
       "rotation": 3.785961,
-      "groundHeight": 124.86,
-      "wallRadius": 84.33,
-      "padRadius": 114.33,
+      "groundHeight": 71.48,
+      "wallRadius": 43.9,
+      "padRadius": 73.9,
       "citySeed": 120778327,
-      "maxBuildings": 12,
+      "maxBuildings": 19,
       "cathedral": false,
       "centre": "None",
       "services": [
@@ -1146,20 +1294,21 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Cross"
     },
     {
       "id": "settlement.hamlet_2",
       "name": "Ravenfold",
       "tier": "Hamlet",
-      "x": 7403.963755462295,
-      "z": -1556.036244537705,
+      "x": 2749.9004555785014,
+      "z": 6973.900455578501,
       "rotation": 3.567507,
-      "groundHeight": 117.23,
-      "wallRadius": 89.96,
-      "padRadius": 119.96,
+      "groundHeight": 182.13,
+      "wallRadius": 43.9,
+      "padRadius": 73.9,
       "citySeed": 34731937,
-      "maxBuildings": 12,
+      "maxBuildings": 16,
       "cathedral": false,
       "centre": "None",
       "services": [
@@ -1186,20 +1335,21 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
+      "highland": false,
+      "layout": "Cross"
     },
     {
       "id": "settlement.hamlet_3",
       "name": "Frostcot",
       "tier": "Hamlet",
-      "x": -2196.6236093376447,
-      "z": 1643.3763906623553,
+      "x": 4413.900455578501,
+      "z": 2621.9004555785014,
       "rotation": 1.54034,
-      "groundHeight": 43.4,
-      "wallRadius": 89.38,
-      "padRadius": 119.38,
+      "groundHeight": 122.94,
+      "wallRadius": 43.9,
+      "padRadius": 73.9,
       "citySeed": 949001123,
-      "maxBuildings": 12,
+      "maxBuildings": 18,
       "cathedral": false,
       "centre": "None",
       "services": [
@@ -1226,87 +1376,8 @@
           "mainRoom": "Workshop"
         }
       ],
-      "highland": false
-    },
-    {
-      "id": "settlement.hamlet_4",
-      "name": "Crowfold",
-      "tier": "Hamlet",
-      "x": 2659.4529362137055,
-      "z": 7011.4529362137055,
-      "rotation": 1.978151,
-      "groundHeight": 182.27,
-      "wallRadius": 81.45,
-      "padRadius": 111.45,
-      "citySeed": 1197526691,
-      "maxBuildings": 12,
-      "cathedral": false,
-      "centre": "None",
-      "services": [
-        {
-          "id": "service.farmer",
-          "name": "Farmer",
-          "count": 1,
-          "wards": [],
-          "near": "Any",
-          "outsideWall": true,
-          "minArea": 50,
-          "foundation": "Wood",
-          "mainRoom": "Kitchen"
-        },
-        {
-          "id": "service.woodcutter",
-          "name": "Woodcutter",
-          "count": 1,
-          "wards": [],
-          "near": "Any",
-          "outsideWall": true,
-          "minArea": 40,
-          "foundation": "Wood",
-          "mainRoom": "Workshop"
-        }
-      ],
-      "highland": false
-    },
-    {
-      "id": "settlement.hamlet_5",
-      "name": "Stormwyke",
-      "tier": "Hamlet",
-      "x": 7398.193991042306,
-      "z": 2406.193991042306,
-      "rotation": 4.533276,
-      "groundHeight": 121.68,
-      "wallRadius": 84.19,
-      "padRadius": 114.19,
-      "citySeed": 138180809,
-      "maxBuildings": 12,
-      "cathedral": false,
-      "centre": "None",
-      "services": [
-        {
-          "id": "service.farmer",
-          "name": "Farmer",
-          "count": 1,
-          "wards": [],
-          "near": "Any",
-          "outsideWall": true,
-          "minArea": 50,
-          "foundation": "Wood",
-          "mainRoom": "Kitchen"
-        },
-        {
-          "id": "service.woodcutter",
-          "name": "Woodcutter",
-          "count": 1,
-          "wards": [],
-          "near": "Any",
-          "outsideWall": true,
-          "minArea": 40,
-          "foundation": "Wood",
-          "mainRoom": "Workshop"
-        }
-      ],
-      "highland": false
+      "highland": false,
+      "layout": "Cross"
     }
   ]
 }

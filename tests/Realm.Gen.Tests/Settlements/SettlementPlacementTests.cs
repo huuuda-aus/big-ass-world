@@ -54,7 +54,7 @@ public class SettlementPlacementTests
         SettlementPlacer.Place(field, network, seed, settings, report ?? new ValidationReport());
 
     private static SettlementSettings Small(int cities, int towns) =>
-        new() { Cities = cities, Towns = towns, MountainCities = 0, Hamlets = 0, CityBuildings = 60, TownBuildings = 24 };
+        new() { Cities = cities, Towns = towns, MountainCities = 0, RiverCities = 0, Hamlets = 0, CityBuildings = 60, TownBuildings = 24 };
 
     [Fact]
     public void PlacesTheRequestedNumber_CitiesFirst_OnAGenerousPlateau()
@@ -120,17 +120,17 @@ public class SettlementPlacementTests
     }
 
     [Fact]
-    public void Rivers_KeepTheirClearance_AndAttractTheFirstCity()
+    public void Rivers_StayOutOfTheCentre_AndPullTheFirstCityToTheWaterfront()
     {
-        SettlementSettings settings = Small(1, 0);
+        SettlementSettings settings = Small(1, 0) with { CandidateStepMeters = 32 }; // fine enough to land in the band between the dry centre and the pad
         RiverNetwork river = RiverAlongZ0();
 
         Settlement city = Place(Plateaus(), river, settings).Single();
 
         double distance = Math.Abs(city.Z); // the river runs along z = 0
-        Assert.True(distance >= city.PadRadiusMeters + settings.WaterClearanceMeters - WaterMask.CellMeters, $"pad touches the river ({distance:F0} m away)");
-        Assert.True(distance <= city.PadRadiusMeters + settings.WaterClearanceMeters + settings.RiverAttractionMeters + WaterMask.CellMeters,
-            $"a city on flat land with a river should settle within reach of it ({distance:F0} m away)");
+        double centre = (city.PadRadiusMeters * settings.WaterFreeCentreShare) + settings.WaterClearanceMeters;
+        Assert.True(distance >= centre - WaterMask.CellMeters, $"the river reaches the centre ({distance:F0} m away, needs {centre:F0})");
+        Assert.True(distance <= city.WallRadiusMeters + WaterMask.CellMeters, $"a city on flat land with a river should settle on its bank, with the water inside the wall ({distance:F0} m away, wall {city.WallRadiusMeters:F0})");
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public class SettlementPlacementTests
         HeightField tiny = Plateaus((x, z) => Math.Abs(x) < 600 && Math.Abs(z) < 600 ? Plateau : -50f);
         var report = new ValidationReport();
 
-        IReadOnlyList<Settlement> placed = Place(tiny, null, new SettlementSettings { Cities = 0, MountainCities = 0, Hamlets = 0, Towns = 3, TownBuildings = 12, EdgeMarginMeters = 0 }, report);
+        IReadOnlyList<Settlement> placed = Place(tiny, null, new SettlementSettings { Cities = 0, MountainCities = 0, RiverCities = 0, Hamlets = 0, Towns = 3, TownBuildings = 12, EdgeMarginMeters = 0 }, report);
 
         Assert.InRange(placed.Count, 0, 1);
         Assert.Equal(SettlementCodes.TooFewPlaced, Assert.Single(report.Issues).Code);

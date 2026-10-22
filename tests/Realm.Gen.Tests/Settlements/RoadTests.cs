@@ -283,6 +283,26 @@ public class RoadTests
     }
 
     [Fact]
+    public void BridgeAbutments_StayBelowTheRoadway_SoNoStonePlateClipsThroughTheTerrain()
+    {
+        var bridge = new RoadBridge(100, 200, 0.5, 30, 6, 50, 53, 4, 8);
+
+        PropMesh mesh = BridgeMesher.Build(bridge);
+
+        // The stone is the abutments only. Nothing of it rises above the deck's underside (the deck is 0.5 m thick), so the graded road
+        // meets the deck with no stone showing at road level (the old abutments were flush with the road and clipped the terrain).
+        var stone = mesh.Triangles.Where(t => t.Colour == SettlementPalette.Hex(0x8c887e)).ToList();
+        Assert.NotEmpty(stone);
+        Assert.True(stone.Max(t => Math.Max(t.A.Y, Math.Max(t.B.Y, t.C.Y))) <= 53 - 0.4, "stone shows above the deck's underside");
+        // And it stays inside the footprint of the deck along the bridge: no plate sticks out beyond the ends.
+        float half = 15;
+        Assert.All(stone, t => Assert.InRange(Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)), -half - 0.01f, half + 0.01f));
+        Assert.All(stone, t => Assert.InRange(Math.Max(t.A.X, Math.Max(t.B.X, t.C.X)), -half - 0.01f, half + 0.01f));
+        // Narrower than the deck, so no abutment side shares a plane with it.
+        Assert.All(stone, t => Assert.True(Math.Abs(t.A.Z) <= 3 - 0.05f + 1e-3f && Math.Abs(t.B.Z) <= 3 && Math.Abs(t.C.Z) <= 3));
+    }
+
+    [Fact]
     public void BridgeMesh_DeckTopFollowsTheEndHeights_AndTheRailingStandsAboveIt()
     {
         var bridge = new RoadBridge(100, 200, 0.5, 30, 6, 50, 53, 4, 8);

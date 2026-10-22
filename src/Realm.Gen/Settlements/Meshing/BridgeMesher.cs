@@ -18,6 +18,8 @@ public static class BridgeMesher
     private const float PostSpacing = 3f;
     private const float AbutmentDepth = 4f;
     private const float AbutmentLength = 3f;
+    private const float AbutmentTuck = 0.05f; // the abutment top reaches this far into the deck
+    private const float AbutmentInset = 0.2f;
     private static readonly Vector3 Timber = SettlementPalette.Hex(0x6b4a2e);
     private static readonly Vector3 Stone = SettlementPalette.Hex(0x8c887e);
 
@@ -39,8 +41,12 @@ public static class BridgeMesher
         // The deck's top surface runs from the start height to the end height.
         b.OrientedBox(((start + end) / 2) - (up * (DeckThickness / 2)), along, up, across, new Vector3(length, DeckThickness, width), Timber);
 
-        b.OrientedBox(start - (Vector3.UnitY * (AbutmentDepth / 2)) + (Vector3.UnitX * (-AbutmentLength / 2)), Vector3.UnitX, Vector3.UnitY, across, new Vector3(AbutmentLength, AbutmentDepth, width + 1), Stone);
-        b.OrientedBox(end - (Vector3.UnitY * (AbutmentDepth / 2)) + (Vector3.UnitX * (AbutmentLength / 2)), Vector3.UnitX, Vector3.UnitY, across, new Vector3(AbutmentLength, AbutmentDepth, width + 1), Stone);
+        // The abutments sit under the ends of the deck and stop below the roadway, so no stone plate shows above the ground where the
+        // graded terrain meets the deck (it used to be flush with the road and clipped through the terrain). They are a little narrower
+        // than the deck so their sides never share a plane with it.
+        float top = -DeckThickness + AbutmentTuck;
+        b.OrientedBox(start + (Vector3.UnitY * ((top - AbutmentDepth) / 2)) + (Vector3.UnitX * (AbutmentLength / 2)), Vector3.UnitX, Vector3.UnitY, across, new Vector3(AbutmentLength, AbutmentDepth + top, width - AbutmentInset), Stone);
+        b.OrientedBox(end + (Vector3.UnitY * ((top - AbutmentDepth) / 2)) + (Vector3.UnitX * (-AbutmentLength / 2)), Vector3.UnitX, Vector3.UnitY, across, new Vector3(AbutmentLength, AbutmentDepth + top, width - AbutmentInset), Stone);
 
         foreach (int side in new[] { -1, 1 })
         {

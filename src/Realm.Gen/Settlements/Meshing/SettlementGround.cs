@@ -1,11 +1,12 @@
 using System;
+using Realm.Gen.Settlements.Model;
 using Realm.Gen.Settlements.Placement;
 
 namespace Realm.Gen.Settlements.Meshing;
 
 /// <summary>A settlement's terrain seen from the city plan: plan coordinates in, height above the settlement's origin out.</summary>
 /// <remarks>Thread-safety: immutable; safe to share between worker threads.</remarks>
-public sealed class SettlementGround : IGroundSampler
+public sealed class SettlementGround : IGroundSampler, IWaterSampler
 {
     private readonly Settlement _settlement;
     private readonly GroundGrid _grid;
@@ -17,6 +18,13 @@ public sealed class SettlementGround : IGroundSampler
     {
         _settlement = settlement ?? throw new ArgumentNullException(nameof(settlement));
         _grid = grid ?? throw new ArgumentNullException(nameof(grid));
+    }
+
+    /// <inheritdoc />
+    public bool IsWater(double x, double y)
+    {
+        (double wx, double wz) = _settlement.ToWorld(new Geometry.Vec2(x, y));
+        return _grid.IsWaterAt(wx, wz);
     }
 
     /// <inheritdoc />

@@ -42,6 +42,14 @@ public static class SurfaceTextureGenerator
         Build("rock", seed, size, cells: 4, contrast: 0.9,
             dark: (0.52, 0.50, 0.48), light: (0.95, 0.92, 0.88), roughness: 0.75);
 
+    /// <summary>Makes a deep blue, glossy water texture with soft ripples; opaque, so the bed never shows through.</summary>
+    /// <param name="seed">World seed; the same seed gives the same pixels.</param>
+    /// <param name="size">Width and height in pixels; a power of two of at least 8.</param>
+    /// <returns>The texture.</returns>
+    public static SurfaceTexture Water(ulong seed, int size = DefaultSize) =>
+        Build("water", seed, size, cells: 6, contrast: 0.5,
+            dark: (0.07, 0.20, 0.36), light: (0.17, 0.38, 0.56), roughness: 0.3);
+
     private static SurfaceTexture Build(
         string name, ulong seed, int size, int cells, double contrast,
         (double R, double G, double B) dark, (double R, double G, double B) light, double roughness)

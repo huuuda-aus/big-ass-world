@@ -169,7 +169,7 @@ public class TerrainBakerTests
     public void River_IsPaintedExactlyWithinItsHalfWidth()
     {
         HeightField field = Field((_, _) => 50f);
-        // A river along z = 0 from x = -20 to 20 carrying 100 km2: half width max(2, 0.6 * sqrt(100)) = 6 m.
+        // A river along z = 0 from x = -20 to 20 carrying 100 km2: half width max(7, 2.1 * sqrt(100)) = 21 m (no wobble: the widths are not set).
         var river = new River(
             0,
             new[] { new RiverPoint(-20, 0, 50, 100), new RiverPoint(20, 0, 50, 100) },
@@ -189,7 +189,7 @@ public class TerrainBakerTests
                     double z = (tile.RegionZ * tile.ExtentMeters) + (iz * (double)Spacing);
                     double distance = Math.Abs(z); // distance to the segment's line; the segment spans x in [-20, 20]
                     double alongX = Math.Max(Math.Abs(x) - 20, 0);
-                    bool expected = Math.Sqrt((distance * distance) + (alongX * alongX)) <= 6;
+                    bool expected = Math.Sqrt((distance * distance) + (alongX * alongX)) <= 21;
                     Assert.Equal(expected, tile.Colours[(iz * RegionSize) + ix] == water);
                 }
             }

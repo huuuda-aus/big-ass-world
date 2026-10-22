@@ -76,13 +76,22 @@ public static class SettlementValidator
                     "Choose a flatter, higher or lower site, or raise MaxReliefPerRadius.");
             }
 
-            if (water.AnyWithin(s.X, s.Z, s.PadRadiusMeters))
+            if (s.IsRiverCity && !water.AnyWithin(s.X, s.Z, settings.RiverCityMaxCentreDistanceMeters))
+            {
+                report.Error(
+                    SettlementCodes.RiverCityWithoutRiver,
+                    s.Id,
+                    $"No river runs within {settings.RiverCityMaxCentreDistanceMeters:F0} m of the centre of river city '{s.Id}'.",
+                    "Place it where a river passes the centre, or ask for no river cities.");
+            }
+
+            if (!s.IsRiverCity && water.AnyWithin(s.X, s.Z, s.PadRadiusMeters * settings.WaterFreeCentreShare))
             {
                 report.Error(
                     SettlementCodes.WaterOnPad,
                     s.Id,
-                    $"A river or lake reaches the pad of '{s.Id}'.",
-                    "Move the settlement away from water or raise WaterClearanceMeters.");
+                    $"A river or lake reaches the centre of '{s.Id}' (within {settings.WaterFreeCentreShare:P0} of its pad radius).",
+                    "Move the settlement away from water, or lower WaterFreeCentreShare so the water may come closer.");
             }
         }
     }

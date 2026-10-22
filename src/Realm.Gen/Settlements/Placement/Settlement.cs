@@ -8,7 +8,7 @@ namespace Realm.Gen.Settlements.Placement;
 
 /// <summary>
 /// Where one city stands in the world and what it is made from. The city itself is not stored: it is regenerated from
-/// <see cref="CitySeed"/> and the options below, which always gives the same layout (see <see cref="ToCityParams"/>).
+/// <see cref="CitySeed"/> and the options below, which always gives the same layout (see <see cref="ToCityParams()"/>).
 /// </summary>
 /// <param name="Id">Stable identifier such as <c>settlement.city_1</c>.</param>
 /// <param name="Name">Display name (a placeholder until names are designed).</param>
@@ -25,6 +25,7 @@ namespace Realm.Gen.Settlements.Placement;
 /// <param name="Centre">What stands in the central square.</param>
 /// <param name="Services">The service buildings the city must contain (empty for none).</param>
 /// <param name="Highland">Whether it stands in the mountains (steeper, higher ground is allowed).</param>
+/// <param name="Layout">The shape of its plan: radial wards or a cross of streets.</param>
 public sealed record Settlement(
     string Id,
     string Name,
@@ -40,13 +41,20 @@ public sealed record Settlement(
     bool Cathedral,
     CentrepieceKind Centre,
     IReadOnlyList<ServiceSpec>? Services = null,
-    bool Highland = false)
+    bool Highland = false,
+    SettlementLayout Layout = SettlementLayout.Radial)
 {
-    /// <summary>What protects the settlement: a stone wall for a city, a wooden palisade for a town, nothing for a hamlet.</summary>
+    /// <summary>Whether a river runs through the city (it was placed as a river city, `settlement.river_N`).</summary>
+    public bool IsRiverCity => Id.StartsWith("settlement.river_", StringComparison.Ordinal);
+
+    /// <summary>
+    /// What protects the settlement: a stone wall for a city, a wooden palisade for a town of more than
+    /// <see cref="SettlementSettings.SmallSettlementMaxBuildings"/> houses, nothing for a smaller settlement or a hamlet.
+    /// </summary>
     public Fortification Fortification => Tier switch
     {
         SettlementTier.City => Fortification.Stone,
-        SettlementTier.Town => Fortification.Palisade,
+        SettlementTier.Town when MaxBuildings > SettlementSettings.SmallSettlementMaxBuildings => Fortification.Palisade,
         _ => Fortification.None,
     };
 
@@ -55,13 +63,20 @@ public sealed record Settlement(
 
     /// <summary>The generator options that reproduce this city exactly.</summary>
     /// <returns>Options for <see cref="CityGenerator.Generate"/>.</returns>
-    public CityParams ToCityParams() => new()
+    public CityParams ToCityParams() => ToCityParams(null);
+
+    /// <summary>The generator options that reproduce this city, with the water known (buildings in water are left out).</summary>
+    /// <param name="water">Where the water is, in the city's plan frame; null for a dry site.</param>
+    /// <returns>Options for <see cref="CityGenerator.Generate"/>.</returns>
+    public CityParams ToCityParams(IWaterSampler? water) => new()
     {
+        Water = water,
         Seed = CitySeed,
         MaxBuildings = MaxBuildings,
         Cathedral = Cathedral,
         Centre = Centre,
         Humble = Tier == SettlementTier.Hamlet,
+        Layout = Layout,
         Parks = false,
         Services = ServiceList,
     };

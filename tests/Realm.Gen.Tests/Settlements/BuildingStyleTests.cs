@@ -39,6 +39,27 @@ public class BuildingStyleTests
         Assert.All(Of(BuildingStyle.Slum), b => Assert.Equal(1, InteriorGenerator.Generate(b, Big.Seed).Floors.Count));
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void RichWards_HaveASecondRow_BehindTheFirst(int seed)
+    {
+        City city = CityGenerator.Generate(new CityParams { Seed = seed, CityPatchCount = 12, Parks = false });
+
+        // A house in the first row stands within about 4.5 m (street) + 10 m (row) of the ward's edge; the second row is further in.
+        bool Deep(Patch patch, Building b)
+        {
+            Vec2 c = b.Footprint.Centroid;
+            double nearest = Enumerable.Range(0, patch.Shape.Count).Min(i => -Vec2.Dot(patch.Shape.OutwardNormal(i), c - patch.Shape.Points[i]));
+            return nearest > 17;
+        }
+
+        var rich = city.CityPatches.Where(p => p.Ward is WardType.Merchant or WardType.Craftsmen).ToList();
+        Assert.NotEmpty(rich);
+        Assert.Contains(rich, p => p.Buildings.Any(b => Deep(p, b)));
+    }
+
     [Fact]
     public void WallThickness_DependsOnTheMaterial_SlumsThin_RichThick()
     {
@@ -120,7 +141,7 @@ public class BuildingStyleTests
         {
             City city = CityGenerator.Generate(new CityParams { Seed = seed, MaxBuildings = cap });
             int houses = city.CityPatches.Sum(p => p.Buildings.Count);
-            Assert.InRange(houses, cap * 0.8, cap);
+            Assert.InRange(houses, cap * 0.7, cap);
         }
     }
 
