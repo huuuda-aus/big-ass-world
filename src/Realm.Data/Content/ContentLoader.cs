@@ -37,9 +37,12 @@ public static class ContentLoader
     private static readonly TypeSpec<ServiceBuildingDefinition> ServiceSpec =
         new("services", "service", ServiceBuildingParser.Parse, s => s.Id);
 
+    private static readonly TypeSpec<FoliageDefinition> FoliageSpec =
+        new("foliage", "foliage", FoliageParser.Parse, f => f.Id);
+
     private static readonly string[] KnownDirectories =
     {
-        MaterialSpec.Directory, ItemSpec.Directory, BiomeSpec.Directory, WorldSpec.Directory, ServiceSpec.Directory,
+        MaterialSpec.Directory, ItemSpec.Directory, BiomeSpec.Directory, WorldSpec.Directory, ServiceSpec.Directory, FoliageSpec.Directory,
     };
 
     /// <summary>Loads and validates all content under a root directory, including cross-record references.</summary>
@@ -81,12 +84,14 @@ public static class ContentLoader
         Dictionary<ContentId, RegionDefinition> regions = CollectRegions(maps, report, sources);
         Dictionary<ContentId, ServiceBuildingDefinition> services = LoadType(rootDirectory, ServiceSpec, report, sources);
 
-        var database = new ContentDatabase(materials, items, biomes, maps, regions, services, sources);
+        Dictionary<ContentId, FoliageDefinition> foliage = LoadType(rootDirectory, FoliageSpec, report, sources);
+
+        var database = new ContentDatabase(materials, items, biomes, maps, regions, services, foliage, sources);
         ContentValidator.ValidateReferences(database, report);
 
         Logger.Info(
             $"Loaded {materials.Count} material(s), {items.Count} item(s), {biomes.Count} biome(s), " +
-            $"{maps.Count} world map(s) with {regions.Count} region(s), {services.Count} service(s) from '{rootDirectory}'.");
+            $"{maps.Count} world map(s) with {regions.Count} region(s), {services.Count} service(s), {foliage.Count} foliage species from '{rootDirectory}'.");
         return database;
     }
 

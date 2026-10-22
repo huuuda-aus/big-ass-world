@@ -32,7 +32,10 @@ public static class ArchBridgeMesher
     private const double AbutmentLength = 2.0;
     private const double AbutmentTop = 0.3; // the abutment top lies this far below the roadway, inside the deck
     private const double AbutmentInset = 0.2;
-    private const double EndLift = 0.05;
+    private const double FootingBelowGround = 1.0; // an abutment reaches this far below the lowest ground under it
+    private const double RampMeters = 4; // the roadway's ends slope down to the ground over this length, a gentle 5 percent
+    private const double RampThicknessMeters = 0.5;
+    private const double EndLift = 0.2; // the roadway stands this far above the ground at both ends
 
     private static readonly Vector3 Stone = SettlementPalette.Hex(0x8c887e);
     private static readonly Vector3 Soffit = SettlementPalette.Hex(0x6e6a62);
@@ -104,13 +107,28 @@ public static class ArchBridgeMesher
             }
         }
 
+        // A ramp of the roadway's own material at each end carries the road up the lift: its top runs from the roadway's end down to the ground,
+        // and the slab is thick enough that its far end sinks into the ground.
+        foreach ((double t, double sign, double height) in new[] { (0.0, -1.0, startHeight), (1.0, 1.0, endHeight) })
+        {
+            Vec2 end = Vec2.Lerp(bridge.From, bridge.To, t);
+            Vec2 tipPoint = end + (d * (sign * RampMeters));
+            var from = new Vector3((float)end.X, (float)height, (float)end.Y);
+            var tip = new Vector3((float)tipPoint.X, (float)(height - EndLift), (float)tipPoint.Y);
+            Vector3 rampAlong = Vector3.Normalize(tip - from);
+            var rampAcross = new Vector3((float)n.X, 0, (float)n.Y);
+            Vector3 rampUp = Vector3.Cross(rampAcross, rampAlong);
+            rampUp = Vector3.Normalize(rampUp.Y < 0 ? -rampUp : rampUp);
+            b.OrientedBox(((from + tip) / 2) - (rampUp * (float)(RampThicknessMeters / 2)), rampAlong, rampUp, rampAcross, new Vector3((tip - from).Length(), (float)RampThicknessMeters, (float)bridge.WidthMeters), Roadway);
+        }
+
         // An abutment under each end: masonry from the bank up into the bridge. It stands under the roadway (its top is inside the deck and
         // it is a little narrower than the faces), so nothing shows above the ground beyond the ends and nothing shares a plane with the bridge.
         foreach ((double t, double sign, double height) in new[] { (0.0, 1.0, startHeight), (1.0, -1.0, endHeight) })
         {
             Vec2 end = Vec2.Lerp(bridge.From, bridge.To, t);
             double bank = ground.HeightAt(end.X, end.Y);
-            double bottom = bank - AbutmentDepth;
+            double bottom = Math.Min(bank - AbutmentDepth, LowestUnder(ground, end, d, n, sign, half) - FootingBelowGround);
             double topY = height - AbutmentTop;
             Vec2 centre = end + (d * (sign * (AbutmentLength / 2)));
             var along = new Vector3((float)d.X, 0, (float)d.Y);
@@ -119,5 +137,21 @@ public static class ArchBridgeMesher
         }
 
         return b.Build("city.bridge");
+    }
+
+    // The lowest ground under an abutment's footprint, so it can be built down to it where the bank falls away.
+    private static double LowestUnder(IGroundSampler ground, Vec2 end, Vec2 d, Vec2 n, double sign, double halfWidth)
+    {
+        double lowest = double.MaxValue;
+        for (int along = 0; along <= 3; along++)
+        {
+            for (int across = -1; across <= 1; across++)
+            {
+                Vec2 p = end + (d * (sign * AbutmentLength * along / 3)) + (n * (across * halfWidth));
+                lowest = Math.Min(lowest, ground.HeightAt(p.X, p.Y));
+            }
+        }
+
+        return lowest;
     }
 }

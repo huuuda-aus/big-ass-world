@@ -221,6 +221,42 @@ public class RoadTests
         Assert.Empty(good.Issues);
         Assert.Contains(bad.Issues, i => i.Code == RoadCodes.BedMismatch);
         Assert.Contains(tooLong.Issues, i => i.Code == RoadCodes.BridgeTooLong);
+
+        var steepBridge = roads.Select(r => r with { Bridges = r.Bridges.Select(b => b with { EndHeight = b.StartHeight + (0.5 * b.LengthMeters) }).ToList() }).ToList();
+        var steep = new ValidationReport();
+        RoadValidator.Validate(steepBridge, flat, carved, river, null, steep);
+        Assert.Contains(steep.Issues, i => i.Code == RoadCodes.BridgeTooSteep);
+    }
+
+    [Fact]
+    public void PlannedBridges_RecordTheLowestGroundUnderEachAbutment()
+    {
+        HeightField flat = Terrain((_, _) => Plateau);
+        IReadOnlyList<Road> roads = Plan(flat, RiverAlongX0(), new[] { West, East });
+
+        RoadBridge bridge = roads.SelectMany(r => r.Bridges).First();
+
+        Assert.NotNull(bridge.StartFootingHeight);
+        Assert.NotNull(bridge.EndFootingHeight);
+        Assert.True(bridge.StartFootingHeight <= bridge.StartHeight && bridge.EndFootingHeight <= bridge.EndHeight);
+        var manifest = new RoadManifest { World = "w", Seed = 1, Roads = roads };
+        RoadManifest? back = RoadManifest.FromJson(manifest.ToJson(), new ValidationReport());
+        Assert.Equal(bridge, back!.Roads.SelectMany(r => r.Bridges).First());
+    }
+
+    [Fact]
+    public void AnAbutment_ReachesDownToTheLowestGroundUnderIt()
+    {
+        // Deck at 50 m, but the ground under the first abutment is at 30 m (a cliff edge): the stone must reach 1 m below that.
+        var bridge = new RoadBridge(100, 200, 0.5, 30, 6, 50, 53, 4, 8, 30, 45);
+
+        PropMesh mesh = BridgeMesher.Build(bridge);
+
+        var stone = mesh.Triangles.Where(t => t.Colour == SettlementPalette.Hex(0x8c887e)).ToList();
+        Assert.InRange(stone.Min(t => Math.Min(t.A.Y, Math.Min(t.B.Y, t.C.Y))), 28.9f, 29.1f);
+        // Without a footing the old fixed depth applies.
+        PropMesh plain = BridgeMesher.Build(bridge with { StartFootingHeight = null, EndFootingHeight = null });
+        Assert.True(plain.Triangles.Where(t => t.Colour == SettlementPalette.Hex(0x8c887e)).Min(t => t.A.Y) > 45);
     }
 
     [Fact]
@@ -293,7 +329,7 @@ public class RoadTests
         // meets the deck with no stone showing at road level (the old abutments were flush with the road and clipped the terrain).
         var stone = mesh.Triangles.Where(t => t.Colour == SettlementPalette.Hex(0x8c887e)).ToList();
         Assert.NotEmpty(stone);
-        Assert.True(stone.Max(t => Math.Max(t.A.Y, Math.Max(t.B.Y, t.C.Y))) <= 53 - 0.4, "stone shows above the deck's underside");
+        Assert.True(stone.Max(t => Math.Max(t.A.Y, Math.Max(t.B.Y, t.C.Y))) <= 53.2 - 0.4, "stone shows above the deck's underside");
         // And it stays inside the footprint of the deck along the bridge: no plate sticks out beyond the ends.
         float half = 15;
         Assert.All(stone, t => Assert.InRange(Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)), -half - 0.01f, half + 0.01f));
@@ -330,10 +366,30 @@ public class RoadTests
             return best;
         }
 
-        // The deck rises 3 m over 30 m: the top surface at x = -14.5 is 50.15 and at 14.5 is 52.85.
-        Assert.Equal(50.15, TopAt(-14.5), 0.2);
-        Assert.Equal(52.85, TopAt(14.5), 0.2);
-        Assert.InRange(mesh.HeightMeters, 53.9, 54.2); // end height 53 plus the 1 m railing
+        // The deck rises 3 m over 30 m: the top surface at x = -14.5 is 50.35 and at 14.5 is 53.05 (with the 0.2 m deck lift).
+        Assert.Equal(50.35, TopAt(-14.5), 0.2);
+        Assert.Equal(53.05, TopAt(14.5), 0.2);
+        Assert.InRange(mesh.HeightMeters, 54.1, 54.4); // end height 53, the 0.2 m lift and the 1 m railing
         Assert.True(mesh.Min.Y < 47, "abutments reach below the deck");
+    }
+
+    [Fact]
+    public void TheDeck_HasAGentleTimberRampAtEachEnd_DownToTheRoad()
+    {
+        var bridge = new RoadBridge(100, 200, 0.5, 30, 6, 50, 53, 4, 8);
+
+        (PropMesh timber, PropMesh stone) = BridgeMesher.BuildParts(bridge);
+
+        // The ramps stand beyond the deck's ends (x = -15 and 15) and are timber, not stone.
+        Assert.True(timber.Min.X <= -15 - 3.9f && timber.Max.X >= 15 + 3.9f, "no ramp beyond the ends");
+        Assert.All(stone.Triangles, t => Assert.InRange(Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)), -15.01f, 15.01f));
+        var up = timber.Triangles.Where(t => Vector3.Normalize(Vector3.Cross(t.B - t.A, t.C - t.A)).Y > 0.9f).ToList();
+        var startRamp = up.Where(t => Math.Max(t.A.X, Math.Max(t.B.X, t.C.X)) <= -15 + 0.01f && Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)) >= -19.01f).ToList();
+        Assert.NotEmpty(startRamp);
+        Assert.All(startRamp, t => Assert.True(Vector3.Normalize(Vector3.Cross(t.B - t.A, t.C - t.A)).Y > 0.99f, "the ramp is steeper than 8 percent"));
+        // Its tip is level with the road at the bridge's start height (50 m).
+        Assert.InRange(startRamp.Min(t => Math.Min(t.A.Y, Math.Min(t.B.Y, t.C.Y))), 49.95f, 50.05f);
+        // Build merges both parts.
+        Assert.Equal(timber.Triangles.Count + stone.Triangles.Count, BridgeMesher.Build(bridge).Triangles.Count);
     }
 }

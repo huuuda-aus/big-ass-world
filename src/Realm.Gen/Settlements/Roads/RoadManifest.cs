@@ -49,6 +49,7 @@ public sealed class RoadManifest
                 {
                     X = b.X, Z = b.Z, Yaw = b.YawRadians, Length = b.LengthMeters, Width = b.WidthMeters,
                     StartHeight = b.StartHeight, EndHeight = b.EndHeight, First = b.FirstPoint, Last = b.LastPoint,
+                    StartFooting = b.StartFootingHeight, EndFooting = b.EndFootingHeight,
                 });
             }
 
@@ -93,7 +94,7 @@ public sealed class RoadManifest
                 var bridges = new List<RoadBridge>();
                 foreach (BridgeDto b in r.Bridges)
                 {
-                    bridges.Add(new RoadBridge(b.X, b.Z, b.Yaw, b.Length, b.Width, b.StartHeight, b.EndHeight, b.First, b.Last));
+                    bridges.Add(new RoadBridge(b.X, b.Z, b.Yaw, b.Length, b.Width, b.StartHeight, b.EndHeight, b.First, b.Last, b.StartFooting, b.EndFooting));
                 }
 
                 roads.Add(new Road(r.Id, r.From, r.To, r.Width, points, bridges));
@@ -155,5 +156,9 @@ public sealed class RoadManifest
         public int First { get; set; }
 
         public int Last { get; set; }
+
+        public double? StartFooting { get; set; }
+
+        public double? EndFooting { get; set; }
     }
 }

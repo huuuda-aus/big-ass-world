@@ -1,0 +1,12 @@
+# Placeholder species values, not design.
+id: foliage.shrub
+name: Shrub
+kind: bush
+tags: [scrub]
+per_hectare: { biome.dry_steppe: 30, biome.badlands: 9, biome.temperate_forest: 35, biome.marsh: 20, biome.highlands: 12 }
+min_spacing_m: 1.8
+height_range_m: [0, 900]
+max_slope_deg: 38
+scale_range: [0.7, 1.3]
+cluster_m: 120
+cluster_strength: 0.6

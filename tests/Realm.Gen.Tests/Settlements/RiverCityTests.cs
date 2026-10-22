@@ -162,13 +162,13 @@ public class RiverCityTests
 
         double crown = ArchBridgeMesher.CrownMeters(40);
         Assert.Equal(4.0, crown, 6);
-        Assert.Equal(ground.HeightAt(0, 0) + 0.05, ArchBridgeMesher.RoadwayHeight(bridge, ground, 0), 6);
-        Assert.Equal(ground.HeightAt(40, 0) + 0.05, ArchBridgeMesher.RoadwayHeight(bridge, ground, 1), 6);
+        Assert.Equal(ground.HeightAt(0, 0) + 0.2, ArchBridgeMesher.RoadwayHeight(bridge, ground, 0), 6);
+        Assert.Equal(ground.HeightAt(40, 0) + 0.2, ArchBridgeMesher.RoadwayHeight(bridge, ground, 1), 6);
         double middle = ArchBridgeMesher.RoadwayHeight(bridge, ground, 0.5);
-        Assert.Equal(((ground.HeightAt(0, 0) + ground.HeightAt(40, 0)) / 2) + 0.05 + crown, middle, 6);
+        Assert.Equal(((ground.HeightAt(0, 0) + ground.HeightAt(40, 0)) / 2) + 0.2 + crown, middle, 6);
 
         // The roadway is made of up-facing triangles that reach the crown, and none of them is steeper than a walker can climb.
-        var roadway = mesh.Triangles.Where(t => t.Colour == SettlementPalette.Hex(0x9a8f78)).ToList();
+        var roadway = mesh.Triangles.Where(t => t.Colour == SettlementPalette.Hex(0x9a8f78) && Vector3.Normalize(Vector3.Cross(t.B - t.A, t.C - t.A)).Y > 0.1f).ToList(); // walking surfaces; the ramps' sides and undersides are not
         Assert.NotEmpty(roadway);
         Assert.True(roadway.Max(t => Math.Max(t.A.Y, Math.Max(t.B.Y, t.C.Y))) >= middle - 0.01);
         Assert.All(roadway, t => Assert.True(Vector3.Normalize(Vector3.Cross(t.B - t.A, t.C - t.A)).Y > 0.8f, "the roadway is too steep to walk"));
@@ -185,6 +185,36 @@ public class RiverCityTests
     }
 
     [Fact]
+    public void AnArchAbutment_ReachesDownWhereTheBankFallsAway()
+    {
+        var bridge = new CityBridge(new Vec2(0, 0), new Vec2(40, 0), 7);
+        var ground = new Slope(-2); // a steep drop along the bridge: the ground under the first abutment is 4 m below its end
+
+        PropMesh mesh = ArchBridgeMesher.Build(bridge, ground);
+
+        double lowestAtStart = mesh.Triangles.Where(t => t.A.X < 2.5f && t.B.X < 2.5f && t.C.X < 2.5f).Min(t => Math.Min(t.A.Y, Math.Min(t.B.Y, t.C.Y)));
+        Assert.True(lowestAtStart <= ground.HeightAt(2, 0) - 0.9, $"the abutment stops at {lowestAtStart:F1} m but the ground is at {ground.HeightAt(2, 0):F1} m");
+    }
+
+    [Fact]
+    public void TheArchBridge_HasARampAtEachEnd_ThatIsGentleAndMeetsTheGround()
+    {
+        var bridge = new CityBridge(new Vec2(10, 0), new Vec2(50, 0), 7);
+        var ground = new Slope(0);
+
+        PropMesh mesh = ArchBridgeMesher.Build(bridge, ground);
+
+        foreach ((float x0, float x1) in new[] { (6f, 10f), (50f, 54f) })
+        {
+            var ramp = mesh.Triangles.Where(t => t.Colour == SettlementPalette.Hex(0x9a8f78) && Vector3.Normalize(Vector3.Cross(t.B - t.A, t.C - t.A)).Y > 0.9f
+                && Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)) >= x0 - 0.01f && Math.Max(t.A.X, Math.Max(t.B.X, t.C.X)) <= x1 + 0.01f).ToList();
+            Assert.NotEmpty(ramp);
+            Assert.All(ramp, t => Assert.True(Vector3.Normalize(Vector3.Cross(t.B - t.A, t.C - t.A)).Y > 0.99f, "the ramp is steeper than 8 percent"));
+            Assert.InRange(ramp.Min(t => Math.Min(t.A.Y, Math.Min(t.B.Y, t.C.Y))), -0.01f, 0.01f); // the tip is level with the ground
+        }
+    }
+
+    [Fact]
     public void TheArchBridge_HasNoMasonryBeyondItsEnds_OrAboveTheRoadway_SoNothingClipsThroughTheBank()
     {
         var bridge = new CityBridge(new Vec2(10, 0), new Vec2(50, 0), 7);
@@ -192,11 +222,17 @@ public class RiverCityTests
 
         PropMesh mesh = ArchBridgeMesher.Build(bridge, ground);
 
-        // Nothing sticks out past the two ends along the bridge (the abutments are under the roadway, not behind it).
-        Assert.All(mesh.Triangles, t =>
+        // No masonry sticks out past the two ends along the bridge (the abutments are under the roadway, not behind it); only the end
+        // ramps of the roadway's material reach out, by at most their length.
+        Assert.All(mesh.Triangles.Where(t => t.Colour != SettlementPalette.Hex(0x9a8f78)), t =>
         {
             Assert.InRange(Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)), 10 - 0.05f, 50 + 0.05f);
             Assert.InRange(Math.Max(t.A.X, Math.Max(t.B.X, t.C.X)), 10 - 0.05f, 50 + 0.05f);
+        });
+        Assert.All(mesh.Triangles, t =>
+        {
+            Assert.InRange(Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)), 10 - 4.05f, 50 + 4.05f);
+            Assert.InRange(Math.Max(t.A.X, Math.Max(t.B.X, t.C.X)), 10 - 4.05f, 50 + 4.05f);
         });
         // Every up-facing surface within a metre of an end is the roadway (or a parapet top), never an abutment top at ground level.
         double endHeight = ArchBridgeMesher.RoadwayHeight(bridge, ground, 0);

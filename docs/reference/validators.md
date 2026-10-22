@@ -26,6 +26,7 @@ Run content validation with `dotnet run --project src/Realm.Cli -- content-lint`
 | DATA016 | Error | A region polygon is invalid: fewer than 3 vertices, a vertex that is not an `[x, z]` pair, a non-finite number, repeated or collinear vertices, or edges that cross or touch. The message names the region, the ring and the reason. | Fix the vertices; keep the ring simple. |
 | DATA017 | Error | A region polygon extends outside the world square. | Move the vertices inside, or raise `world_size_m`. |
 | DATA018 | Error | A `service` record has an unknown tier, ward, `near`, `foundation` or `main_room` word, a count outside 1 to 8, a non-positive `min_area_m2`, or lists `wards` together with `outside_wall: true`. | Use one of the words the message lists; see the [service reference](content/service.md). |
+| DATA019 | Error | A `foliage` record has an unknown `kind`, a density outside its limits, a malformed `[low, high]` pair, or another out-of-range number. | Use the limits the message lists; see the [foliage reference](content/foliage.md). |
 
 Known content types today: `material`, `item`, `biome`, `world`, `service`.
 
@@ -105,6 +106,10 @@ Reported by `RoadPlanner` and `RoadValidator` during `bake-terrain` ([ADR 0013](
 | ROAD003 | Error | The terrain under a road differs from its graded surface by more than 1 m (checked only when the vertex spacing is no coarser than the road width), or a cut or fill is deeper than 20 m. A road that ends at a mountain city gets looser limits: 8 m and 45 m (`HighlandBedToleranceMeters`, `HighlandMaxCutFillMeters`). The message names where the worst mismatch is. | Raise `MaxCutFillMeters`, raise `SlopePenalty` so the road avoids hills. |
 | ROAD004 | Error | A road runs through the sea or a lake. | Route around the water or raise `MinHeightMeters`. |
 | ROAD005 | Error | A bridge is longer than 80 m. | Raise `MaxBridgeMeters` or `RiverCrossingPenaltyMeters`. |
+| ROAD007 | Error | A bridge deck is steeper between its two ends than `MaxBridgeGrade` (rise over run, default 0.2). The message gives the position and both end heights. | Raise `MaxBridgeGrade`, or raise `RiverCrossingPenaltyMeters` and `SlopePenalty` so roads cross where the banks are level. |
+| FOL001 | Error | A tree, bush or grass cell stands on water, a road or a settlement, or outside its species' height and slope limits. The message gives an example position. | Check the exclusion margins and the species' limits. |
+| FOL002 | Error | Two plants of one species are closer than its `min_spacing_m`. | Raise `min_spacing_m` or lower the density. |
+| FOL003 | Warning | A tree or bush species placed no plants at all. | Raise its density, widen its height and slope limits, or check its biomes. |
 | ROAD006 | Error | `roads.json` is damaged or has an unsupported format. | Re-run `bake-terrain`. |
 
 ## Dungeon and population validators

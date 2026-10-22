@@ -1,4 +1,5 @@
 using System;
+using Realm.Core.Ids;
 using Realm.Core.Validation;
 
 namespace Realm.Data.Content;
@@ -11,7 +12,7 @@ namespace Realm.Data.Content;
 public static class ContentValidator
 {
     /// <summary>Reports every reference that points at a record which does not exist.</summary>
-    /// <remarks>Covers <c>item.material</c> and <c>region.biome</c>.</remarks>
+    /// <remarks>Covers <c>item.material</c>, <c>region.biome</c> and the biomes a foliage species grows in.</remarks>
     /// <param name="database">The loaded content.</param>
     /// <param name="report">Receives <see cref="ValidatorCodes.DanglingReference"/> errors.</param>
     public static void ValidateReferences(ContentDatabase database, ValidationReport report)
@@ -42,6 +43,22 @@ public static class ContentValidator
                     location,
                     $"Region '{region.Id}' references biome '{region.Biome}', which does not exist.",
                     "Fix the ID or add the biome.");
+            }
+        }
+
+        foreach (FoliageDefinition species in database.Foliage.Values)
+        {
+            foreach (ContentId biome in species.PerHectare.Keys)
+            {
+                if (!database.Biomes.ContainsKey(biome))
+                {
+                    database.TryGetSource(species.Id, out string location);
+                    report.Error(
+                        ValidatorCodes.DanglingReference,
+                        location,
+                        $"Foliage '{species.Id}' grows in biome '{biome}', which does not exist.",
+                        "Fix the ID or add the biome.");
+                }
             }
         }
     }

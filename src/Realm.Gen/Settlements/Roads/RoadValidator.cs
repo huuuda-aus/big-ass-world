@@ -133,6 +133,16 @@ public static class RoadValidator
 
             foreach (RoadBridge bridge in road.Bridges)
             {
+                double grade = Math.Abs(bridge.EndHeight - bridge.StartHeight) / Math.Max(bridge.LengthMeters, 1e-6);
+                if (grade > settings.MaxBridgeGrade)
+                {
+                    report.Error(
+                        RoadCodes.BridgeTooSteep,
+                        road.Id,
+                        $"A bridge on '{road.Id}' at ({bridge.X:F0}, {bridge.Z:F0}) climbs {grade:P0} between its ends (from {bridge.StartHeight:F1} m to {bridge.EndHeight:F1} m); the limit is {settings.MaxBridgeGrade:P0}.",
+                        "Raise MaxBridgeGrade, or raise RiverCrossingPenaltyMeters and SlopePenalty so roads cross where the banks are level.");
+                }
+
                 if (bridge.LengthMeters > settings.MaxBridgeMeters)
                 {
                     report.Error(

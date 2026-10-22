@@ -19,6 +19,7 @@ public sealed class ContentDatabase
         new Dictionary<ContentId, MacroMapDefinition>(),
         new Dictionary<ContentId, RegionDefinition>(),
         new Dictionary<ContentId, ServiceBuildingDefinition>(),
+        new Dictionary<ContentId, FoliageDefinition>(),
         new Dictionary<ContentId, string>());
 
     private readonly IReadOnlyDictionary<ContentId, string> _sources;
@@ -30,6 +31,7 @@ public sealed class ContentDatabase
     /// <param name="macroMaps">Macro maps by ID; copied and sorted.</param>
     /// <param name="regions">Regions of all macro maps by ID; copied and sorted.</param>
     /// <param name="services">Service buildings by ID; copied and sorted.</param>
+    /// <param name="foliage">Foliage species by ID; copied and sorted.</param>
     /// <param name="sources">File location of each record, by ID.</param>
     internal ContentDatabase(
         IDictionary<ContentId, MaterialDefinition> materials,
@@ -38,6 +40,7 @@ public sealed class ContentDatabase
         IDictionary<ContentId, MacroMapDefinition> macroMaps,
         IDictionary<ContentId, RegionDefinition> regions,
         IDictionary<ContentId, ServiceBuildingDefinition> services,
+        IDictionary<ContentId, FoliageDefinition> foliage,
         IDictionary<ContentId, string> sources)
     {
         ArgumentNullException.ThrowIfNull(materials);
@@ -46,6 +49,7 @@ public sealed class ContentDatabase
         ArgumentNullException.ThrowIfNull(macroMaps);
         ArgumentNullException.ThrowIfNull(regions);
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(foliage);
         ArgumentNullException.ThrowIfNull(sources);
 
         Materials = Sorted(materials);
@@ -54,6 +58,7 @@ public sealed class ContentDatabase
         MacroMaps = Sorted(macroMaps);
         Regions = Sorted(regions);
         Services = Sorted(services);
+        Foliage = Sorted(foliage);
         _sources = new ReadOnlyDictionary<ContentId, string>(new Dictionary<ContentId, string>(sources));
     }
 
@@ -75,12 +80,15 @@ public sealed class ContentDatabase
     /// <summary>All service buildings, enumerated in ordinal ID order.</summary>
     public IReadOnlyDictionary<ContentId, ServiceBuildingDefinition> Services { get; }
 
+    /// <summary>All foliage species, enumerated in ordinal ID order.</summary>
+    public IReadOnlyDictionary<ContentId, FoliageDefinition> Foliage { get; }
+
     /// <summary>Checks whether any loaded record has this ID.</summary>
     /// <param name="id">The ID to look for.</param>
     /// <returns><c>true</c> when a record exists.</returns>
     public bool Contains(ContentId id) =>
         Materials.ContainsKey(id) || Items.ContainsKey(id) || Biomes.ContainsKey(id)
-        || MacroMaps.ContainsKey(id) || Regions.ContainsKey(id) || Services.ContainsKey(id);
+        || MacroMaps.ContainsKey(id) || Regions.ContainsKey(id) || Services.ContainsKey(id) || Foliage.ContainsKey(id);
 
     /// <summary>Finds the file a record was loaded from.</summary>
     /// <param name="id">The record ID. For a region this is the file of its macro map.</param>

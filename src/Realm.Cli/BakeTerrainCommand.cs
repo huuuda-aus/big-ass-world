@@ -8,6 +8,7 @@ using Realm.Core.Ids;
 using Realm.Core.Validation;
 using Realm.Data.Content;
 using Realm.Gen.Bake;
+using Realm.Gen.Foliage;
 using Realm.Gen.Settlements.Generation;
 using Realm.Gen.Settlements.Geometry;
 using Realm.Gen.Settlements.Model;
@@ -183,6 +184,16 @@ internal static class BakeTerrainCommand
                 double kilometres = roads.Sum(r => Enumerable.Range(1, r.Points.Count - 1).Sum(i => Math.Sqrt(Math.Pow(r.Points[i].X - r.Points[i - 1].X, 2) + Math.Pow(r.Points[i].Z - r.Points[i - 1].Z, 2)))) / 1000.0;
                 output.WriteLine($"  roads: {roads.Count} road(s), {kilometres:F1} km, {roads.Sum(r => r.Bridges.Count)} bridge(s), terrain graded under them ({step.Elapsed.TotalSeconds:F1} s)");
             }
+
+            step.Restart();
+            var foliageSettings = new FoliageSettings();
+            var exclusion = new FoliageExclusion(field.WorldSizeMeters, network, roads, settlements, foliageSettings);
+            FoliageData foliage = FoliageGenerator.Generate(map, regions, db.Foliage, field, exclusion, seed, foliageSettings, report);
+            FoliageValidator.Validate(foliage, db.Foliage, field, exclusion, foliageSettings, report);
+            Directory.CreateDirectory(outputDirectory);
+            File.WriteAllBytes(Path.Combine(outputDirectory, FoliageFile.FileName), FoliageFile.ToBytes(foliage));
+            generators += $", {FoliageGenerator.GeneratorId} v{FoliageGenerator.GeneratorVersion}";
+            output.WriteLine($"  foliage: {foliage.Instances.Count} tree(s) and bush(es), {foliage.GrassTufts.Count(t => t > 0)} grass cell(s) ({step.Elapsed.TotalSeconds:F1} s)");
 
             step.Restart();
             TerrainManifest? manifest = TerrainBaker.Bake(

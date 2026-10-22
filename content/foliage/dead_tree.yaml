@@ -1,0 +1,13 @@
+# Placeholder species values, not design.
+id: foliage.dead_tree
+name: Dead tree
+kind: tree
+tags: [dead]
+per_hectare: { biome.badlands: 2, biome.dry_steppe: 0.8, biome.marsh: 9 }
+min_spacing_m: 12
+height_range_m: [0, 700]
+max_slope_deg: 35
+scale_range: [0.4, 1.2]
+cluster_m: 300
+cluster_strength: 0.7
+trunk_radius_m: 0.3

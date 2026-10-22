@@ -69,4 +69,17 @@ public class ShippedContentTests
 
         return dir?.FullName ?? throw new InvalidOperationException("Realm.sln not found above the test binary.");
     }
+
+    [Fact]
+    public void ShippedFoliage_HasTreesBushesAndGrass_ForRealBiomes()
+    {
+        var report = new ValidationReport();
+        ContentDatabase db = ContentLoader.Load(Path.Combine(RepoRoot(), "content"), report);
+
+        Assert.Empty(report.Issues);
+        Assert.Contains(db.Foliage.Values, f => f.Kind == "tree");
+        Assert.Contains(db.Foliage.Values, f => f.Kind == "bush");
+        Assert.Contains(db.Foliage.Values, f => f.Kind == "grass");
+        Assert.All(db.Foliage.Values, f => Assert.All(f.PerHectare.Keys, b => Assert.True(db.Biomes.ContainsKey(b), $"{f.Id} grows in unknown {b}")));
+    }
 }

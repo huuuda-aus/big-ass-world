@@ -33,6 +33,8 @@ public static class RoadPlanner
     private const int SmoothingHalfWindow = 4;
     private const int GradeSweeps = 3;
     private const int MergeBridgeGap = 2;
+    private const double FootingMeters = 3; // how far in from the end of the deck an abutment reaches
+    private const int FootingAlongSamples = 3;
 
     private static readonly (int Dx, int Dz)[] Neighbours =
     {
@@ -262,10 +264,34 @@ public static class RoadPlanner
                 a.Height,
                 b.Height,
                 first,
-                last));
+                last,
+                Math.Round(LowestGround(field, a, dx, dz, settings.WidthMeters, 1), 2),
+                Math.Round(LowestGround(field, b, dx, dz, settings.WidthMeters, -1), 2)));
         }
 
         return new Road(id, from, to, settings.WidthMeters, points, bridges);
+    }
+
+    // The lowest ground under an abutment's footprint (a few metres inward from the end of the deck, as wide as the deck), so the
+    // abutment can be built down to it. `inward` is +1 at the first end and -1 at the second.
+    private static double LowestGround(HeightField field, RoadPoint end, double dx, double dz, double width, int inward)
+    {
+        double length = Math.Max(Math.Sqrt((dx * dx) + (dz * dz)), 1e-6);
+        double ax = dx / length * inward;
+        double az = dz / length * inward;
+        double lowest = double.MaxValue;
+        double half = field.WorldSizeMeters / 2.0;
+        for (int along = 0; along <= FootingAlongSamples; along++)
+        {
+            for (int across = -1; across <= 1; across++)
+            {
+                double x = end.X + (ax * along * FootingMeters / FootingAlongSamples) - (az * across * width / 2);
+                double z = end.Z + (az * along * FootingMeters / FootingAlongSamples) + (ax * across * width / 2);
+                lowest = Math.Min(lowest, field.Sample(Math.Clamp(x, -half, half), Math.Clamp(z, -half, half)));
+            }
+        }
+
+        return lowest;
     }
 
     // Runs of river samples become bridge spans: from the sample before the water to the sample after it. Runs separated by

@@ -63,6 +63,8 @@
 - **Ground grid** (`GroundGrid`): the terrain heights around one settlement on an 8 m grid, baked to `settlements_ground.bin` so a city can be built on a worker thread.
 - **Highland settlement**: a city in mountainous terrain (`Settlement.Highland`); steeper and higher ground is allowed.
 - **Pier**: a wooden foundation with a deck round the house, used where a wooden foundation is more than 3.5 m tall.
+- **Foliage** (`foliage` content type): a species of tree, bush or grass the generator scatters over the world.
+- **Grass cell**: a 32 m square of the baked grass density map; the game scatters its tufts at run time.
 - **Service building** (`service` content type): a building every settlement of a tier must contain, such as an inn or a blacksmith.
 - **Site** (`BuildingSite`): where a building's floor sits on the ground and which foundation holds it up.
 - **Stable slope** (`max_slope_deg`): biome property; steepest slope in degrees that stays put. Steeper slopes slump during thermal erosion.

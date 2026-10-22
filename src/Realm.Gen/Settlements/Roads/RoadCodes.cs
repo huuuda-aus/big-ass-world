@@ -20,4 +20,7 @@ public static class RoadCodes
 
     /// <summary>The roads file is damaged or has an unsupported format.</summary>
     public const string ManifestInvalid = "ROAD006";
+
+    /// <summary>A bridge deck is steeper between its ends than allowed.</summary>
+    public const string BridgeTooSteep = "ROAD007";
 }

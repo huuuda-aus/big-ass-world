@@ -10,6 +10,8 @@ namespace Realm.Gen.Settlements.Roads;
 /// <param name="EndHeight">Deck height at the second end, in metres above sea level.</param>
 /// <param name="FirstPoint">Index of the road point where the bridge starts.</param>
 /// <param name="LastPoint">Index of the road point where the bridge ends.</param>
+/// <param name="StartFootingHeight">Height of the lowest ground under the first abutment, in metres, so the abutment can reach it; null when unknown (older files).</param>
+/// <param name="EndFootingHeight">Height of the lowest ground under the second abutment, in metres; null when unknown.</param>
 public readonly record struct RoadBridge(
     double X,
     double Z,
@@ -19,4 +21,6 @@ public readonly record struct RoadBridge(
     double StartHeight,
     double EndHeight,
     int FirstPoint,
-    int LastPoint);
+    int LastPoint,
+    double? StartFootingHeight = null,
+    double? EndFootingHeight = null);

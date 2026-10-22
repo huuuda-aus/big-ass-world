@@ -142,6 +142,33 @@ public class SurfaceTextureGeneratorTests
     }
 
     [Fact]
+    public void Wood_IsALightNeutralBrown_WithGrainAlongTheRows_AndDarkSeams()
+    {
+        SurfaceTexture wood = SurfaceTextureGenerator.Wood(Seed);
+        double[] mean = MeanRgb(wood);
+
+        Assert.True(mean[0] > mean[2], "wood should be warm (more red than blue)");
+        Assert.InRange(mean[0], 0.55, 1.0);
+        Assert.Equal(wood.AlbedoHeight, SurfaceTextureGenerator.Wood(Seed).AlbedoHeight);
+        // Grain runs along the rows: neighbouring pixels in a row differ less than neighbouring pixels in a column (inside one plank).
+        double rowDiff = 0, colDiff = 0;
+        for (int y = 2; y < 14; y++)
+        {
+            for (int x = 0; x < 63; x++)
+            {
+                rowDiff += Math.Abs(Height(wood, x + 1, y) - Height(wood, x, y));
+                colDiff += Math.Abs(Height(wood, x, y + 1) - Height(wood, x, y));
+            }
+        }
+
+        Assert.True(rowDiff < colDiff, $"grain is not along the rows: {rowDiff} along, {colDiff} across");
+        // A seam row (the first rows of each of the four planks) is darker than the plank body.
+        int seam = Height(wood, 10, 0) + Height(wood, 30, 16) + Height(wood, 50, 32);
+        int body = Height(wood, 10, 8) + Height(wood, 30, 24) + Height(wood, 50, 40);
+        Assert.True(seam < body);
+    }
+
+    [Fact]
     public void Golden_ChecksumsAreStable()
     {
         Assert.Equal(GrassGolden, Fnv(SurfaceTextureGenerator.Grass(Seed)));

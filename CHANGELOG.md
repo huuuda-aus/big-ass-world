@@ -5,6 +5,9 @@ All notable changes are recorded here. Format: [Keep a Changelog](https://keepac
 ## [Unreleased]
 
 ### Added
+- Bridge ramps and wood: both bridge types get a gentle 4 m ramp (5 percent) at each end that carries the road up the 20 cm lift, in the bridge's own material. The timber bridge is split into timber and stone parts (`BridgeMesher.BuildParts`) and the timber is drawn with a generated wood-grain texture (`SurfaceTextureGenerator.Wood`, projected from three axes so the planks run along the deck).
+- Bridge checks: `ROAD007` (a bridge deck steeper than `RoadSettings.MaxBridgeGrade`, default 0.2). Road bridges record the lowest ground under each abutment (`RoadBridge.StartFootingHeight`, `EndFootingHeight`, in `roads.json`) and both the timber and the arched bridges build their abutments down to 1 m below it, so a bank that falls away no longer leaves one hanging.
+- Foliage (ADR 0020): `foliage` content type (`DATA019`) with five placeholder species; `Realm.Gen.Foliage` generator, exclusion raster, validator (`FOL001`-`FOL003`), `foliage.bin` and grass scatter; `bake-terrain` writes `foliage.bin`; the game draws trees and bushes per chunk with MultiMeshes (near and far models), scatters grass near the camera and gives nearby trunks collision. `--no-foliage` game flag.
 - Flowing water (ADR 0019): rivers get a falling water level and a carved bed, lakes a flat level; `water.bin` holds the baked water meshes and the game draws them with a shader that scrolls ripples downstream at a speed from the slope, with foam on cascades. `ErosionSettings.CutRiverChannels`, `RiverNetwork.Channels`; erosion generator version 3 (terrain, placement and bake goldens changed).
 - Opaque water: rivers and lakes use a third Terrain3D texture (`SurfaceTextureGenerator.Water`, 64 px blue ripples, glossy) assigned through the control map in `TerrainBridge`, with a neutral colour tint; the sea plane is nearly opaque. Terrain3D control-map layout (auto bit 0, base id bits 27-31) is assumed from 1.0.2 and confirmed by screenshot.
 - Solution skeleton: `Realm.Core`, `Realm.Data`, `Realm.Sim`, `Realm.Gen`, `Realm.Scripting`, `Realm.Cli` and a test project for each, plus `Realm.Architecture.Tests`.
@@ -92,6 +95,8 @@ All notable changes are recorded here. Format: [Keep a Changelog](https://keepac
 - The scale-reference measure tape, houses and trees were removed from the game (`ReferenceStrip`, `MeasureTape`, `PropMeshConverter`). The Godot-free models (`Realm.Gen.Props`: cottage, town house, three tree kinds, `StripLayout`) and their tests stay for later use.
 
 ### Changed
+- Bridges stand 20 cm above the ground at their ends: the timber road bridge deck is lifted by `DeckLift` and the arched city bridge roadway by `EndLift` (was 5 cm).
+- Taller trees: placeholder models are about 11 m tall at scale 1 and the shipped scale ranges give trees from about 3 m to 20 m, favouring small sizes; oak and pine spacing and density adjusted; foliage generator version 2.
 - Palisade is built of overlapping round logs (two staggered rows, varying radius 0.18-0.25 m and height, flat tops, sunk 0.6 m) instead of widely pointed stakes; no gaps.
 - Two building styles (`BuildingStyle`): `Rich` as before, and `Slum` for slum wards and farmland: small (at most about 5.8 x 5.2 m, lots of 34 m2), one storey and one room, mud-brown walls, dark roof, no half-timbering, 15 cm walls and at most one window. Mud is colour only: no texture yet (known issue 60).
 - Thick walls: outer walls are 30 cm (rich) or 15 cm (slum); walls between rooms are solid 15 cm boxes with real doorways (jambs and lintels); floors and ceilings are 30 cm slabs with visible edges round the stairwell. The collision follows.

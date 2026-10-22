@@ -59,4 +59,7 @@ public static class ValidatorCodes
 
     /// <summary>A <c>service</c> record has an unknown tier, ward, placement, foundation or room word, or an out-of-range number.</summary>
     public const string InvalidServiceField = "DATA018";
+
+    /// <summary>A <c>foliage</c> record has an unknown kind, a density, range or limit out of bounds, or a malformed pair.</summary>
+    public const string InvalidFoliageField = "DATA019";
 }

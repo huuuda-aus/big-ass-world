@@ -27,6 +27,9 @@ public sealed record RoadSettings
     /// <summary>Steepest grade (rise over run) of the road surface.</summary>
     public double MaxGrade { get; init; } = 0.12;
 
+    /// <summary>Steepest allowed grade (rise over run) of a bridge deck between its two ends.</summary>
+    public double MaxBridgeGrade { get; init; } = 0.2;
+
     /// <summary>Longest allowed bridge in metres.</summary>
     public double MaxBridgeMeters { get; init; } = 80;
 
@@ -62,9 +65,9 @@ public sealed record RoadSettings
         {
             problem = "SlopePenalty and RiverCrossingPenaltyMeters must not be negative.";
         }
-        else if (!(MaxGrade > 0) || !(MaxBridgeMeters > 0) || !(MaxCutFillMeters > 0) || !(GateApproachMeters >= 0))
+        else if (!(MaxGrade > 0) || !(MaxBridgeGrade > 0) || !(MaxBridgeMeters > 0) || !(MaxCutFillMeters > 0) || !(GateApproachMeters >= 0))
         {
-            problem = "MaxGrade, MaxBridgeMeters and MaxCutFillMeters must be positive.";
+            problem = "MaxGrade, MaxBridgeGrade, MaxBridgeMeters and MaxCutFillMeters must be positive.";
         }
         else
         {

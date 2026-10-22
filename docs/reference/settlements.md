@@ -78,7 +78,7 @@ Written next to `settlements.json` ([ADR 0013](../decisions/0013-roads-and-bridg
 {"format":1,"world":"world.main","seed":1,"generators":["road.planner v1"],
  "roads":[{"id":"road.1","from":"settlement.city_1","to":"settlement.city_2","width":6,
    "points":[[5421.5,433.2,115.0],[5413.6,429.8,115.0]],
-   "bridges":[{"x":-3982,"z":-271,"yaw":0.68,"length":31.87,"width":6,"startHeight":62.95,"endHeight":62.86,"first":41,"last":45}]}]}
+   "bridges":[{"x":-3982,"z":-271,"yaw":0.68,"length":31.87,"width":6,"startHeight":62.95,"endHeight":62.86,"first":41,"last":45,"startFooting":61.4,"endFooting":61.2}]}]}
 ```
 
 | Field | Meaning |
@@ -88,6 +88,7 @@ Written next to `settlements.json` ([ADR 0013](../decisions/0013-roads-and-bridg
 | `bridges[].yaw` | Plan angle of the bridge along the road, `atan2(dz, dx)`; the game turns the mesh by minus this angle about the vertical axis. |
 | `bridges[].length`, `width` | Deck length between the abutments and deck width, in metres. |
 | `bridges[].startHeight`, `endHeight` | Deck height at each end. |
+| `bridges[].startFooting`, `endFooting` | Height of the lowest ground under each abutment (optional; older files lack it). The abutment is built down to 1 m below it. |
 | `bridges[].first`, `last` | Indices of the road points where the bridge starts and ends. |
 
 # Baked map (`map.png`)

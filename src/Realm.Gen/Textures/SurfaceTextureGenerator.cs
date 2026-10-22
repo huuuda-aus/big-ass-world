@@ -50,6 +50,48 @@ public static class SurfaceTextureGenerator
         Build("water", seed, size, cells: 6, contrast: 0.5,
             dark: (0.07, 0.20, 0.36), light: (0.17, 0.38, 0.56), roughness: 0.3);
 
+    /// <summary>
+    /// Makes a wood-grain texture: four planks across, grain running along the horizontal axis, with dark seams between the planks.
+    /// It is a light, neutral brown meant to be multiplied by a vertex colour, so the same texture serves any timber tint.
+    /// </summary>
+    /// <param name="seed">World seed; the same seed gives the same pixels.</param>
+    /// <param name="size">Width and height in pixels; a power of two of at least 8.</param>
+    /// <returns>The texture.</returns>
+    public static SurfaceTexture Wood(ulong seed, int size = DefaultSize)
+    {
+        if (size < 8 || (size & (size - 1)) != 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(size), size, "Size must be a power of two of at least 8.");
+        }
+
+        ulong key = Rng.ForKey(seed, "texture", "wood").NextUInt64();
+        ulong plankKey = Rng.ForKey(seed, "texture", "wood", "plank").NextUInt64();
+        var height = new double[size * size];
+        for (int y = 0; y < size; y++)
+        {
+            double v = (double)y / size;
+            int plank = (int)Math.Floor(v * WoodPlanks);
+            // Each plank has its own grain offset, so neighbours do not match; grain lines depend on the row only (they run along the plank).
+            double offset = Lattice(plankKey, plank, 0, WoodPlanks);
+            double grain = ValueNoise(key, 0, (v * WoodGrainLines) + (offset * WoodGrainLines), WoodGrainLines);
+            for (int x = 0; x < size; x++)
+            {
+                double u = (double)x / size;
+                double wander = ValueNoise(key + 1, (u * WoodWander) + offset, v * WoodWander, WoodWander);
+                double h = (0.65 * grain) + (0.35 * wander);
+                double inPlank = (v * WoodPlanks) - plank;
+                height[(y * size) + x] = inPlank < WoodSeam ? h * 0.15 : h;
+            }
+        }
+
+        return Shade("wood", size, height, 0.7, dark: (0.66, 0.58, 0.48), light: (1.0, 0.92, 0.80), roughness: 0.9);
+    }
+
+    private const int WoodPlanks = 4;
+    private const int WoodGrainLines = 16;
+    private const int WoodWander = 2;
+    private const double WoodSeam = 0.07;
+
     private static SurfaceTexture Build(
         string name, ulong seed, int size, int cells, double contrast,
         (double R, double G, double B) dark, (double R, double G, double B) light, double roughness)
@@ -69,6 +111,14 @@ public static class SurfaceTextureGenerator
             }
         }
 
+        return Shade(name, size, height, contrast, dark, light, roughness);
+    }
+
+    // Turns a tileable height field in [0, 1] into the albedo (colour from dark to light, height in alpha) and normal (roughness in alpha) images.
+    private static SurfaceTexture Shade(
+        string name, int size, double[] height, double contrast,
+        (double R, double G, double B) dark, (double R, double G, double B) light, double roughness)
+    {
         var albedo = new byte[size * size * 4];
         var normal = new byte[size * size * 4];
         for (int y = 0; y < size; y++)

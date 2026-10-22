@@ -62,6 +62,7 @@ public partial class WorldScene : Node3D
     private MeshInstance3D _water = null!; // Safe: set in _Ready.
     private SettlementStreamer? _cities;
     private RoadsLayer? _roads;
+    private FoliageLayer? _foliage;
     private WorldMap? _map;
     private SubViewport _viewport = null!; // Safe: set in _Ready by BuildViewport.
     private Node3D _world = null!; // Safe: set in _Ready; parent of every 3D node, inside the low-resolution viewport.
@@ -184,13 +185,22 @@ public partial class WorldScene : Node3D
             }
         }
 
+        if (!_args.Flag("no-foliage", false))
+        {
+            _foliage = FoliageLayer.Open(_source.Directory, _source.Manifest.Seed, _bridge);
+            if (_foliage is not null)
+            {
+                _world.AddChild(_foliage);
+            }
+        }
+
         WaterLayer? water = WaterLayer.Open(_source.Directory, _source.Manifest.Seed);
         if (water is not null)
         {
             _world.AddChild(water);
         }
 
-        _roads = RoadsLayer.Open(_source.Directory);
+        _roads = RoadsLayer.Open(_source.Directory, _source.Manifest.Seed);
         if (_roads is not null)
         {
             _world.AddChild(_roads);
@@ -300,6 +310,7 @@ public partial class WorldScene : Node3D
 
         _compass.SetHeading(CompassMath.BearingDegrees(_yaw)); // every frame: it turns with the mouse
         _streamer.Update(_body.Position, _frame);
+        _foliage?.Update(_body.Position, delta);
         _cities?.Process(_body.Position, delta, _streamer.Options.LoadDistanceMeters);
         if (_map is { Visible: true })
         {
