@@ -106,15 +106,15 @@ $ dotnet run --project src/Realm.Cli -c Release -- bake-terrain
   height field: 5121 x 5121 vertices at 4 m (3.1 s)
   erosion: deepest carve 63.1 m, 16 river(s), 2 lake(s) (9.9 s)
   settlements: 9 placed on the natural ground (2.1 s)
-    settlement.city_1      Thornford      City  at (5686, 566), ground 115 m, wall radius 292 m, up to 1200 houses, 16 service building(s)
-    settlement.city_2      Hollowgate     City  at (3006, -1090), ground 117 m, wall radius 300 m, up to 1200 houses, 16 service building(s)
-    settlement.city_3      Langton        City  at (-4922, -442), ground 71 m, wall radius 308 m, up to 1200 houses, 16 service building(s)
-    settlement.mountain_1  Briarhaven     City  at (2877, -4291), ground 469 m (mountain), wall radius 299 m, up to 1200 houses, 16 service building(s)
-    settlement.town_1      Oakley         Town  at (-1962, -1578), ground 70 m, wall radius 196 m, up to 400 houses, 7 service building(s)
+    settlement.city_1      Thornford      City  at (5826, 450), ground 115 m, wall radius 176 m, up to 250 houses, 16 service building(s)
+    settlement.city_2      Hollowgate     City  at (3151, -945), ground 117 m, wall radius 189 m, up to 250 houses, 16 service building(s)
+    settlement.city_3      Langton        City  at (-3388, -572), ground 63 m, wall radius 178 m, up to 250 houses, 16 service building(s)
+    settlement.mountain_1  Briarhaven     City  at (2764, -4404), ground 469 m (mountain), wall radius 186 m, up to 250 houses, 16 service building(s)
+    settlement.town_1      Oakley         Town  at (-7171, 637), ground 49 m, wall radius 107 m, up to 50 houses, 7 service building(s)
     ... (towns 2 to 5)
-  roads: 17 road(s), 66.6 km, 13 bridge(s), terrain graded under them (1.6 s)
+  roads: 17 road(s), 83.7 km, 15 bridge(s), terrain graded under them (3.8 s)
   baked 400 region tile(s) of 256 x 256 vertices (1024 m each) to 'baked/terrain' (1.3 s)
-  height range -218.2 m to 913.6 m; spawn (5687, 576); checksum 39c69dbc42230ea7
+  height range -218.2 m to 913.6 m; spawn (5828, 461); checksum b622762a08ce19a7
 0 error(s), 0 warning(s) (19.8 s total).
 ```
 

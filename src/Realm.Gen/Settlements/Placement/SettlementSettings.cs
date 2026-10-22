@@ -21,11 +21,11 @@ public sealed record SettlementSettings
     /// <summary>Number of extra large cities built in mountainous terrain (see <see cref="MountainMinHeightMeters"/>).</summary>
     public int MountainCities { get; init; } = DefaultMountainCities;
 
-    /// <summary>Houses in a city (about 291 m wall radius at 1,200).</summary>
-    public int CityBuildings { get; init; } = 1200;
+    /// <summary>Most houses in a city (a city of this size has a wall radius of roughly 150 m).</summary>
+    public int CityBuildings { get; init; } = 250;
 
-    /// <summary>Houses in a town (about 189 m wall radius at 400).</summary>
-    public int TownBuildings { get; init; } = 400;
+    /// <summary>Most houses in a town (a town of this size has a wall radius of roughly 80 m).</summary>
+    public int TownBuildings { get; init; } = 50;
 
     /// <summary>Least distance between two settlement centres, on top of their pads.</summary>
     public double MinSpacingMeters { get; init; } = 2500;

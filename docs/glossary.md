@@ -27,6 +27,8 @@
 - **Macro cell**: one square of the coarse region grid (proposed 64 m). A macro cell belongs to the region whose polygon contains the cell centre.
 - **Macro map** (`world` record): the hand-authored list of regions and polygons that tile the world, in metres.
 - **Manifest** (`manifest.json`): describes a baked terrain: geometry, generators, seed, spawn point and a checksum.
+- **Rich / slum building** (`BuildingStyle`): the two ways a building is built and looks today. `Slum` for slum wards and farmland, `Rich` for the rest. The art kit (ADR 0015) will replace the flat-colour look with region styles.
+- **Slab**: the 30 cm thick floor and ceiling between storeys (`InteriorGenerator.SlabThickness`).
 - **Pad**: the flattened ground under a settlement (wall radius plus 30 m) that blends back into the terrain over 100 m.
 - **Patch / ward**: one Voronoi cell of a city plan; inside the wall it has a ward type (market, cathedral, merchant, craftsmen, slum, park).
 - **PCG32**: the pseudo-random algorithm behind `Rng` (XSH-RR variant).

@@ -26,6 +26,12 @@ public static class CityGenerator
     /// <summary>Average houses per ward at the default settings; used to guess a ward count for a target size.</summary>
     private const int TypicalBuildingsPerWard = 18;
 
+    /// <summary>Slum lots are cut about this small (square metres) so the dwellings can be small and many.</summary>
+    private const double SlumLotArea = 34;
+
+    /// <summary>A slum dwelling is at most this wide and deep, plus up to <see cref="SlumSizeSpread"/> more, in metres.</summary>
+    private const double SlumMaxWidth = 4.2, SlumMaxDepth = 3.6, SlumSizeSpread = 1.6;
+
     /// <summary>Generates a walled city.</summary>
     /// <param name="p">Size, seed and options.</param>
     /// <returns>The city, in a flat 2D plane in metres with the central square at the origin.</returns>
@@ -35,8 +41,9 @@ public static class CityGenerator
         if (p.CityPatchCount is int fixedWards) return Build(p, fixedWards, p.MaxBuildings);
         if (p.MaxBuildings is not int max) return Build(p, CityParams.DefaultWardCount, null);
 
-        // Grow the city until it can hold `max` houses (Build trims any excess), up to the number
-        // of wards the site count supports.
+        // Find the smallest number of wards that holds `max` houses (Build trims any excess): start from a guess, grow while short,
+        // then shrink while still enough. The excess is trimmed from the outermost ward first, so a city that is too big would lose its
+        // slums; the smallest sufficient city keeps its outskirts.
         int limit = Math.Max(3, p.SiteCount / 3);
         int wards = Math.Min(limit, Math.Max(3, (int)Math.Ceiling(max / (double)TypicalBuildingsPerWard)));
         City city = Build(p, wards, max);
@@ -46,6 +53,19 @@ public static class CityGenerator
             wards = Math.Min(limit, wards + Math.Max(1, missing / TypicalBuildingsPerWard));
             city = Build(p, wards, max);
         }
+
+        while (wards > 3)
+        {
+            City smaller = Build(p, wards - 1, max);
+            if (BuildingCount(smaller) < max)
+            {
+                break;
+            }
+
+            wards--;
+            city = smaller;
+        }
+
         return city;
     }
 
@@ -350,6 +370,7 @@ public static class CityGenerator
             case WardType.Cathedral: return double.MaxValue;
             case WardType.Merchant: return 130;
             case WardType.Craftsmen: return 90;
+            case WardType.Slum: return SlumLotArea;
             default: return 60;
         }
     }
@@ -435,7 +456,7 @@ public static class CityGenerator
         bool narrow = lot.EdgeLength(front) < 2 * (MinFrontage + 2 * SideGap);
         if (small || narrow || depth > 8)
         {
-            Emit(lot, patch);
+            Emit(lot, patch, rng);
             return;
         }
 
@@ -447,7 +468,7 @@ public static class CityGenerator
         ConvexPoly? b = lot.Clip(cut, -normal, 0);
         if (a == null || b == null)
         {
-            Emit(lot, patch);
+            Emit(lot, patch, rng);
             return;
         }
         Split(a, minArea, depth + 1, patch, rng);
@@ -480,7 +501,7 @@ public static class CityGenerator
     /// Pulls the sides shared with neighbouring lots (and the yard) in by <see cref="SideGap"/>, so
     /// houses stand apart with a narrow walkway between them instead of sharing walls.
     /// </summary>
-    private static void Emit(ConvexPoly lot, Patch patch)
+    private static void Emit(ConvexPoly lot, Patch patch, Rng rng)
     {
         var gaps = Enumerable.Range(0, lot.Count)
             .Select(i => lot.Tags[i] == OnStreetTag ? 0.0 : SideGap)
@@ -489,13 +510,19 @@ public static class CityGenerator
         if (lotInner == null) return;
 
         // Every building has a rectangular floor plan: the biggest rectangle that fits the lot, with its front on the street edge.
-        ConvexPoly? house = FitRectangle(lotInner);
+        bool slum = patch.Ward == WardType.Slum;
+        ConvexPoly? house = slum
+            ? FitRectangle(lotInner, SlumMaxWidth + (SlumSizeSpread * rng.NextDouble()), SlumMaxDepth + (SlumSizeSpread * rng.NextDouble()))
+            : FitRectangle(lotInner, double.MaxValue, double.MaxValue);
         if (house == null) return;
 
         int door = 0; // FitRectangle makes edge 0 the front
-        if (house.Area < 12 || house.EdgeLength(door) < MinFrontage) return;
+        if (house.Area < MinHouseArea || house.EdgeLength(door) < MinFrontage) return;
         patch.Buildings.Add(new Building(patch.Index * 1000 + patch.Buildings.Count, house, door, patch.Ward));
     }
+
+    /// <summary>Smallest floor area a house may have, in square metres.</summary>
+    private const double MinHouseArea = 10;
 
     /// <summary>Smallest depth a building may have, in metres.</summary>
     private const double MinDepth = 3.0;
@@ -506,9 +533,10 @@ public static class CityGenerator
     /// <summary>
     /// The largest rectangle inside a convex polygon that has one side on the polygon's street-facing front edge. Written in
     /// (u, v) with u along the front edge and v inward: the polygon is convex, so a rectangle from v = 0 to v = d fits exactly when
-    /// it fits at both v = 0 and v = d. Returns null when the lot is too shallow or narrow. Edge 0 of the result is the front.
+    /// it fits at both v = 0 and v = d. Returns null when the lot is too shallow or narrow. Edge 0 of the result is the front. The rectangle is
+    /// no wider than <paramref name="maxWidth"/> and no deeper than <paramref name="maxDepth"/> (slum dwellings are small).
     /// </summary>
-    private static ConvexPoly? FitRectangle(ConvexPoly lot)
+    private static ConvexPoly? FitRectangle(ConvexPoly lot, double maxWidth, double maxDepth)
     {
         int front = FrontEdge(lot);
         if (front < 0) return null;
@@ -516,15 +544,23 @@ public static class CityGenerator
         Vec2 origin = lot.Points[front];
         Vec2 u = lot.Edge(front).Normalized();
         Vec2 v = new Vec2(-u.Y, u.X); // inward: the polygon is counter-clockwise, so its inside is left of every edge
-        double maxDepth = lot.Points.Max(p => Vec2.Dot(p - origin, v));
+        double polygonDepth = lot.Points.Max(p => Vec2.Dot(p - origin, v));
 
         (double lo0, double hi0) = Span(lot, origin, u, v, 0);
         double bestArea = 0, bestLo = 0, bestHi = 0, bestDepth = 0;
-        for (double d = MinDepth; d <= maxDepth + 1e-9; d += DepthStep)
+        for (double d = MinDepth; d <= Math.Min(maxDepth, polygonDepth) + 1e-9; d += DepthStep)
         {
-            (double lo, double hi) = Span(lot, origin, u, v, Math.Min(d, maxDepth));
+            (double lo, double hi) = Span(lot, origin, u, v, Math.Min(d, polygonDepth));
             double left = Math.Max(lo0, lo), right = Math.Min(hi0, hi);
             double width = right - left;
+            if (width > maxWidth)
+            {
+                // A size limit: keep the rectangle centred in the room the lot gives it.
+                left += (width - maxWidth) / 2;
+                right = left + maxWidth;
+                width = maxWidth;
+            }
+
             if (width < MinFrontage) continue;
             double area = width * d;
             if (area > bestArea) { bestArea = area; bestLo = left; bestHi = right; bestDepth = d; }

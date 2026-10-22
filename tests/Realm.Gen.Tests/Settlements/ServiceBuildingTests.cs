@@ -42,6 +42,15 @@ public class ServiceBuildingTests
     [InlineData(SettlementTier.Town, 400, 4)]
     [InlineData(SettlementTier.Town, 400, 5)]
     [InlineData(SettlementTier.Town, 400, 6)]
+    [InlineData(SettlementTier.City, 250, 1)]
+    [InlineData(SettlementTier.City, 250, 2)]
+    [InlineData(SettlementTier.City, 250, 3)]
+    [InlineData(SettlementTier.City, 250, 4)]
+    [InlineData(SettlementTier.Town, 50, 1)]
+    [InlineData(SettlementTier.Town, 50, 2)]
+    [InlineData(SettlementTier.Town, 50, 3)]
+    [InlineData(SettlementTier.Town, 50, 4)]
+    [InlineData(SettlementTier.Town, 50, 5)]
     public void EveryRequiredService_IsPresent_InTheRightPlace_WithNoIssues(SettlementTier tier, int buildings, int seed)
     {
         Settlement s = Make(tier, seed, buildings);

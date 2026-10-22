@@ -33,17 +33,17 @@ public class BuildingMesherTests
         {
             PropMesh far = BuildingMesher.Far(b, it);
             double wall = it.Floors.Count * it.FloorHeight;
-            double rise = b.Ward == WardType.Cathedral ? 5.0 : 2.4;
+            double rise = b.Ward == WardType.Cathedral ? 5.0 : b.Style == BuildingStyle.Slum ? 1.5 : 2.4;
             Vec2 c = b.Footprint.Centroid;
             Vector3 centre = new((float)c.X, (float)(wall / 2), (float)c.Y);
 
             Assert.Equal(wall + rise, far.HeightMeters, 3);
-            foreach (PropTriangle t in far.Triangles.Where(t => Same(t.Colour, SettlementPalette.WardRoof(b.Ward))))
+            foreach (PropTriangle t in far.Triangles.Where(t => Same(t.Colour, b.Style == BuildingStyle.Slum ? SettlementPalette.SlumRoof : SettlementPalette.WardRoof(b.Ward))))
             {
                 Assert.True(Normal(t).Y > 0.2f, $"building {b.Id}: a roof triangle faces down or sideways");
             }
 
-            foreach (PropTriangle t in far.Triangles.Where(t => Same(t.Colour, SettlementPalette.Stucco(b.Id)) && MathF.Abs(Normal(t).Y) < 0.5f))
+            foreach (PropTriangle t in far.Triangles.Where(t => Same(t.Colour, SettlementPalette.WallColour(b)) && MathF.Abs(Normal(t).Y) < 0.5f))
             {
                 Assert.True(Vector3.Dot(Normal(t), Centroid(t) - centre) > 0, $"building {b.Id}: a wall faces into the house");
             }
@@ -90,7 +90,7 @@ public class BuildingMesherTests
                 Vec2 dir = fp.Edge(j).Normalized();
                 // Triangles in the plane of this edge, coloured as outer wall, facing outward.
                 double actual = near.Visual.Triangles
-                    .Where(t => Same(t.Colour, SettlementPalette.Stucco(b.Id)))
+                    .Where(t => Same(t.Colour, SettlementPalette.WallColour(b)))
                     .Where(t => new[] { t.A, t.B, t.C }.All(v => Math.Abs(Vec2.Cross(dir, new Vec2(v.X, v.Z) - a)) < 1e-4 && Vec2.Dot(dir, new Vec2(v.X, v.Z) - a) > -1e-3 && Vec2.Dot(dir, new Vec2(v.X, v.Z) - a) < length + 1e-3))
                     .Sum(t => (double)Area(t));
                 double holes = openings.Where(o => o.Edge == j).Sum(o =>
@@ -106,7 +106,7 @@ public class BuildingMesherTests
         foreach ((Building b, Interior it) in Houses())
         {
             BuildingMeshes near = BuildingMesher.Near(b, it);
-            foreach (PropTriangle t in near.Visual.Triangles.Where(t => Same(t.Colour, SettlementPalette.Stucco(b.Id))))
+            foreach (PropTriangle t in near.Visual.Triangles.Where(t => Same(t.Colour, SettlementPalette.WallColour(b))))
             {
                 Vector3 n = Normal(t);
                 Vector3 c = Centroid(t) + (n * 0.05f);

@@ -157,5 +157,5 @@ public class ShippedSettlementTests
     }
 
     // Captured from the accepted implementation (settlement.placement v1, 128 m grid, seed 1, six-region sample world).
-    private const ulong GoldenChecksum = 3579729590801705064UL;
+    private const ulong GoldenChecksum = 6244548680308317532UL;
 }

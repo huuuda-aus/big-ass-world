@@ -18,8 +18,14 @@ namespace Realm.Gen.Settlements.Generation;
 /// </summary>
 public static class InteriorGenerator
 {
-    /// <summary>Thickness of outer walls in metres.</summary>
+    /// <summary>Thickness of the outer walls of a <see cref="BuildingStyle.Rich"/> building in metres (stone and timber).</summary>
     public const double ExteriorWallThickness = 0.3;
+
+    /// <summary>Thickness of the outer walls of a <see cref="BuildingStyle.Slum"/> dwelling in metres (mud and wattle).</summary>
+    public const double SlumWallThickness = 0.15;
+
+    /// <summary>Thickness of every floor and ceiling slab in metres.</summary>
+    public const double SlabThickness = 0.3;
     /// <summary>Thickness of walls between rooms in metres.</summary>
     public const double InteriorWallThickness = 0.15;
 
@@ -33,6 +39,7 @@ public static class InteriorGenerator
     /// <summary>A house gets this many windows in total, across all its floors.</summary>
     private const int MinWindows = 1;
     private const int MaxWindows = 3;
+    private const int SlumMaxWindows = 1;
 
     /// <summary>Builds the interior of one building.</summary>
     /// <param name="building">The building to furnish with rooms, doors, windows and stairs.</param>
@@ -47,7 +54,8 @@ public static class InteriorGenerator
         ConvexPoly footprint = building.Footprint;
         var tagged = new ConvexPoly(footprint.Points,
             Enumerable.Range(0, footprint.Count).Select(i => ExteriorTagBase + i));
-        ConvexPoly shell = tagged.Inset(Enumerable.Repeat(ExteriorWallThickness, footprint.Count).ToArray())
+        double wallThickness = WallThicknessOf(building);
+        ConvexPoly shell = tagged.Inset(Enumerable.Repeat(wallThickness, footprint.Count).ToArray())
                            ?? tagged;
 
         bool cathedral = building.Ward == WardType.Cathedral;
@@ -71,7 +79,7 @@ public static class InteriorGenerator
             .Select(level => MakeWindows(rooms, level == 0 ? (Vec2?)doorPos : null))
             .ToList();
         // a cathedral keeps all of its windows; houses are limited to a few
-        var windowsByFloor = cathedral ? candidates : LimitWindows(candidates, rng);
+        var windowsByFloor = cathedral ? candidates : LimitWindows(candidates, rng, building.Style == BuildingStyle.Slum ? SlumMaxWindows : MaxWindows);
 
         var floors = new List<Floor>();
         for (int level = 0; level < floorCount; level++)
@@ -85,9 +93,15 @@ public static class InteriorGenerator
                 AssignRoomTypes(rooms, level, floorCount, entrance, building.Ward, cathedral, building.Service?.MainRoom, rng)));
         }
 
-        return new Interior(building.Id, cathedral ? 8.0 : 3.0, ExteriorWallThickness, InteriorWallThickness,
+        return new Interior(building.Id, cathedral ? 8.0 : 3.0, wallThickness, InteriorWallThickness,
             rooms, floors, stair);
     }
+
+    /// <summary>Thickness of a building's outer walls: slum dwellings are thin-walled, everything else thick.</summary>
+    /// <param name="building">The building.</param>
+    /// <returns>Thickness in metres.</returns>
+    public static double WallThicknessOf(Building building) =>
+        building.Style == BuildingStyle.Slum ? SlumWallThickness : ExteriorWallThickness;
 
     // ---- partition -----------------------------------------------------------------
 
@@ -95,6 +109,8 @@ public static class InteriorGenerator
     {
         switch (ward)
         {
+            case WardType.Slum: return 45; // a slum dwelling is one room
+            case WardType.Outskirts: return 45;
             case WardType.Merchant: return 30;
             case WardType.Craftsmen: return 26;
             default: return 22;
@@ -103,6 +119,7 @@ public static class InteriorGenerator
 
     private static int ChooseFloorCount(Building b, double area, Rng rng)
     {
+        if (b.Style == BuildingStyle.Slum) return 1;
         switch (b.Ward)
         {
             case WardType.Merchant: return area < 60 ? 2 : 2 + (rng.NextDouble() < 0.3 ? 1 : 0);
@@ -296,11 +313,11 @@ public static class InteriorGenerator
     /// Keeps a random MinWindows..MaxWindows of the candidate windows in total, taking them from
     /// the floors in turn so upper floors get some too, instead of one floor getting them all.
     /// </summary>
-    private static List<List<Window>> LimitWindows(List<List<Window>> perFloor, Rng rng)
+    private static List<List<Window>> LimitWindows(List<List<Window>> perFloor, Rng rng, int maxWindows)
     {
         var kept = perFloor.Select(_ => new List<Window>()).ToList();
         var pool = perFloor.Select(f => f.ToList()).ToList();
-        int target = rng.NextInt(MinWindows, MaxWindows + 1);
+        int target = rng.NextInt(MinWindows, maxWindows + 1);
         int floor = rng.NextInt(pool.Count);
 
         // each full cycle over the floors adds at least one window while any remain

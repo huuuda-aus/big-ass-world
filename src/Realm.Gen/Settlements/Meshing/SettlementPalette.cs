@@ -50,6 +50,36 @@ public static class SettlementPalette
         return Hex(0xece1c8) * StuccoShades[hash % (uint)StuccoShades.Length];
     }
 
+    /// <summary>Outer wall colour of a slum dwelling: mud, a little different for each building.</summary>
+    /// <param name="buildingId">Building identifier within its city.</param>
+    /// <returns>The colour.</returns>
+    public static Vector3 Mud(int buildingId)
+    {
+        uint hash = unchecked((uint)(buildingId + 1) * 2246822519u);
+        return Hex(0x8c7556) * MudShades[(hash >> 7) % (uint)MudShades.Length];
+    }
+
+    private static readonly float[] MudShades = { 0.78f, 0.86f, 0.92f, 1.0f, 1.08f, 0.82f };
+
+    /// <summary>Roof colour of a slum dwelling: dark, dirty thatch.</summary>
+    public static Vector3 SlumRoof { get; } = Hex(0x66513a);
+
+    /// <summary>Floor colour of a slum dwelling: trodden earth.</summary>
+    public static Vector3 SlumFloor { get; } = Hex(0x5b4a37);
+
+    /// <summary>Outer wall colour of a building.</summary>
+    /// <param name="building">The building.</param>
+    /// <returns>Plaster for a rich building, mud for a slum dwelling.</returns>
+    public static Vector3 WallColour(Building building) =>
+        building.Style == BuildingStyle.Slum ? Mud(building.Id) : Stucco(building.Id);
+
+    /// <summary>Floor colour inside a building.</summary>
+    /// <param name="building">The building.</param>
+    /// <param name="type">The room type.</param>
+    /// <returns>Trodden earth in a slum dwelling, otherwise the room type's floor.</returns>
+    public static Vector3 FloorColour(Building building, RoomType type) =>
+        building.Style == BuildingStyle.Slum ? SlumFloor : RoomFloor(type);
+
     /// <summary>Ground colour of a ward.</summary>
     /// <param name="ward">The ward.</param>
     /// <returns>The colour.</returns>

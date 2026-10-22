@@ -30,12 +30,11 @@ public sealed class TerrainBridge
     private const int NoError = 0;
     private const int NoWorldBackground = 0; // Terrain3DMaterial.WorldBackground.NONE
 
-    private readonly GodotObject _data;
+    private GodotObject _data = null!; // Safe: set by Initialise when the node is ready, before any caller can use the bridge.
 
-    private TerrainBridge(Node3D terrain, GodotObject data, TerrainSettings settings)
+    private TerrainBridge(Node3D terrain, TerrainSettings settings)
     {
         Node = terrain;
-        _data = data;
         Settings = settings;
         RegionExtentMeters = settings.RegionSize * settings.VertexSpacing;
     }
@@ -85,13 +84,22 @@ public sealed class TerrainBridge
         terrain.Set("collision_shape_size", settings.CollisionShapeSize);
         terrain.Set("collision_radius", settings.CollisionRadius);
         terrain.Set("collision_mode", (int)settings.Collision);
-        terrain.Call("set_camera", camera);
+
+        // The camera, the material and the data object are set up once the node is in the scene tree. Doing it earlier makes Terrain3D
+        // 1.0.2 initialise outside the tree and log "Resource file not found: res://" and "Error loading resource".
+        var bridge = new TerrainBridge(terrain, settings);
+        terrain.Connect(Godot.Node.SignalName.Ready, Callable.From(() => bridge.Initialise(camera)));
+        return bridge;
+    }
+
+    private void Initialise(Camera3D camera)
+    {
+        Node.Call("set_camera", camera);
 
         // Draw nothing beyond the last region: the default background extends the world edge as a stretched curtain.
-        terrain.Call("get_material").AsGodotObject().Call("set_world_background", NoWorldBackground);
+        Node.Call("get_material").AsGodotObject().Call("set_world_background", NoWorldBackground);
 
-        GodotObject data = terrain.Call("get_data").AsGodotObject();
-        return new TerrainBridge(terrain, data, settings);
+        _data = Node.Call("get_data").AsGodotObject();
     }
 
     /// <summary>Finds the region a world position falls in.</summary>

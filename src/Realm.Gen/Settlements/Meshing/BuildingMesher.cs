@@ -26,6 +26,12 @@ public static class BuildingMesher
 
     private const double CathedralRoofRise = 5.0;
     private const double HouseRoofRise = 2.4;
+    private const double SlumRoofRise = 1.5;
+
+    /// <summary>Floor tops sit this far above the level line, so they never z-fight with the foundation top.</summary>
+    private const double FloorLift = 0.01;
+
+    private const double InteriorWallEmbed = 0.05;
     private const double RoofOverhang = 0.5;
     private const double FrameWidth = 0.1;
     private const float DoorSlab = 0.05f;
@@ -48,10 +54,14 @@ public static class BuildingMesher
         IReadOnlyList<WallOpening> openings = Openings(building, interior);
 
         var loop = building.Footprint.Points.Select(p => P(p, 0)).ToList();
-        b.Prism(loop, (float)height, SettlementPalette.Stucco(building.Id));
+        b.Prism(loop, (float)height, SettlementPalette.WallColour(building));
         Roof(b, building, height);
         Facade(b, building, openings);
-        Timber(b, building, interior, openings);
+        if (building.Style == BuildingStyle.Rich)
+        {
+            Timber(b, building, interior, openings);
+        }
+
         Support(b, building, site, openings);
         return b.Build($"building.{building.Id}.far");
     }
@@ -72,7 +82,8 @@ public static class BuildingMesher
         double height = levels * storey;
         ConvexPoly fp = building.Footprint;
         IReadOnlyList<WallOpening> openings = Openings(building, interior);
-        Vector3 stucco = SettlementPalette.Stucco(building.Id);
+        Vector3 stucco = SettlementPalette.WallColour(building);
+        double thickness = interior.ExteriorWallThickness;
 
         // Outer shell: one plane per footprint edge with the openings cut out.
         for (int j = 0; j < fp.Count; j++)
@@ -88,10 +99,11 @@ public static class BuildingMesher
 
         foreach (WallOpening o in openings)
         {
-            OpeningDetail(visual, fp, o);
+            OpeningDetail(visual, fp, o, thickness);
         }
 
-        // Interior: wall faces point into their room.
+        // Interior. Outer walls: the inner face of each room's outer edges, with the openings cut out. Walls between rooms are solid boxes
+        // (below); floors and ceilings are thick slabs.
         for (int level = 0; level < levels; level++)
         {
             Floor floor = interior.Floors[level];
@@ -101,6 +113,11 @@ public static class BuildingMesher
                 ConvexPoly shape = interior.Rooms[r].Shape;
                 for (int i = 0; i < shape.Count; i++)
                 {
+                    if (shape.Tags[i] < InteriorGenerator.ExteriorTagBase)
+                    {
+                        continue; // a wall between rooms
+                    }
+
                     Vec2 a = shape.Points[i];
                     Vec2 dir = shape.Edge(i).Normalized();
                     double length = shape.EdgeLength(i);
@@ -127,25 +144,29 @@ public static class BuildingMesher
                     Wall(visual, a, dir, length, storey, y, holes, inward, SettlementPalette.Inner);
                     Wall(collision, a, dir, length, storey, y, holes, inward, SettlementPalette.Inner);
                 }
-
-                IReadOnlyList<ConvexPoly> floorPieces = Pieces(shape, interior.Stairs is { } s && s.Room == r && level >= 1 ? StairRect(s) : null);
-                IReadOnlyList<ConvexPoly> ceilingPieces = Pieces(shape, interior.Stairs is { } s2 && s2.Room == r && level < levels - 1 ? StairRect(s2) : null);
-                Vector3 floorColour = SettlementPalette.RoomFloor(floor.RoomTypes[r]);
-                foreach (ConvexPoly piece in floorPieces)
-                {
-                    Flat(visual, piece, y + 0.01, true, floorColour);
-                    Flat(collision, piece, y + 0.01, true, floorColour);
-                }
-
-                foreach (ConvexPoly piece in ceilingPieces)
-                {
-                    Flat(visual, piece, ((level + 1) * storey) - 0.01, false, SettlementPalette.Ceiling);
-                }
             }
 
+            InteriorWalls(visual, collision, interior, floor, y);
             foreach (Door door in floor.Doors)
             {
-                DoorLeaf(visual, door, y);
+                DoorLeaf(visual, door, y, thickness);
+            }
+        }
+
+        // Slabs: the floor of each level and the ceiling under it, one slab 30 cm thick per boundary (ground, between storeys, under the roof).
+        for (int boundary = 0; boundary <= levels; boundary++)
+        {
+            for (int r = 0; r < interior.Rooms.Count; r++)
+            {
+                ConvexPoly shape = interior.Rooms[r].Shape;
+                IReadOnlyList<Vec2>? hole = interior.Stairs is { } s && s.Room == r && boundary >= 1 && boundary < levels ? StairRect(s) : null;
+                Vector3 top = boundary < levels ? SettlementPalette.FloorColour(building, interior.Floors[boundary].RoomTypes[r]) : SettlementPalette.Ceiling;
+                foreach (ConvexPoly piece in Pieces(shape, hole))
+                {
+                    double topY = (boundary * storey) + FloorLift;
+                    Slab(visual, piece, topY, boundary < levels, boundary > 0, top);
+                    Slab(collision, piece, topY, boundary < levels, boundary > 0, top);
+                }
             }
         }
 
@@ -158,7 +179,11 @@ public static class BuildingMesher
         }
 
         Roof(visual, building, height);
-        Timber(visual, building, interior, openings);
+        if (building.Style == BuildingStyle.Rich)
+        {
+            Timber(visual, building, interior, openings);
+        }
+
         Support(visual, building, site, openings);
         Support(collision, building, site, openings, sign: false);
         return new BuildingMeshes(visual.Build($"building.{building.Id}.near"), collision.Build($"building.{building.Id}.collision"));
@@ -275,11 +300,12 @@ public static class BuildingMesher
     {
         ConvexPoly fp = building.Footprint;
         Vec2 centre = fp.Centroid;
-        double rise = building.Ward == WardType.Cathedral ? CathedralRoofRise : HouseRoofRise;
+        bool slum = building.Style == BuildingStyle.Slum;
+        double rise = building.Ward == WardType.Cathedral ? CathedralRoofRise : slum ? SlumRoofRise : HouseRoofRise;
         var ring = fp.Points.Select(p => P(p + ((p - centre).Normalized() * RoofOverhang), baseY)).ToList();
         Vector3 apex = P(centre, baseY + rise);
         Vector3 inside = P(centre, baseY);
-        Vector3 colour = SettlementPalette.WardRoof(building.Ward);
+        Vector3 colour = slum ? SettlementPalette.SlumRoof : SettlementPalette.WardRoof(building.Ward);
         for (int i = 0; i < ring.Count; i++)
         {
             b.Triangle(ring[i], ring[(i + 1) % ring.Count], apex, inside, colour);
@@ -426,7 +452,7 @@ public static class BuildingMesher
     // ---- near: openings, doors, stairs ---------------------------------------------------------------------------
 
     // Fills the wall thickness around an opening, then adds the frame (and glass for windows).
-    private static void OpeningDetail(PropMeshBuilder b, ConvexPoly fp, WallOpening o)
+    private static void OpeningDetail(PropMeshBuilder b, ConvexPoly fp, WallOpening o, double wallThickness)
     {
         Vec2 a = fp.Points[o.Edge];
         Vec2 dir = fp.Edge(o.Edge).Normalized();
@@ -436,12 +462,12 @@ public static class BuildingMesher
         double u1 = o.U + (o.Width / 2);
         double height = o.Top - o.Bottom;
         double middleV = (o.Bottom + o.Top) / 2;
-        double mid = -WallThickness / 2;
+        double mid = -wallThickness / 2;
 
         void Reveal(double ua, double va, double ub, double vb)
         {
             Vector3 normal = Vector3.Normalize(Vector3.Cross(At(ub, vb, 0) - At(ua, va, 0), outward));
-            b.DoubleQuad(At(ua, va, 0), At(ub, vb, 0), At(ub, vb, -WallThickness), At(ua, va, -WallThickness), normal, SettlementPalette.Reveal);
+            b.DoubleQuad(At(ua, va, 0), At(ub, vb, 0), At(ub, vb, -wallThickness), At(ua, va, -wallThickness), normal, SettlementPalette.Reveal);
         }
 
         Reveal(u0, o.Bottom, u0, o.Top);
@@ -476,11 +502,11 @@ public static class BuildingMesher
     }
 
     // A closed door, thin enough to sit in its doorway. The collision mesh ignores doors, so a walker passes through.
-    private static void DoorLeaf(PropMeshBuilder b, Door door, double floorY)
+    private static void DoorLeaf(PropMeshBuilder b, Door door, double floorY, double wallThickness)
     {
         Vec2 dir = door.WallDirection;
         Vec2 inward = new(-dir.Y, dir.X);
-        double shift = door.RoomB == -1 ? WallThickness / 2 : 0; // a front door sits midway through the thick wall
+        double shift = door.RoomB == -1 ? wallThickness / 2 : 0; // a front door sits midway through the thick wall
         Vec2 centre = door.Position - (inward * shift);
         float yaw = (float)Math.Atan2(dir.Y, dir.X);
         float width = (float)door.Width - 0.04f;
@@ -516,6 +542,143 @@ public static class BuildingMesher
         // The ramp surface runs half a step above the line through the tread corners so the walker never sinks into a tread.
         Vector3 centreLine = ((start + end) / 2) + (Vector3.UnitY * (float)(rise / (2 * StairSteps))) - (up * (RampThickness / 2));
         collision.OrientedBox(centreLine, slope, up, across, new Vector3(slopeLength, RampThickness, (float)stair.Width), SettlementPalette.Stair);
+    }
+
+    // ---- walls between rooms and slabs ---------------------------------------------------------------------------
+
+    // Every wall between rooms as a solid box of the interior wall thickness, with the doorways cut out. A wall can be split into several
+    // room edges, so the edges that share a cut are merged into runs along the cut line first.
+    private static void InteriorWalls(PropMeshBuilder visual, PropMeshBuilder collision, Interior interior, Floor floor, double levelY)
+    {
+        var byCut = new SortedDictionary<int, List<(Vec2 From, Vec2 To)>>();
+        foreach (Room room in interior.Rooms)
+        {
+            ConvexPoly shape = room.Shape;
+            for (int i = 0; i < shape.Count; i++)
+            {
+                if (shape.Tags[i] >= 0 && shape.Tags[i] < InteriorGenerator.ExteriorTagBase)
+                {
+                    if (!byCut.TryGetValue(shape.Tags[i], out List<(Vec2, Vec2)>? list))
+                    {
+                        byCut[shape.Tags[i]] = list = new List<(Vec2, Vec2)>();
+                    }
+
+                    list.Add((shape.Points[i], shape.EdgeEnd(i)));
+                }
+            }
+        }
+
+        double bottom = levelY + FloorLift;
+        double top = levelY + interior.FloorHeight - InteriorGenerator.SlabThickness + FloorLift + InteriorWallEmbed;
+        foreach ((int _, List<(Vec2 From, Vec2 To)> segments) in byCut)
+        {
+            Vec2 origin = segments[0].From;
+            Vec2 dir = (segments[0].To - segments[0].From).Normalized();
+            var runs = new List<(double Lo, double Hi)>();
+            foreach ((Vec2 from, Vec2 to) in segments)
+            {
+                double a = Vec2.Dot(from - origin, dir), c = Vec2.Dot(to - origin, dir);
+                runs.Add((Math.Min(a, c), Math.Max(a, c)));
+            }
+
+            // Merge overlapping runs.
+            runs.Sort((x, y) => x.Lo.CompareTo(y.Lo));
+            var merged = new List<(double Lo, double Hi)>();
+            foreach ((double lo, double hi) in runs)
+            {
+                if (merged.Count > 0 && lo <= merged[^1].Hi + 1e-6)
+                {
+                    merged[^1] = (merged[^1].Lo, Math.Max(merged[^1].Hi, hi));
+                }
+                else
+                {
+                    merged.Add((lo, hi));
+                }
+            }
+
+            // The doorways in this wall.
+            var doors = new List<(double Lo, double Hi, double Height)>();
+            foreach (Door door in floor.Doors.Where(d => d.RoomB != -1))
+            {
+                Vec2 rel = door.Position - origin;
+                if (Math.Abs(Vec2.Cross(dir, rel)) < OnWallTolerance)
+                {
+                    double u = Vec2.Dot(rel, dir);
+                    doors.Add((u - (door.Width / 2), u + (door.Width / 2), door.Height));
+                }
+            }
+
+            foreach ((double lo, double hi) in merged)
+            {
+                double at = lo;
+                foreach ((double d0, double d1, double doorHeight) in doors.Where(d => d.Hi > lo && d.Lo < hi).OrderBy(d => d.Lo))
+                {
+                    WallRun(visual, collision, origin, dir, at, Math.Max(at, d0), bottom, top, interior.InteriorWallThickness, lo, hi);
+                    WallRun(visual, collision, origin, dir, Math.Max(d0, lo), Math.Min(d1, hi), bottom + doorHeight, top, interior.InteriorWallThickness, lo, hi); // the lintel
+                    at = Math.Min(d1, hi);
+                }
+
+                WallRun(visual, collision, origin, dir, at, hi, bottom, top, interior.InteriorWallThickness, lo, hi);
+            }
+        }
+    }
+
+    // One solid piece of interior wall from u0 to u1 along the line, y0 to y1. The ends of the whole wall reach a little into whatever
+    // they meet; the ends beside a doorway are the door jambs.
+    private static void WallRun(PropMeshBuilder visual, PropMeshBuilder collision, Vec2 origin, Vec2 dir, double u0, double u1, double y0, double y1, double thickness, double wallLo, double wallHi)
+    {
+        if (u1 - u0 < 0.02 || y1 - y0 < 0.02)
+        {
+            return;
+        }
+
+        double from = u0 <= wallLo + 1e-6 ? u0 - InteriorWallEmbed : u0;
+        double to = u1 >= wallHi - 1e-6 ? u1 + InteriorWallEmbed : u1;
+        foreach (PropMeshBuilder b in new[] { visual, collision })
+        {
+            Box(b, origin + (dir * from), origin + (dir * to), y0, y1, thickness);
+        }
+    }
+
+    // A box along p to q, `thickness` wide, from y0 to y1: its long faces (Inner colour) face the rooms either side; the rest is wall section.
+    private static void Box(PropMeshBuilder b, Vec2 p, Vec2 q, double y0, double y1, double thickness)
+    {
+        Vec2 dir = (q - p).Normalized();
+        Vec2 n = new(-dir.Y, dir.X);
+        double h = thickness / 2;
+        Vec2 pl = p + (n * h), pr = p - (n * h), ql = q + (n * h), qr = q - (n * h);
+        var left = new Vector3((float)n.X, 0, (float)n.Y);
+        var along = new Vector3((float)dir.X, 0, (float)dir.Y);
+        Vector3 Pt(Vec2 v, double y) => P(v, y);
+        b.FacingQuad(Pt(pl, y0), Pt(ql, y0), Pt(ql, y1), Pt(pl, y1), left, SettlementPalette.Inner);
+        b.FacingQuad(Pt(qr, y0), Pt(pr, y0), Pt(pr, y1), Pt(qr, y1), -left, SettlementPalette.Inner);
+        b.FacingQuad(Pt(pl, y1), Pt(ql, y1), Pt(qr, y1), Pt(pr, y1), Vector3.UnitY, SettlementPalette.Reveal);
+        b.FacingQuad(Pt(pl, y0), Pt(ql, y0), Pt(qr, y0), Pt(pr, y0), -Vector3.UnitY, SettlementPalette.Reveal);
+        b.FacingQuad(Pt(pr, y0), Pt(pl, y0), Pt(pl, y1), Pt(pr, y1), -along, SettlementPalette.Reveal);
+        b.FacingQuad(Pt(ql, y0), Pt(qr, y0), Pt(qr, y1), Pt(ql, y1), along, SettlementPalette.Reveal);
+    }
+
+    // A floor and ceiling slab over a convex piece of a room: `topY` is the top surface, the slab is SlabThickness thick. The top face is
+    // the floor of the room above, the bottom face the ceiling of the room below; the sides show round a stairwell.
+    private static void Slab(PropMeshBuilder b, ConvexPoly piece, double topY, bool drawTop, bool drawBottom, Vector3 topColour)
+    {
+        double bottomY = topY - InteriorGenerator.SlabThickness;
+        if (drawTop)
+        {
+            b.FacingPolygon(piece.Points.Select(p => P(p, topY)).ToList(), Vector3.UnitY, topColour);
+        }
+
+        if (drawBottom)
+        {
+            b.FacingPolygon(piece.Points.Select(p => P(p, bottomY)).ToList(), -Vector3.UnitY, SettlementPalette.Ceiling);
+        }
+
+        for (int i = 0; i < piece.Count; i++)
+        {
+            Vec2 a = piece.Points[i], c = piece.EdgeEnd(i);
+            Vec2 outward = piece.OutwardNormal(i);
+            b.FacingQuad(P(a, bottomY), P(c, bottomY), P(c, topY), P(a, topY), new Vector3((float)outward.X, 0, (float)outward.Y), SettlementPalette.Reveal);
+        }
     }
 
     // ---- shared geometry helpers ---------------------------------------------------------------------------------

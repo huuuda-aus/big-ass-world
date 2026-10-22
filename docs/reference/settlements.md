@@ -22,7 +22,7 @@ Written by `realm bake-terrain` next to the terrain tiles and read by the game. 
       "wallRadius": 292.13,
       "padRadius": 322.13,
       "citySeed": 1234567890,
-      "maxBuildings": 1200,
+      "maxBuildings": 250,
       "cathedral": true,
       "centre": "Fountain",
       "highland": false,
@@ -62,7 +62,7 @@ A city is generated in its own plane (metres, central square at the origin, plan
 
 ## Settings
 
-`SettlementSettings` (all placeholders): 3 cities of 1,200 houses (wall radius about 290 to 310 m), 1 mountain city and 5 towns of 400 houses (about 190 m); minimum spacing 2,500 m; pad margin 30 m and blend 100 m; candidate grid 128 m; height range 15 to 320 m; relief limit 0.2 x radius; mountain city: 330 to 1,100 m, relief limit 0.35 x radius; `FlattenStrength` 0 (0 builds on the natural ground, 1 levels the pad as before ADR 0014); water clearance 40 m; river bonus 0.25 within 1,500 m; world edge margin 400 m.
+`SettlementSettings` (all placeholders): 3 cities of at most 250 houses (wall radius about 180 m), 1 mountain city and 5 towns of at most 50 houses (about 100 m); minimum spacing 2,500 m; pad margin 30 m and blend 100 m; candidate grid 128 m; height range 15 to 320 m; relief limit 0.2 x radius; mountain city: 330 to 1,100 m, relief limit 0.35 x radius; `FlattenStrength` 0 (0 builds on the natural ground, 1 levels the pad as before ADR 0014); water clearance 40 m; river bonus 0.25 within 1,500 m; world edge margin 400 m.
 
 # Baked ground (`settlements_ground.bin`)
 

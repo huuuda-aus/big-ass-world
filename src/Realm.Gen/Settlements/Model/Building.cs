@@ -18,6 +18,9 @@ public sealed class Building
     /// <summary>The ward the building belongs to.</summary>
     public WardType Ward { get; }
 
+    /// <summary>How the building is built: slum wards and farmland get <see cref="BuildingStyle.Slum"/>, everything else <see cref="BuildingStyle.Rich"/>.</summary>
+    public BuildingStyle Style => Ward is WardType.Slum or WardType.Outskirts ? BuildingStyle.Slum : BuildingStyle.Rich;
+
     /// <summary>The service this building provides (inn, blacksmith, ...), or null for an ordinary house.</summary>
     public ServiceSpec? Service { get; internal set; }
 
