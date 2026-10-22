@@ -11,7 +11,7 @@ The Godot presentation layer. Today it streams baked terrain into Terrain3D and 
 | `RegionStreamer`: distance-based load set, worker-thread build, batched commit | Implemented |
 | `BakedTerrainSource`, `WorldScene`: walk and fly over the baked world, HUD, sky, fog, sea plane | Implemented |
 | `DayNightCycle`: world clock, sun and moon lights, sky shader with stars and moon phases, fog and ambient by time of day ([ADR 0021](../decisions/0021-day-night-cycle.md)) | Implemented |
-| Clouds in the sky shader from a baked climate map: regional cover and thickness, two lit layers, wind, overhead cloud dims the light ([ADR 0022](../decisions/0022-clouds.md)) | Implemented |
+| Clouds in the sky shader from a baked climate map: regional cover and thickness, two lit layers, wind, cloud shadows on the ground, crepuscular rays, overhead cloud dims the light ([ADR 0022](../decisions/0022-clouds.md)) | Implemented |
 | Streaming spike scene and frame-time report | Implemented |
 | Auto-walk verification mode with a frame-time report | Implemented (first slice of the traversal soak test) |
 | Origin rebasing, per-biome textures, water rendering, foliage, navigation, actors, sim LOD wiring | Planned |

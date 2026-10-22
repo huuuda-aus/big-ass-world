@@ -20,6 +20,31 @@ namespace Realm.Game.World;
 /// </remarks>
 public sealed partial class DayNightCycle : Node3D
 {
+    // The cloud noise, climate map and density function, shared by the sky shader and the cloud-shadow shader so the shadows fall
+    // exactly where the clouds above are.
+    private const string CloudCommon = @"
+// Clouds: noise (R shapes, G billows, B detail, A streaks) and the climate map (R cover, G thickness over the whole world).
+uniform sampler2D cloud_noise : repeat_enable, filter_linear_mipmap;
+uniform sampler2D cloud_climate : repeat_disable, filter_linear;
+uniform float world_size = 20480.0;
+uniform vec2 drift = vec2(0.0);
+uniform float cover_bias = 0.0;
+uniform float low_altitude = 1800.0;
+
+// Density of the low (cumulus) cloud at a world position: shape and billows thresholded by the local cover, eroded by fine detail.
+float cumulus(vec2 xz, float cover, float thickness) {
+    vec2 uv = (xz + drift) / 7000.0;
+    float shape = texture(cloud_noise, uv).r;
+    float billow = texture(cloud_noise, uv * 1.9 + vec2(0.37, 0.11)).g;
+    float detail = texture(cloud_noise, uv * 6.3 + vec2(0.71, 0.29)).b;
+    float n = 0.6 * shape + 0.4 * billow;
+    float threshold = mix(0.82, 0.26, clamp(cover, 0.0, 1.0));
+    float softness = mix(0.16, 0.08, thickness);
+    return smoothstep(threshold, threshold + softness, n - (detail - 0.5) * 0.16 + 0.04);
+}
+
+";
+
     private const string SkyShader = @"
 shader_type sky;
 
@@ -35,33 +60,15 @@ uniform mat3 star_basis;
 uniform float sun_radius = 0.034;
 uniform float moon_radius = 0.05;
 
-// Clouds: noise (R shapes, G billows, B detail, A streaks) and the climate map (R cover, G thickness over the whole world).
-uniform sampler2D cloud_noise : repeat_enable, filter_linear_mipmap;
-uniform sampler2D cloud_climate : repeat_disable, filter_linear;
-uniform float world_size = 20480.0;
-uniform vec2 drift = vec2(0.0);
-uniform float cover_bias = 0.0;
 uniform vec3 cloud_light : source_color;
 uniform vec3 cloud_shadow : source_color;
-uniform float low_altitude = 1800.0;
 uniform float high_altitude = 8000.0;
+" + CloudCommon + @"
 
 float hash(vec3 p) {
     p = fract(p * 0.3183099 + 0.1);
     p *= 17.0;
     return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-}
-
-// Density of the low (cumulus) cloud at a world position: shape and billows thresholded by the local cover, eroded by fine detail.
-float cumulus(vec2 xz, float cover, float thickness) {
-    vec2 uv = (xz + drift) / 7000.0;
-    float shape = texture(cloud_noise, uv).r;
-    float billow = texture(cloud_noise, uv * 1.9 + vec2(0.37, 0.11)).g;
-    float detail = texture(cloud_noise, uv * 6.3 + vec2(0.71, 0.29)).b;
-    float n = 0.6 * shape + 0.4 * billow;
-    float threshold = mix(0.82, 0.26, clamp(cover, 0.0, 1.0));
-    float softness = mix(0.16, 0.08, thickness);
-    return smoothstep(threshold, threshold + softness, n - (detail - 0.5) * 0.16 + 0.04);
 }
 
 void sky() {
@@ -115,6 +122,8 @@ void sky() {
         col = mix(col, wisp_col, wisp * fade * 0.55);
     }
 
+    float low_density = 0.0;
+
     // Low cloud: two slices seen with parallax (the upper one only in deep cloud), lit from the sun's side, grey where thick.
     if (h > 0.012) {
         vec2 sun_xz = normalize(sun_dir.xz + vec2(0.0001));
@@ -128,6 +137,7 @@ void sky() {
         float d0 = cumulus(hit0, cover, thick);
         float d1 = cumulus(hit1 + vec2(1900.0, 700.0), cover * (0.55 + 0.45 * thick) - 0.05, thick) * smoothstep(0.1, 0.5, thick + cover * 0.4);
         float dens = 1.0 - (1.0 - d0) * (1.0 - d1);
+        low_density = dens * fade;
         float toward_sun = cumulus(hit0 + sun_xz * 520.0, cover, thick);
         float shade = clamp(1.0 - (toward_sun - d0) * 2.4 - d1 * 0.45 - (1.0 - smoothstep(0.1, 0.7, d0)) * -0.15, 0.0, 1.0);
         float grey = clamp(thick * (0.35 + 0.65 * dens), 0.0, 1.0);
@@ -143,7 +153,65 @@ void sky() {
         col = mix(col, body, alpha);
     }
 
+    // Crepuscular rays: streaks radiating from the sun through the gaps between clouds. They need a broken sky (clear air has nothing to
+    // cast them, overcast hides the sun) and show best when the sun is low.
+    if (sun_dir.y > -0.05 && night < 0.95) {
+        vec3 sr = normalize(cross(vec3(0.0, 1.0, 0.0), sun_dir));
+        vec3 su = cross(sun_dir, sr);
+        float ang = atan(dot(dir, su), dot(dir, sr));
+        float spread = acos(clamp(sd, -1.0, 1.0));
+        float streak = mix(texture(cloud_noise, vec2(ang * 0.955, 0.13)).r, texture(cloud_noise, vec2(ang * 2.1, 0.61)).r, 0.5);
+        streak = smoothstep(0.42, 0.78, streak);
+        vec2 sun_hit = POSITION.xz + sun_dir.xz * ((low_altitude - POSITION.y) / max(sun_dir.y, 0.06));
+        float sun_cover = clamp(texture(cloud_climate, sun_hit / world_size + 0.5).r + cover_bias, 0.0, 1.0);
+        float broken = smoothstep(0.12, 0.5, sun_cover) * (1.0 - 0.6 * smoothstep(0.8, 1.0, sun_cover));
+        float low_sun = 1.0 - 0.55 * clamp(sun_dir.y, 0.0, 1.0);
+        float rays = streak * exp(-spread * 4.5) * (1.0 - 0.85 * low_density) * broken * low_sun * (1.0 - night);
+        col += sun_colour * rays * 0.4 * smoothstep(-0.05, 0.05, sun_dir.y);
+    }
+
     COLOR = col;
+}
+";
+
+    // Darkens the ground, trees and buildings where a cloud stands between them and the sun: a full-screen multiply that rebuilds each
+    // pixel's world position from the depth buffer, follows the sun's ray up to the same cloud layers the sky draws, and reads their density.
+    private const string ShadowShader = @"
+shader_type spatial;
+render_mode unshaded, blend_mul, depth_test_disabled, cull_disabled, fog_disabled;
+
+uniform sampler2D depth_tex : hint_depth_texture, repeat_disable, filter_nearest;
+uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
+uniform float strength = 1.0;
+uniform vec3 shade_tint : source_color = vec3(0.55, 0.62, 0.78);
+" + CloudCommon + @"
+
+void vertex() {
+    POSITION = vec4(VERTEX.xy, 1.0, 1.0);
+}
+
+void fragment() {
+    float depth = texture(depth_tex, SCREEN_UV).x;
+    vec3 shade = vec3(1.0);
+    if (depth > 0.00001 && strength > 0.001) {
+        vec3 ndc = vec3(SCREEN_UV * 2.0 - 1.0, depth);
+        vec4 view = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
+        view.xyz /= view.w;
+        vec3 world = (INV_VIEW_MATRIX * vec4(view.xyz, 1.0)).xyz;
+        float up = max(sun_dir.y, 0.05);
+        vec2 hit0 = world.xz + sun_dir.xz * ((low_altitude - world.y) / up);
+        vec4 climate = texture(cloud_climate, hit0 / world_size + 0.5);
+        float cover = clamp(climate.r + cover_bias, 0.0, 1.0);
+        float thick = climate.g;
+        float slice = 250.0 + 900.0 * thick;
+        vec2 hit1 = world.xz + sun_dir.xz * ((low_altitude + slice - world.y) / up);
+        float d0 = cumulus(hit0, cover, thick);
+        float d1 = cumulus(hit1 + vec2(1900.0, 700.0), cover * (0.55 + 0.45 * thick) - 0.05, thick) * smoothstep(0.1, 0.5, thick + cover * 0.4);
+        float dens = 1.0 - (1.0 - d0) * (1.0 - d1);
+        float shadow = smoothstep(0.1, 0.9, dens) * (0.45 + 0.4 * thick) * strength;
+        shade = mix(vec3(1.0), shade_tint, shadow);
+    }
+    ALBEDO = shade;
 }
 ";
 
@@ -165,9 +233,10 @@ void sky() {
     private const double LowSunSpan = 0.4;
     private const double Horizon = 0.0;
 
+    private const int ShadowRenderPriority = -100; // drawn first among transparent things, so water and the like are not darkened twice
     private const double WindMetersPerSecond = 14;
     private static readonly System.Numerics.Vector2 WindDirection = System.Numerics.Vector2.Normalize(new System.Numerics.Vector2(1f, 0.35f));
-    private const double OvercastSunLoss = 0.6;
+    private const double OvercastSunLoss = 0.25; // most of the dimming comes from the cloud shadows on the ground now
     private const double OvercastMoonLoss = 0.5;
     private const double OvercastGrey = 0.5;
     private const double OvercastSmoothing = 0.6; // per second: how fast the light follows the cloud overhead
@@ -179,6 +248,7 @@ void sky() {
     private readonly DirectionalLight3D _sun;
     private readonly DirectionalLight3D _moon;
     private readonly ShaderMaterial _material;
+    private readonly ShaderMaterial _shadowMaterial;
     private readonly float _polarX;
     private readonly float _polarY;
     private readonly float _polarZ;
@@ -205,9 +275,15 @@ void sky() {
         _sun = new DirectionalLight3D { Name = "Sun", ShadowEnabled = true, DirectionalShadowMaxDistance = 150f };
         _moon = new DirectionalLight3D { Name = "Moon", LightColor = MoonLight, ShadowEnabled = false };
         _material = new ShaderMaterial { Shader = new Shader { Code = SkyShader } };
-        _material.SetShaderParameter("cloud_noise", NoiseTexture(seed));
-        _material.SetShaderParameter("cloud_climate", ClimateTexture(climate));
-        _material.SetShaderParameter("world_size", (float)climate.WorldSizeMeters);
+        _shadowMaterial = new ShaderMaterial { Shader = new Shader { Code = ShadowShader }, RenderPriority = ShadowRenderPriority };
+        ImageTexture noise = NoiseTexture(seed);
+        ImageTexture climateTexture = ClimateTexture(climate);
+        foreach (ShaderMaterial material in new[] { _material, _shadowMaterial })
+        {
+            material.SetShaderParameter("cloud_noise", noise);
+            material.SetShaderParameter("cloud_climate", climateTexture);
+            material.SetShaderParameter("world_size", (float)climate.WorldSizeMeters);
+        }
         Environment = new Godot.Environment
         {
             BackgroundMode = Godot.Environment.BGMode.Sky,
@@ -217,6 +293,14 @@ void sky() {
             FogEnabled = true,
             FogSkyAffect = 0.6f,
         };
+        AddChild(new MeshInstance3D
+        {
+            Name = "CloudShadow",
+            Mesh = new QuadMesh { Size = new Godot.Vector2(2, 2) },
+            MaterialOverride = _shadowMaterial,
+            ExtraCullMargin = 16384f,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        });
         AddChild(_sun);
         AddChild(_moon);
         Apply();
@@ -285,9 +369,16 @@ void sky() {
         _material.SetShaderParameter("cloud_light", cloudLight);
         _material.SetShaderParameter("cloud_shadow", cloudShadow);
         double driftMeters = Clock.Days * Clock.RealSecondsPerGameDay * WindMetersPerSecond;
-        _material.SetShaderParameter("drift", new Godot.Vector2((float)(WindDirection.X * driftMeters), (float)(WindDirection.Y * driftMeters)));
-        // The weather swells and fades over the days.
-        _material.SetShaderParameter("cover_bias", (float)((0.12 * Math.Sin(Clock.Days * 0.7)) + (0.06 * Math.Sin((Clock.Days * 2.3) + 1))));
+        var driftVector = new Godot.Vector2((float)(WindDirection.X * driftMeters), (float)(WindDirection.Y * driftMeters));
+        float coverBias = (float)((0.12 * Math.Sin(Clock.Days * 0.7)) + (0.06 * Math.Sin((Clock.Days * 2.3) + 1)));
+        foreach (ShaderMaterial material in new[] { _material, _shadowMaterial })
+        {
+            material.SetShaderParameter("drift", driftVector);
+            material.SetShaderParameter("cover_bias", coverBias);
+        }
+
+        _shadowMaterial.SetShaderParameter("sun_dir", sun);
+        _shadowMaterial.SetShaderParameter("strength", (float)CelestialMath.SmoothStep(0.02, 0.3, sunUp));
 
         _material.SetShaderParameter("sun_dir", sun);
         _material.SetShaderParameter("moon_dir", moon);

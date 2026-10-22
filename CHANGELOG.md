@@ -5,6 +5,7 @@ All notable changes are recorded here. Format: [Keep a Changelog](https://keepac
 ## [Unreleased]
 
 ### Added
+- Sun and cloud interaction: crepuscular rays through cloud gaps, and cloud shadows that sweep over the ground, trees and buildings (a depth-based full-screen multiply that follows the sun's ray to the same cloud layers the sky draws).
 - Clouds (ADR 0022): `Realm.Gen.Weather` (`CloudClimateGenerator`, `CloudClimate`, `CloudFile`) bakes `clouds.bin`, a world map of cloud cover and thickness from biome rainfall, height and noise; `CloudTextureGenerator` makes the tileable cloud noise; the sky shader draws two lit, wind-drifting cloud layers from them, so the weather differs by region, and the cloud overhead dims the sun and greys the light.
 - Day and night (ADR 0021): `WorldClock`, `CelestialMath`/`CelestialSettings`, `DayNightCycle` with a sky shader (gradient, sun, lit moon with phases, stars), moon and sun lights, fog and ambient by time of day; HUD time and moon phase; game options `--time`, `--day-minutes`, `--time-scale` and the `T` key. The fixed light and procedural sky are gone.
 - Bridge ramps and wood: both bridge types get a gentle 4 m ramp (5 percent) at each end that carries the road up the 20 cm lift, in the bridge's own material. The timber bridge is split into timber and stone parts (`BridgeMesher.BuildParts`) and the timber is drawn with a generated wood-grain texture (`SurfaceTextureGenerator.Wood`, projected from three axes so the planks run along the deck).
