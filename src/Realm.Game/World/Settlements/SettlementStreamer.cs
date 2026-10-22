@@ -4,7 +4,9 @@ using System.IO;
 using System.Threading.Tasks;
 using Godot;
 using Realm.Core.Validation;
+using Realm.Gen.Population;
 using Realm.Gen.Settlements.Placement;
+using Realm.Sim.Time;
 
 namespace Realm.Game.World.Settlements;
 
@@ -27,6 +29,16 @@ public sealed partial class SettlementStreamer : Node3D
     private readonly IReadOnlyList<Settlement> _settlements;
     private readonly IReadOnlyDictionary<string, GroundGrid> _ground;
     private readonly Dictionary<string, CityInstance> _live = new();
+    private bool _navDebug;
+
+    /// <summary>The world clock the characters live by; none means no characters appear.</summary>
+    public WorldClock? Clock { get; set; }
+
+    /// <summary>Multiplier on the number of characters in every settlement; 0 for none.</summary>
+    public double CrowdScale { get; set; } = 1;
+
+    /// <summary>How many characters each kind of settlement gets.</summary>
+    public CrowdSettings CrowdSettings { get; set; } = new();
     private readonly Dictionary<string, Task<CityBuild>> _building = new();
     private readonly Dictionary<string, ulong> _started = new();
 
@@ -42,6 +54,16 @@ public sealed partial class SettlementStreamer : Node3D
 
     /// <summary>Cities currently in the world.</summary>
     public IReadOnlyCollection<CityInstance> Cities => _live.Values;
+
+    /// <summary>Shows or hides the walking graph of every built settlement (and of those built later).</summary>
+    public void ToggleNavDebug()
+    {
+        _navDebug = !_navDebug;
+        foreach (CityInstance city in _live.Values)
+        {
+            city.SetNavDebug(_navDebug);
+        }
+    }
 
     /// <summary>Cities being generated.</summary>
     public int BuildingCount => _building.Count;
@@ -124,7 +146,8 @@ public sealed partial class SettlementStreamer : Node3D
                 Settlement captured = s;
                 _started[s.Id] = Time.GetTicksMsec();
                 _ground.TryGetValue(s.Id, out GroundGrid? grid);
-                _building[s.Id] = Task.Run(() => CityBuild.Create(captured, grid));
+                int crowd = (int)Math.Round(CrowdGenerator.CountFor(s.Tier, CrowdSettings) * CrowdScale);
+                _building[s.Id] = Task.Run(() => CityBuild.Create(captured, grid, crowd));
             }
             else if (live && distance > s.PadRadiusMeters + unloadMargin)
             {
@@ -148,8 +171,13 @@ public sealed partial class SettlementStreamer : Node3D
                 continue;
             }
 
-            var city = new CityInstance(task.Result);
+            var city = new CityInstance(task.Result, Clock);
             AddChild(city);
+            if (_navDebug)
+            {
+                city.SetNavDebug(true);
+            }
+
             _live[id] = city;
             GD.Print($"[city] {id} built: {city.BuildingCount} houses in {Time.GetTicksMsec() - _started[id]} ms");
         }

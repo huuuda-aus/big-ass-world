@@ -7,6 +7,8 @@ using Realm.Game.Bridge;
 using Realm.Gen.Settlements.Geometry;
 using Realm.Gen.Settlements.Meshing;
 using Realm.Gen.Settlements.Placement;
+using Realm.Sim.Npcs;
+using Realm.Sim.Time;
 
 namespace Realm.Game.World.Settlements;
 
@@ -42,12 +44,20 @@ public sealed partial class CityInstance : Node3D
     private int _tasks;
     private double _scanTimer;
     private bool _attached;
+    private const double WalkMetresPerSecond = 1.4;
+    private const double CrowdActiveMeters = 450;
+    private Crowd? _crowd;
+    private CrowdView? _crowdView;
+    private WorldClock? _clock;
+    private NavDebugView? _navDebug;
+    private bool _navDebugVisible;
 
     private sealed record NearResult(int Index, ArrayMesh Visual, ConcavePolygonShape3D Shape);
 
     /// <summary>Creates the instance from a finished build; call <see cref="Attach"/> next frame loop via <see cref="Process"/>.</summary>
     /// <param name="build">The worker-built city.</param>
-    public CityInstance(CityBuild build)
+    /// <param name="clock">The world clock the characters live by; null for a city without characters.</param>
+    public CityInstance(CityBuild build, WorldClock? clock = null)
     {
         _build = build ?? throw new ArgumentNullException(nameof(build));
         _settlement = build.Settlement;
@@ -58,7 +68,64 @@ public sealed partial class CityInstance : Node3D
         Position = new Vector3((float)_settlement.X, (float)_settlement.GroundHeightMeters, (float)_settlement.Z);
         // Plan rotation by theta counter-clockwise (plan x toward plan y) is a rotation about the vertical axis by -theta.
         Rotation = new Vector3(0, (float)-_settlement.RotationRadians, 0);
+        if (clock is not null && build.CrowdPlans.Count > 0)
+        {
+            _clock = clock;
+            double metresPerMinute = WalkMetresPerSecond * clock.RealSecondsPerGameDay / GameTime.MinutesPerDay;
+            _crowd = new Crowd(
+                build.Nav.Graph,
+                build.CrowdPlans,
+                clock.Days * GameTime.MinutesPerDay,
+                metresPerMinute,
+                (ax, az, bx, bz) => build.Open.Clear(new Vec2(ax, az), new Vec2(bx, bz)));
+            _crowdView = new CrowdView(build.CrowdPlans.Count);
+            AddChild(_crowdView);
+        }
     }
+
+    // The characters only live (and are drawn) while the player is near; when the player comes back the crowd catches up with the clock.
+    private void UpdateCrowd(Vector3 playerWorld)
+    {
+        if (_crowd is null || _crowdView is null || _clock is null)
+        {
+            return;
+        }
+
+        bool active = _settlement.DistanceTo(playerWorld.X, playerWorld.Z) < _settlement.WallRadiusMeters + CrowdActiveMeters;
+        _crowdView.Visible = active;
+        if (active)
+        {
+            double now = _clock.Days * GameTime.MinutesPerDay;
+            _crowd.Update(now);
+            _crowdView.Show(_crowd, now, _build.Ground, _build.City.Bridges);
+        }
+    }
+
+    /// <summary>Shows or hides the debug drawing of the walking graph (built on first use).</summary>
+    /// <param name="visible">Whether to show it.</param>
+    public void SetNavDebug(bool visible)
+    {
+        _navDebugVisible = visible;
+        if (visible && _navDebug is null)
+        {
+            _navDebug = new NavDebugView(_build.Nav.Graph, _build.Ground);
+            AddChild(_navDebug);
+        }
+
+        if (_navDebug is not null)
+        {
+            _navDebug.Visible = visible;
+        }
+    }
+
+    /// <summary>Number of characters that live here.</summary>
+    public int CrowdCount => _crowd?.Count ?? 0;
+
+    /// <summary>Number of characters that are outside right now.</summary>
+    public int CrowdOutside => _crowd?.CountOutside() ?? 0;
+
+    /// <summary>Whether the walking graph is drawn.</summary>
+    public bool NavDebugVisible => _navDebugVisible;
 
     /// <summary>Settlement this city shows.</summary>
     public Settlement Settlement => _settlement;
@@ -85,6 +152,8 @@ public sealed partial class CityInstance : Node3D
             Attach();
             return;
         }
+
+        UpdateCrowd(playerWorld);
 
         for (int added = 0; added < FarNodesPerFrame && _nextFar < _far.Length; added++)
         {

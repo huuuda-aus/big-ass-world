@@ -35,6 +35,7 @@ Goal: bake the terrain, start Godot and walk around the 20 km world.
 | Q / E | | down / up |
 | F | toggle fly | toggle fly |
 | T | change the speed of time: normal, 30 times, 300 times, paused | |
+| N | show or hide the walking graphs of the settlements (green streets, yellow doors, blue gates, red bridges) | |
 | F1 | hide or show the HUD | |
 | Esc | release or recapture the mouse | |
 
@@ -53,6 +54,8 @@ Pass them after `--`, for example `<godot> --path src/Realm.Game -- --fly --pos=
 | `--view-distance=M`, `--fog=DENSITY` | Override how far terrain is loaded and how thick the fog is |
 | `--screenshot=PNG`, `--screenshot-after=FRAMES` | Save a screenshot and quit |
 | `--autowalk=SECONDS`, `--autowalk-run`, `--report=JSON` | Walk forward automatically, print and save a frame-time report, quit |
+| `--crowd-scale=F` | Multiply the number of characters in every settlement (default 1: 220 in a city, 40 in a town, 12 in a hamlet; 0 for none) |
+| `--nav-debug` | Start with the settlements' walking graphs drawn |
 | `--time=HOUR`, `--day-minutes=M`, `--time-scale=X` | Start hour of day (default 9), real minutes per game day (default 20), speed of time (0 pauses) |
 | `--vsync=true/false` | Vertical sync. On by default; measurement runs (`--autowalk`, `--screenshot`) switch it off unless you pass `--vsync=true`, because vsync adds compositor noise to frame times and can stall a hidden window |
 | `--no-capture`, `--no-hud`, `--no-water`, `--flat-ground`, `--no-step` (turn off automatic step climbing) | Debugging switches |

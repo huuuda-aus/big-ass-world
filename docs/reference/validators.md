@@ -110,6 +110,9 @@ Reported by `RoadPlanner` and `RoadValidator` during `bake-terrain` ([ADR 0013](
 | FOL001 | Error | A tree, bush or grass cell stands on water, a road or a settlement, or outside its species' height and slope limits. The message gives an example position. | Check the exclusion margins and the species' limits. |
 | FOL002 | Error | Two plants of one species are closer than its `min_spacing_m`. | Raise `min_spacing_m` or lower the density. |
 | FOL003 | Warning | A tree or bush species placed no plants at all. | Raise its density, widen its height and slope limits, or check its biomes. |
+| NAV001 | Warning | One or more buildings cannot be reached on foot from the central square (walled in by neighbours, or by water). The message gives a building ID. | Widen the gaps between buildings, or check the site's water. |
+| NAV002 | Error | A gate cannot be reached on foot from the central square. | Check the streets to the gates and the water around the gate. |
+| NAV003 | Warning | A settlement is not joined to the first settlement by the road network on the world walking graph. | Check that a road reaches one of its gates. |
 | ROAD006 | Error | `roads.json` is damaged or has an unsupported format. | Re-run `bake-terrain`. |
 
 ## Dungeon and population validators

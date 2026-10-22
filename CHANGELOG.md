@@ -5,6 +5,8 @@ All notable changes are recorded here. Format: [Keep a Changelog](https://keepac
 ## [Unreleased]
 
 ### Added
+- Crowds (ADR 0024): `WorldNavBuilder` joins the settlement walking graphs with the roads (`NAV003`); `OpenGround`; `Realm.Sim.Npcs` (`NpcPlan`, `Crowd`) and `Realm.Gen.Population.CrowdGenerator`; capsule characters in every settlement (220 in a city, crowded round the fountain; 40 in a town; 12 in a hamlet) that stand about, go on errands, visit buildings and sleep at home; `--crowd-scale`.
+- Settlement walking graph (ADR 0023): `Realm.Sim.Navigation` (`NavGraph`, `NavPathFinder` A*, `NavRoute`) and `NavGraphBuilder` (streets, gates, bridges, door fronts, lanes) with validators `NAV001`/`NAV002`; a debug drawing in the game (key `N`, `--nav-debug`).
 - Sun and cloud interaction: crepuscular rays through cloud gaps, and cloud shadows that sweep over the ground, trees and buildings (a depth-based full-screen multiply that follows the sun's ray to the same cloud layers the sky draws).
 - Clouds (ADR 0022): `Realm.Gen.Weather` (`CloudClimateGenerator`, `CloudClimate`, `CloudFile`) bakes `clouds.bin`, a world map of cloud cover and thickness from biome rainfall, height and noise; `CloudTextureGenerator` makes the tileable cloud noise; the sky shader draws two lit, wind-drifting cloud layers from them, so the weather differs by region, and the cloud overhead dims the sun and greys the light.
 - Day and night (ADR 0021): `WorldClock`, `CelestialMath`/`CelestialSettings`, `DayNightCycle` with a sky shader (gradient, sun, lit moon with phases, stars), moon and sun lights, fog and ambient by time of day; HUD time and moon phase; game options `--time`, `--day-minutes`, `--time-scale` and the `T` key. The fixed light and procedural sky are gone.

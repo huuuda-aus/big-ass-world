@@ -186,6 +186,12 @@ public partial class WorldScene : Node3D
             if (_cities is not null)
             {
                 _world.AddChild(_cities);
+                _cities.Clock = _clock;
+                _cities.CrowdScale = _args.Number("crowd-scale", 1);
+                if (_args.Flag("nav-debug", false))
+                {
+                    _cities.ToggleNavDebug();
+                }
                 GD.Print($"[world] {_cities.Settlements.Count} settlement(s)");
             }
         }
@@ -261,6 +267,9 @@ public partial class WorldScene : Node3D
                     break;
                 case Key.M when _map is not null:
                     _map.Visible = !_map.Visible;
+                    break;
+                case Key.N:
+                    _cities?.ToggleNavDebug();
                     break;
                 case Key.T:
                     // Cycle the speed of time: normal, 30 times, 300 times, paused.
@@ -525,9 +534,13 @@ public partial class WorldScene : Node3D
         }
 
         int near = 0;
+        int people = 0;
+        int outside = 0;
         foreach (CityInstance city in _cities.Cities)
         {
             near += city.NearCount;
+            people += city.CrowdCount;
+            outside += city.CrowdOutside;
         }
 
         Realm.Gen.Settlements.Placement.Settlement? inside = _cities.InsideWall(_body.Position.X, _body.Position.Z);
@@ -546,7 +559,7 @@ public partial class WorldScene : Node3D
         string place = inside is not null
             ? $"in {inside.Name}"
             : nearest is null ? string.Empty : $"{nearest.Name} is {best / 1000:F1} km {Compass(nearest.X - _body.Position.X, nearest.Z - _body.Position.Z)}";
-        return $"{place}   ({_cities.Cities.Count} built, {_cities.BuildingCount} building, {near} detailed houses)   M map\n";
+        return $"{place}   ({_cities.Cities.Count} built, {_cities.BuildingCount} building, {near} detailed houses)   {outside}/{people} people out   M map\n";
     }
 
     // Eight-point compass direction; north is minus Z.
@@ -660,7 +673,7 @@ public partial class WorldScene : Node3D
             $"x {p.X:F0}  z {p.Z:F0}  ground {groundText}  region ({region.X}, {region.Y})\n" +
             $"terrain: {_streamer.LoadedCount} loaded, {_streamer.PendingCount} loading, last rebuild {_lastUpdateMs:F1} ms\n" +
             CityHudLine() +
-            "WASD/arrows move  Shift run  Space jump  F fly  T time  F1 hide  Esc mouse";
+            "WASD/arrows move  Shift run  Space jump  F fly  T time  N paths  F1 hide  Esc mouse";
     }
 
     // The baked cloud climate, or an even partly cloudy one when the world has none.

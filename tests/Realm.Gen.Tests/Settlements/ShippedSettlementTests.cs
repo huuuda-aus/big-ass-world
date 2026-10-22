@@ -7,6 +7,7 @@ using Realm.Data.Content;
 using Realm.Gen.Settlements.Generation;
 using Realm.Gen.Settlements.Meshing;
 using Realm.Gen.Settlements.Model;
+using Realm.Gen.Settlements.Navigation;
 using Realm.Gen.Settlements.Placement;
 using Realm.Gen.Settlements.Roads;
 using Realm.Gen.Terrain;
@@ -144,6 +145,66 @@ public class ShippedSettlementTests
         Assert.All(houses, b => Assert.False(CityGenerator.TouchesWater(b.Footprint, ground, 8), $"building {b.Id} is by the water"));
         Assert.InRange(city.Bridges.Count, 1, 2);
         Assert.All(city.Bridges, b => Assert.False(ground.IsWater(b.From.X, b.From.Y) || ground.IsWater(b.To.X, b.To.Y)));
+    }
+
+    // City plans and walking graphs of every settlement, built once and shared (each takes a second or so).
+    private static readonly Lazy<(System.Collections.Generic.List<City> Cities, System.Collections.Generic.List<NavGraphResult> Graphs)> Walking = new(() =>
+    {
+        Result r = Shared.Value;
+        var raster = new RiverRaster(r.Graded.WorldSizeMeters, r.Eroded.Network);
+        var cities = new System.Collections.Generic.List<City>();
+        var graphs = new System.Collections.Generic.List<NavGraphResult>();
+        foreach (Settlement s in r.Settlements)
+        {
+            GroundGrid grid = GroundGrid.Capture(r.Graded, s, GroundGrid.DefaultSpacingMeters, raster);
+            var ground = new SettlementGround(s, grid);
+            City city = CityGenerator.Generate(s.ToCityParams(ground));
+            cities.Add(city);
+            graphs.Add(NavGraphBuilder.Build(city, ground));
+        }
+
+        return (cities, graphs);
+    });
+
+    [Fact]
+    public void EverySettlement_HasAWalkingGraph_ThatReachesEveryDoorAndGate()
+    {
+        Result r = Shared.Value;
+        (var cities, var graphs) = Walking.Value;
+
+        for (int i = 0; i < r.Settlements.Count; i++)
+        {
+            var report = new ValidationReport();
+            NavGraphBuilder.Validate(graphs[i], r.Settlements[i].Id, report);
+            Assert.True(report.Issues.Count == 0, $"{r.Settlements[i].Id}: {string.Join("; ", report.Issues.Select(x => x.Message))}");
+            Assert.Equal(cities[i].AllBuildings.Count(), graphs[i].Graph.Nodes.Count(n => n.Kind == Realm.Sim.Navigation.NavNodeKind.Door));
+        }
+    }
+
+    [Fact]
+    public void TheRoads_JoinEverySettlementsGraph_IntoOneWalkableWorld()
+    {
+        Result r = Shared.Value;
+        (var cities, var graphs) = Walking.Value;
+
+        WorldNavResult world = WorldNavBuilder.Build(r.Settlements, graphs, r.Roads);
+
+        var report = new ValidationReport();
+        WorldNavBuilder.Validate(world, report);
+        Assert.Empty(report.Issues);
+        // A walk from a door in the first settlement to a door in the last one exists, and is no shorter than the straight line.
+        Realm.Sim.Navigation.NavGraph g = world.Graph;
+        WorldNavSettlement from = world.Settlements[0];
+        WorldNavSettlement to = world.Settlements[^1];
+        int a = from.FirstNode + graphs[0].Graph.DoorOf(cities[0].AllBuildings.First().Id);
+        int b = to.FirstNode + graphs[^1].Graph.DoorOf(cities[^1].AllBuildings.First().Id);
+        var path = new System.Collections.Generic.List<int>();
+        Assert.True(new Realm.Sim.Navigation.NavPathFinder(g).TryFindPath(a, b, path, out double length));
+        double straight = Math.Sqrt(Math.Pow(g.Nodes[a].X - g.Nodes[b].X, 2) + Math.Pow(g.Nodes[a].Z - g.Nodes[b].Z, 2));
+        Assert.True(length >= straight);
+        Assert.Contains(path, n => g.Nodes[n].Kind == Realm.Sim.Navigation.NavNodeKind.Road);
+        // The road bridges became bridge edges on top of the cities' own.
+        Assert.True(g.Edges.Count(e => e.IsBridge) > graphs.Sum(x => x.Graph.Edges.Count(e => e.IsBridge)));
     }
 
     [Fact]

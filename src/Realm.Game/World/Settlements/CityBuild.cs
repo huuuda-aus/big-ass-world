@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.Linq;
 using Godot;
@@ -6,6 +7,9 @@ using Realm.Gen.Props;
 using Realm.Gen.Settlements.Generation;
 using Realm.Gen.Settlements.Geometry;
 using Realm.Gen.Settlements.Meshing;
+using Realm.Gen.Population;
+using Realm.Gen.Settlements.Navigation;
+using Realm.Sim.Npcs;
 using Realm.Gen.Settlements.Model;
 using Realm.Gen.Settlements.Placement;
 
@@ -35,8 +39,12 @@ public sealed record CityLandmark(
 /// </summary>
 public sealed class CityBuild
 {
-    private CityBuild(Settlement settlement, City city, CityBuilding[] buildings, ArrayMesh? wall, ConcavePolygonShape3D? wallShape, CityLandmark? landmark, double landmarkBaseY, CityBridgeMesh[] bridges)
+    private CityBuild(Settlement settlement, City city, CityBuilding[] buildings, ArrayMesh? wall, ConcavePolygonShape3D? wallShape, CityLandmark? landmark, double landmarkBaseY, CityBridgeMesh[] bridges, NavGraphResult nav, IGroundSampler ground, OpenGround open, IReadOnlyList<NpcPlan> crowd)
     {
+        Open = open;
+        CrowdPlans = crowd;
+        Nav = nav;
+        Ground = ground;
         Settlement = settlement;
         City = city;
         Buildings = buildings;
@@ -68,14 +76,27 @@ public sealed class CityBuild
     /// <summary>The bridges where streets cross water inside the city (empty for a dry city).</summary>
     public CityBridgeMesh[] Bridges { get; }
 
+    /// <summary>The walking graph of the settlement (plan frame) and anything in it that could not be connected.</summary>
+    public NavGraphResult Nav { get; }
+
+    /// <summary>Where a character on foot may stand (the walking graph's obstacles).</summary>
+    public OpenGround Open { get; }
+
+    /// <summary>The plans of the characters that live in the settlement (empty when none were asked for).</summary>
+    public IReadOnlyList<NpcPlan> CrowdPlans { get; }
+
+    /// <summary>The ground the city stands on, for placing things at the right height in the city's frame.</summary>
+    public IGroundSampler Ground { get; }
+
     /// <summary>Height of the centrepiece's base above the city origin, in metres.</summary>
     public double LandmarkBaseY { get; }
 
     /// <summary>Generates a city and all its far meshes. Takes about a second or two; call it from a worker thread.</summary>
     /// <param name="settlement">The settlement to build.</param>
     /// <param name="terrain">The baked terrain around it; the city is built on level ground when null.</param>
+    /// <param name="crowdCount">How many characters live in it; 0 for none.</param>
     /// <returns>The finished build.</returns>
-    public static CityBuild Create(Settlement settlement, GroundGrid? terrain)
+    public static CityBuild Create(Settlement settlement, GroundGrid? terrain, int crowdCount = 0)
     {
         ArgumentNullException.ThrowIfNull(settlement);
         IGroundSampler ground = terrain is null ? FlatGround.Instance : new SettlementGround(settlement, terrain);
@@ -110,6 +131,10 @@ public sealed class CityBuild
                 l.JetOrigin is { } j ? new Vector3(j.X, j.Y, j.Z) : null);
         }
 
+        NavGraphResult nav = NavGraphBuilder.Build(city, water);
+        var open = new OpenGround(city, water);
+        IReadOnlyList<NpcPlan> crowd = CrowdGenerator.Generate(city, nav, open, settlement.Id, crowdCount, (ulong)(uint)settlement.CitySeed);
+
         return new CityBuild(
             settlement,
             city,
@@ -118,6 +143,10 @@ public sealed class CityBuild
             wall is null ? null : PropMeshConverter.ToCollisionShape(wall),
             landmark,
             meshes.LandmarkBaseY,
-            bridges);
+            bridges,
+            nav,
+            ground,
+            open,
+            crowd);
     }
 }
