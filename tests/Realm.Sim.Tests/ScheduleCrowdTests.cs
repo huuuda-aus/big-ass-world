@@ -50,6 +50,20 @@ public class ScheduleCrowdTests
     }
 
     [Fact]
+    public void CountInside_CountsThePeopleBehindEachDoor()
+    {
+        // At 03:00 everyone is at home: behind door 4 or 5 (their home nodes are 5 and 6 on the plan's list, here node indices).
+        NpcPlan[] plans = Enumerable.Range(0, 6).Select(i => Plan(i, NpcRole.Walker, SquareDay)).ToArray();
+        Crowd crowd = Run(plans, 180, 183);
+        var inside = new int[Town().Nodes.Count];
+        crowd.CountInside(inside);
+
+        Assert.Equal(crowd.Count - crowd.CountOutside(), inside.Sum());
+        Assert.All(inside.Where((_, node) => Town().Nodes[node].Kind != NavNodeKind.Door), n => Assert.Equal(0, n));
+        Assert.True(inside.Sum() > 0, "somebody is indoors at night");
+    }
+
+    [Fact]
     public void ScheduledAt_FindsTheBlock_TheGap_AndWrapsPastMidnight()
     {
         NpcPlan plan = Plan(0, NpcRole.Walker, new ScheduleBlock[] { new(1080, 360, ScheduleActivity.Patrol), new(480, 600, ScheduleActivity.Work) });

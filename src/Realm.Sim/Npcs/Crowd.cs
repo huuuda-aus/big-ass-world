@@ -413,6 +413,21 @@ public sealed class Crowd
         return n;
     }
 
+    /// <summary>Counts the characters that are inside a building, by the node of its door.</summary>
+    /// <param name="perNode">Receives the count for every graph node (cleared first); must have one entry per node of the graph.</param>
+    public void CountInside(int[] perNode)
+    {
+        ArgumentNullException.ThrowIfNull(perNode);
+        Array.Clear(perNode);
+        foreach (Agent a in _agents)
+        {
+            if (a.Mode == Mode.Inside && a.Door >= 0)
+            {
+                perNode[a.Door]++;
+            }
+        }
+    }
+
     // ---- start -------------------------------------------------------------------------------------------------
 
     private Agent Start(NpcPlan plan, double now)

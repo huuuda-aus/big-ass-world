@@ -23,7 +23,14 @@ namespace Realm.Game.World.Settlements;
 /// <param name="CentreX">Plan X of the footprint centre in the city's local frame.</param>
 /// <param name="CentreY">Plan Y of the footprint centre in the city's local frame.</param>
 /// <param name="Site">Where the floor sits on the ground and what holds it up; the building's meshes are placed at its <see cref="BuildingSite.BaseY"/>.</param>
-public sealed record CityBuilding(Building Building, Interior Interior, ArrayMesh Far, double CentreX, double CentreY, BuildingSite Site);
+public sealed record CityBuilding(Building Building, Interior Interior, ArrayMesh Far, double CentreX, double CentreY, BuildingSite Site)
+{
+    /// <summary>Glowing panes over the far mesh's painted windows (in the far mesh's frame), or null when no room keeps a lamp.</summary>
+    public ArrayMesh? Glow { get; init; }
+
+    /// <summary>The glow its lit windows throw on the street and the walls round them (in the city's frame), or null when it has none.</summary>
+    public ArrayMesh? Aura { get; init; }
+}
 
 /// <summary>A bridge over water inside the city: its mesh and walkable collision.</summary>
 /// <param name="Mesh">The visible bridge.</param>
@@ -116,7 +123,18 @@ public sealed class CityBuild
             BuildingSite site = BuildingSite.Plan(building, ground);
             ArrayMesh far = PropMeshConverter.ToArrayMesh(BuildingMesher.Far(building, interior, site));
             Vec2 centre = building.Footprint.Centroid;
-            list.Add(new CityBuilding(building, interior, far, centre.X, centre.Y, site));
+            PropMesh? glow = NightLights.Glow(building, interior);
+            list.Add(new CityBuilding(building, interior, far, centre.X, centre.Y, site) { Glow = glow is null ? null : PropMeshConverter.ToArrayMesh(glow) });
+        }
+
+        // The glow of lit windows lies on the street and on neighbouring walls, so it needs every house placed first.
+        var neighbours = list
+            .Select(b => new AuraNeighbour(b.Building.Id, b.Building.Footprint, b.Site.BaseY, b.Interior.Floors.Count * b.Interior.FloorHeight))
+            .ToList();
+        for (int i = 0; i < list.Count; i++)
+        {
+            CityBuilding b = list[i];
+            list[i] = b with { Aura = PropMeshConverter.ToAuraMesh(NightLights.Aura(b.Building, b.Interior, b.Site.BaseY, ground, neighbours)) };
         }
 
         CityMeshes meshes = CityMesher.Build(city, settlement.CitySeed, ground, settlement.Fortification, water);

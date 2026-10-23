@@ -84,3 +84,6 @@
 - **Vertex spacing** (`SpacingMeters`): distance between neighbouring height-field vertices. Development default 8 m; the final value is a proposal (2 m).
 - **View distance**: how far from the camera terrain regions are loaded (480 m walking, 1,600 m flying); kept below half a region width so at most 4 regions are loaded while walking.
 - **Working grid**: the coarse grid (default 32 m spacing) on which water is routed and hydraulic erosion runs; the carve is then transferred to the full-resolution field.
+- **Sky fill** (`RoomLighting.SkyFill`): the share of the sky's ambient light that reaches a room, from 0.1 (no openings) to 0.8, by its windows and doors; sun patches are unaffected.
+- **Lamp level**: how brightly a house's lamps burn, 0 (empty or daytime) to 1 (someone home at night); it eases between the two and drives the interior lamps, the far glow and the street glow of that house.
+- **Aura** (`NightLights.Aura`): the fake light a lit window throws on the street and on nearby walls: one additive mesh per house, not a real light.

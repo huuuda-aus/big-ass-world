@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Godot;
+using Realm.Game.World.Settlements;
 using Realm.Core.Geometry;
 using Realm.Gen.Textures;
 using Realm.Gen.Weather;
@@ -391,6 +392,7 @@ void fragment() {
         _material.SetShaderParameter("ground_colour", horizon.Darkened(0.45f));
         _material.SetShaderParameter("sun_colour", sunColour);
         _material.SetShaderParameter("night", (float)(1 - day));
+        CityLighting.SetNight((float)(1 - day));
         _material.SetShaderParameter("day", (float)day);
         // The stars turn with the sun's hour angle about the polar axis.
         _material.SetShaderParameter("star_basis", new Basis(new Vector3(_polarX, _polarY, _polarZ), (float)-Sky.HourAngleRadians));

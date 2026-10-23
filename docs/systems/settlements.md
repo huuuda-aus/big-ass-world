@@ -19,7 +19,8 @@ Generates walled cities and towns, places them on the natural terrain (nothing i
 | Gate doors: two open leaves and a lintel at every gate (heavy iron-banded wood under stone in a city; planks under a log beam in a town) | Implemented |
 | 3D: far houses, near houses with interiors and collision, wall, gates, centrepieces, interior lamps | Implemented (first pass) |
 | Generated names (placeholder); roads (A* with slope and river costs, graded into the terrain, painted), bridges, `roads.json`, world map (M), HUD with the nearest settlement | Implemented |
-| Textures, time of day, window glow, animated fire, door opening, hamlets, road junction design | Planned / not ported |
+| Night windows (ADR 0027): translucent glass, dark rooms lit through openings, lamps in lit rooms, glow on far houses and on the street, all following who is home | Implemented |
+| Textures, animated fire, door opening, hamlets, road junction design | Planned / not ported |
 
 ## 3. Architecture
 ```mermaid
@@ -65,7 +66,7 @@ Change counts, sizes, spacing and the rest in `SettlementSettings` (also `--citi
 Generating a 250-house city plus all interiors and far meshes: about 2 s on a worker thread (most of it the roughly 50 farm and slum extras and the interiors). Walking through a built city: median 4.0 ms, p99 7.2 ms, with occasional 15 to 40 ms frames when a city's nodes attach. A far house is 20 to 1,500 triangles (half-timbering is most of it); a city is a few hundred thousand triangles and 1,200 mesh nodes. Detailed houses: two at a time on worker threads, a lamp per storey. A foundation adds about 100 to 200 triangles to a house with a stone plinth and a few hundred to one with pilings; a 253-house city built in 2.1 s (single screenshot runs, not a soak test).
 
 ## 9. Known limitations and TODOs
-See [known issues](../known-issues.md) 47 to 52 and 54 to 58: no textures or night lighting, interior lamps have no shadows so they light a little of the street, doors are solid-looking but have no collision (you walk through them), road junctions are not designed, far houses have no collision, the placement is a placeholder, and the imported generator is a copy that does not follow CityGen's repository.
+See [known issues](../known-issues.md) 47 to 52 and 54 to 58: no textures, the night glow is a picture ([ADR 0027](../decisions/0027-night-windows-and-lit-rooms.md)), doors are solid-looking but have no collision (you walk through them), road junctions are not designed, far houses have no collision, the placement is a placeholder, and the imported generator is a copy that does not follow CityGen's repository.
 
 ## 10. History
-[ADR 0012](../decisions/0012-city-generator-import-and-placement.md), [ADR 0013](../decisions/0013-roads-and-bridges.md), [ADR 0014](../decisions/0014-cities-on-natural-ground-and-service-buildings.md), [devlog 2026-10-21](../devlog/2026-10-21-cities.md), [devlog 2026-10-22](../devlog/2026-10-22-slopes-services-mountain-city.md).
+[ADR 0012](../decisions/0012-city-generator-import-and-placement.md), [ADR 0013](../decisions/0013-roads-and-bridges.md), [ADR 0027](../decisions/0027-night-windows-and-lit-rooms.md), [ADR 0014](../decisions/0014-cities-on-natural-ground-and-service-buildings.md), [devlog 2026-10-21](../devlog/2026-10-21-cities.md), [devlog 2026-10-22](../devlog/2026-10-22-slopes-services-mountain-city.md).

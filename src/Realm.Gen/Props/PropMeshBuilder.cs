@@ -11,6 +11,9 @@ internal sealed partial class PropMeshBuilder
 
     public PropMesh Build(string name) => new(name, _triangles);
 
+    /// <summary>Like <see cref="Build"/>, but returns null when nothing was added.</summary>
+    public PropMesh? BuildOrNull(string name) => _triangles.Count == 0 ? null : new PropMesh(name, _triangles);
+
     /// <summary>Axis-aligned box.</summary>
     public void Box(Vector3 min, Vector3 max, Vector3 colour)
     {
