@@ -33,6 +33,7 @@ public static class NavGraphBuilder
     private const double DoorFrontMeters = 1.3;
     private const double NeighbourRadiusMeters = 40;
     private const int NeighbourCount = 8;
+    private const double YardWeight = 1.35; // a link from door to door across open ground costs more than the same length of street
     private const double RepairRadiusMeters = 90;
     private const int RepairTries = 40;
     private const double GateOutsideMeters = 8;
@@ -45,11 +46,12 @@ public static class NavGraphBuilder
     /// <summary>Builds the graph of a city.</summary>
     /// <param name="city">The generated city.</param>
     /// <param name="water">Where water lies (links never cross it except on bridges), or null for a dry site.</param>
+    /// <param name="fortification">What stands along the wall line, which blocks walkers (a settlement without walls has no obstacle there).</param>
     /// <returns>The graph and anything that could not be connected.</returns>
-    public static NavGraphResult Build(City city, IWaterSampler? water = null)
+    public static NavGraphResult Build(City city, IWaterSampler? water = null, Fortification fortification = Fortification.Stone)
     {
         ArgumentNullException.ThrowIfNull(city);
-        var b = new Builder(city, water);
+        var b = new Builder(city, water, fortification);
         return b.Run();
     }
 
@@ -88,12 +90,12 @@ public static class NavGraphBuilder
         private readonly OpenGround _open;
         private readonly double _landmarkRadius;
 
-        public Builder(City city, IWaterSampler? water)
+        public Builder(City city, IWaterSampler? water, Fortification fortification)
         {
             _city = city;
             _water = water;
             _buildings = city.AllBuildings.ToList();
-            _open = new OpenGround(city, water);
+            _open = new OpenGround(city, water, fortification);
             _landmarkRadius = _open.LandmarkSolidRadius;
         }
 
@@ -155,14 +157,14 @@ public static class NavGraphBuilder
             return _nodes.Count - 1;
         }
 
-        private void Link(int a, int b, bool bridge = false)
+        private void Link(int a, int b, bool bridge = false, double weight = 1)
         {
             if (a == b || !_linked.Add((Math.Min(a, b), Math.Max(a, b))))
             {
                 return;
             }
 
-            _edges.Add(new NavEdge(a, b, Distance(a, b), bridge));
+            _edges.Add(new NavEdge(a, b, Distance(a, b), bridge, weight));
         }
 
         private double Distance(int a, int b) =>
@@ -209,6 +211,14 @@ public static class NavGraphBuilder
                         continue;
                     }
 
+                    if (_open.Blocked(p))
+                    {
+                        // A street that the generator ran along the wall (or through a corner of a house) is not walkable there: skip
+                        // that stretch; the repair below finds the way round.
+                        previous = -1;
+                        continue;
+                    }
+
                     int node = AddNode(p, NavNodeKind.Street);
                     if (previous < 0 && !joined)
                     {
@@ -224,7 +234,7 @@ public static class NavGraphBuilder
                             }
                         }
                     }
-                    else if (previous >= 0)
+                    else if (previous >= 0 && _open.Clear(At(previous), p))
                     {
                         Link(previous, node);
                     }
@@ -248,12 +258,12 @@ public static class NavGraphBuilder
                 int node = AddNode(gate, NavNodeKind.Gate);
                 gateNodes.Add(node);
                 int street = NearestOfKind(gate, NavNodeKind.Street, GateToleranceMeters * 2);
-                if (street >= 0)
+                if (street >= 0 && _open.Clear(gate, At(street)))
                 {
                     Link(node, street);
                 }
 
-                Vec2 outward = gate.Length < 1e-6 ? new Vec2(1, 0) : gate.Normalized();
+                Vec2 outward = OpenGround.GateOutward(_city, gate);
                 int outside = AddNode(gate + (outward * GateOutsideMeters), NavNodeKind.Outside);
                 Link(node, outside);
             }
@@ -322,7 +332,7 @@ public static class NavGraphBuilder
 
                     if (_open.Clear(At(door), At(other)))
                     {
-                        Link(door, other);
+                        Link(door, other, weight: _nodes[other].Kind == NavNodeKind.Door ? YardWeight : 1);
                         if (++linked >= NeighbourCount)
                         {
                             break;
@@ -345,7 +355,7 @@ public static class NavGraphBuilder
 
                 if (_open.Clear(At(node), At(other)))
                 {
-                    Link(node, other);
+                    Link(node, other, weight: _nodes[other].Kind == NavNodeKind.Door && _nodes[node].Kind == NavNodeKind.Door ? YardWeight : 1);
                     return true;
                 }
 

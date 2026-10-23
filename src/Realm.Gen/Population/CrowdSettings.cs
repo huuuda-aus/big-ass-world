@@ -22,17 +22,11 @@ public sealed record CrowdSettings
     /// <summary>Guards standing at each gate.</summary>
     public int GuardsPerGate { get; init; } = 2;
 
-    /// <summary>Places each loiterer stands at in turn.</summary>
+    /// <summary>Places each person out and about stands at in turn, spread over the whole settlement.</summary>
     public int SpotsPerLoiterer { get; init; } = 6;
 
     /// <summary>Buildings each walker visits besides its home.</summary>
     public int DestinationsPerWalker { get; init; } = 3;
-
-    /// <summary>How close to the fountain a loiterer may stand, beyond its solid core, in metres.</summary>
-    public double SquareInnerMeters { get; init; } = 0.9;
-
-    /// <summary>How far from the fountain's edge the crowd thins out to, in metres.</summary>
-    public double SquareSpreadMeters { get; init; } = 5;
 
     /// <summary>Average bedtime in minutes after midnight.</summary>
     public double BedtimeMinute { get; init; } = 22 * 60;

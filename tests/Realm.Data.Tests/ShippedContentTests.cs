@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.IO;
 using Realm.Core.Ids;
@@ -81,5 +82,21 @@ public class ShippedContentTests
         Assert.Contains(db.Foliage.Values, f => f.Kind == "bush");
         Assert.Contains(db.Foliage.Values, f => f.Kind == "grass");
         Assert.All(db.Foliage.Values, f => Assert.All(f.PerHectare.Keys, b => Assert.True(db.Biomes.ContainsKey(b), $"{f.Id} grows in unknown {b}")));
+    }
+
+    [Fact]
+    public void ShippedProfessions_AreConsistent_WithServicesAndShares()
+    {
+        var report = new ValidationReport();
+        ContentDatabase db = ContentLoader.Load(Path.Combine(RepoRoot(), "content"), report);
+
+        Assert.Empty(report.Issues);
+        Assert.NotEmpty(db.Professions);
+        Assert.Contains(db.Professions.Values, p => p.Tags.Contains("filler"));
+        Assert.All(db.Professions.Values.Where(p => p.WorkplaceService is not null), p => Assert.True(db.Services.ContainsKey(p.WorkplaceService!.Value)));
+        foreach (string tier in ProfessionVocabulary.Tiers)
+        {
+            Assert.True(db.Professions.Values.Sum(p => p.ShareFor(tier)) <= 1.0, tier);
+        }
     }
 }

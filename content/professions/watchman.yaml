@@ -1,0 +1,8 @@
+# Placeholder values, not design.
+id: profession.watchman
+name: Night watchman
+tags: [watch]
+workplace: { kind: patrol }
+share: { city: 0.04, town: 0.03 }
+day:
+  - { from: "18:00", to: "06:00", do: patrol }

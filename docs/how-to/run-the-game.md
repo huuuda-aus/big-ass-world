@@ -39,7 +39,7 @@ Goal: bake the terrain, start Godot and walk around the 20 km world.
 | F1 | hide or show the HUD | |
 | Esc | release or recapture the mouse | |
 
-A compass strip at the top of the screen shows the bearing you look along (degrees clockwise from north, with N, NE, E ... marked and a tick every 5 degrees); it hides with the rest of the HUD (F1). The HUD shows the game day, time and moon phase, frames per second, frame time, position, ground height, the region you are in, how many regions are loaded or loading, and the cost of the last shared-texture rebuild.
+A compass strip at the top of the screen shows the bearing you look along (degrees clockwise from north, with N, NE, E ... marked and a tick every 5 degrees); it hides with the rest of the HUD (F1). Looking at a person in a settlement shows their name, trade and what they are doing and why at the bottom of the screen; a guard at a gate speaks when you come close. The HUD shows the game day, time, moon phase and rain, frames per second, frame time, position, ground height, the region you are in, how many regions are loaded or loading, and the cost of the last shared-texture rebuild.
 
 ## Options
 
@@ -54,6 +54,7 @@ Pass them after `--`, for example `<godot> --path src/Realm.Game -- --fly --pos=
 | `--view-distance=M`, `--fog=DENSITY` | Override how far terrain is loaded and how thick the fog is |
 | `--screenshot=PNG`, `--screenshot-after=FRAMES` | Save a screenshot and quit |
 | `--autowalk=SECONDS`, `--autowalk-run`, `--report=JSON` | Walk forward automatically, print and save a frame-time report, quit |
+| `--rain=X` | Fix the rain intensity (0 to 1) everywhere, for testing; by default it comes from the clouds of each region |
 | `--crowd-scale=F` | Multiply the number of characters in every settlement (default 1: 220 in a city, 40 in a town, 12 in a hamlet; 0 for none) |
 | `--nav-debug` | Start with the settlements' walking graphs drawn |
 | `--time=HOUR`, `--day-minutes=M`, `--time-scale=X` | Start hour of day (default 9), real minutes per game day (default 20), speed of time (0 pauses) |

@@ -1,0 +1,9 @@
+# Placeholder values, not design.
+id: profession.farmer
+name: Farmer
+tags: [farming]
+workplace: { kind: fields }
+share: { city: 0.06, town: 0.12, hamlet: 0.35 }
+day:
+  - { from: "06:00", to: "17:30", do: fields }
+  - { from: "18:00", to: "19:30", do: about }

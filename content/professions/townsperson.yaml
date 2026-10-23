@@ -1,0 +1,11 @@
+# Placeholder values, not design. Whoever the other professions leave over becomes a townsperson.
+id: profession.townsperson
+name: Townsperson
+tags: [filler]
+share: { city: 0.30, town: 0.30, hamlet: 0.35 }
+day:
+  - { from: "07:30", to: "09:30", do: errand }
+  - { from: "09:30", to: "13:00", do: about }
+  - { from: "13:00", to: "14:30", do: errand }
+  - { from: "14:30", to: "17:30", do: about }
+  - { from: "17:30", to: "20:30", do: inn }

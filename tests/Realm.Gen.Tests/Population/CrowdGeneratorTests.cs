@@ -39,18 +39,25 @@ public class CrowdGeneratorTests
     }
 
     [Fact]
-    public void Loiterers_CrowdTheSquare_ThickestNextToTheFountain_AndStayOnOpenGround()
+    public void Loiterers_AreSpreadEvenlyOverTheCity_OnOpenGroundAtPlacesTheyCanWalkTo()
     {
         IReadOnlyList<NpcPlan> plans = Make();
         double solid = Ground.LandmarkSolidRadius;
-        var distances = plans.Where(p => p.Role == NpcRole.Loiterer).SelectMany(p => p.Spots).Select(s => Math.Sqrt((s.X * s.X) + (s.Z * s.Z))).ToList();
+        var spots = plans.Where(p => p.Role == NpcRole.Loiterer).SelectMany(p => p.Spots).ToList();
 
-        Assert.NotEmpty(distances);
-        Assert.All(plans.SelectMany(p => p.Spots), s => Assert.False(Ground.Blocked(new Vec2(s.X, s.Z)), $"a spot at ({s.X:F1}, {s.Z:F1}) is not open ground"));
-        Assert.All(distances, d => Assert.True(d >= solid, "a spot is inside the fountain"));
-        double near = distances.Count(d => d <= solid + 8) / (double)distances.Count;
-        Assert.True(near > 0.6, $"only {near:P0} of the spots are within 8 m of the fountain's edge");
-        Assert.True(distances.Count(d => d <= solid + 3) > distances.Count(d => d > solid + 12), "the crowd does not thin out with distance");
+        Assert.NotEmpty(spots);
+        Assert.All(spots, s => Assert.False(Ground.Blocked(new Vec2(s.X, s.Z)), $"a spot at ({s.X:F1}, {s.Z:F1}) is not open ground"));
+        // Every spot is within a metre of a street or a door front, so it can be walked to.
+        Assert.All(spots, s => Assert.True(Nav.Graph.Nodes.Any(n => Math.Abs(n.X - s.X) < 1 && Math.Abs(n.Z - s.Z) < 1), $"nothing to walk to at ({s.X:F1}, {s.Z:F1})"));
+        // No crowd round the fountain: few spots near it, and every quarter of the city has its share.
+        Assert.True(spots.Count(s => Math.Sqrt((s.X * s.X) + (s.Z * s.Z)) < solid + 10) < spots.Count * 0.15, "the spots still cluster round the fountain");
+        foreach ((Func<(double X, double Z), bool> quarter, string name) in new (Func<(double X, double Z), bool>, string)[]
+        {
+            (s => s.X < 0 && s.Z < 0, "north-west"), (s => s.X >= 0 && s.Z < 0, "north-east"), (s => s.X < 0 && s.Z >= 0, "south-west"), (s => s.X >= 0 && s.Z >= 0, "south-east"),
+        })
+        {
+            Assert.True(spots.Count(quarter) > spots.Count * 0.15, $"the {name} of the city has too few spots");
+        }
     }
 
     [Fact]
@@ -96,7 +103,7 @@ public class CrowdGeneratorTests
     }
 
     [Fact]
-    public void ADayInTheCity_Crowd_StaysOnOpenGround_FillsTheSquareByDay_AndEmptiesItAtNight()
+    public void ADayInTheCity_Crowd_StaysOutOfTheFountain_FillsTheStreetsByDay_AndEmptiesThemAtNight()
     {
         IReadOnlyList<NpcPlan> plans = Make();
         var crowd = new Crowd(Nav.Graph, plans, 9 * 60, 1.2, (ax, az, bx, bz) => Ground.Clear(new Vec2(ax, az), new Vec2(bx, bz)));
@@ -137,7 +144,7 @@ public class CrowdGeneratorTests
 
         int samples = 11; // samples of 4 minutes in the 40 minute noon window
         Assert.True(outsideNoon / (double)samples > 100, $"only {outsideNoon / (double)samples:F0} characters outside at noon");
-        Assert.True(nearFountain / (double)Math.Max(1, outsideNoon) > 0.3, $"the crowd does not gather round the fountain at noon: {nearFountain} of {outsideNoon}");
+        Assert.True(nearFountain / (double)Math.Max(1, outsideNoon) < 0.2, $"the crowd still gathers round the fountain at noon: {nearFountain} of {outsideNoon}");
         Assert.True(outsideNight / 31.0 < 40, $"{outsideNight / 31.0:F0} characters outside at night, expected only guards and a few stragglers");
     }
 }

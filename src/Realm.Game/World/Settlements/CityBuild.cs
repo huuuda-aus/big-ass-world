@@ -7,6 +7,7 @@ using Realm.Gen.Props;
 using Realm.Gen.Settlements.Generation;
 using Realm.Gen.Settlements.Geometry;
 using Realm.Gen.Settlements.Meshing;
+using Realm.Data.Content;
 using Realm.Gen.Population;
 using Realm.Gen.Settlements.Navigation;
 using Realm.Sim.Npcs;
@@ -39,8 +40,9 @@ public sealed record CityLandmark(
 /// </summary>
 public sealed class CityBuild
 {
-    private CityBuild(Settlement settlement, City city, CityBuilding[] buildings, ArrayMesh? wall, ConcavePolygonShape3D? wallShape, CityLandmark? landmark, double landmarkBaseY, CityBridgeMesh[] bridges, NavGraphResult nav, IGroundSampler ground, OpenGround open, IReadOnlyList<NpcPlan> crowd)
+    private CityBuild(Settlement settlement, City city, CityBuilding[] buildings, ArrayMesh? wall, ConcavePolygonShape3D? wallShape, CityLandmark? landmark, double landmarkBaseY, CityBridgeMesh[] bridges, NavGraphResult nav, IGroundSampler ground, OpenGround open, IReadOnlyList<NpcPlan> crowd, IReadOnlyDictionary<int, string> nodeLabels)
     {
+        NodeLabels = nodeLabels;
         Open = open;
         CrowdPlans = crowd;
         Nav = nav;
@@ -82,6 +84,9 @@ public sealed class CityBuild
     /// <summary>Where a character on foot may stand (the walking graph's obstacles).</summary>
     public OpenGround Open { get; }
 
+    /// <summary>What each graph node is called, for describing where a character is going.</summary>
+    public IReadOnlyDictionary<int, string> NodeLabels { get; }
+
     /// <summary>The plans of the characters that live in the settlement (empty when none were asked for).</summary>
     public IReadOnlyList<NpcPlan> CrowdPlans { get; }
 
@@ -95,8 +100,9 @@ public sealed class CityBuild
     /// <param name="settlement">The settlement to build.</param>
     /// <param name="terrain">The baked terrain around it; the city is built on level ground when null.</param>
     /// <param name="crowdCount">How many characters live in it; 0 for none.</param>
+    /// <param name="professions">The professions of its people; none gives them the simple behaviour of a role.</param>
     /// <returns>The finished build.</returns>
-    public static CityBuild Create(Settlement settlement, GroundGrid? terrain, int crowdCount = 0)
+    public static CityBuild Create(Settlement settlement, GroundGrid? terrain, int crowdCount = 0, IReadOnlyCollection<ProfessionDefinition>? professions = null)
     {
         ArgumentNullException.ThrowIfNull(settlement);
         IGroundSampler ground = terrain is null ? FlatGround.Instance : new SettlementGround(settlement, terrain);
@@ -131,9 +137,12 @@ public sealed class CityBuild
                 l.JetOrigin is { } j ? new Vector3(j.X, j.Y, j.Z) : null);
         }
 
-        NavGraphResult nav = NavGraphBuilder.Build(city, water);
-        var open = new OpenGround(city, water);
-        IReadOnlyList<NpcPlan> crowd = CrowdGenerator.Generate(city, nav, open, settlement.Id, crowdCount, (ulong)(uint)settlement.CitySeed);
+        NavGraphResult nav = NavGraphBuilder.Build(city, water, settlement.Fortification);
+        var open = new OpenGround(city, water, settlement.Fortification);
+        ulong crowdSeed = (ulong)(uint)settlement.CitySeed;
+        IReadOnlyList<NpcPlan> crowd = professions is { Count: > 0 }
+            ? CrowdGenerator.Generate(city, nav, open, settlement.Id, settlement.Tier, crowdCount, crowdSeed, professions)
+            : CrowdGenerator.Generate(city, nav, open, settlement.Id, crowdCount, crowdSeed);
 
         return new CityBuild(
             settlement,
@@ -147,6 +156,7 @@ public sealed class CityBuild
             nav,
             ground,
             open,
-            crowd);
+            crowd,
+            CrowdGenerator.NodeLabels(city, nav));
     }
 }

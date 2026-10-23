@@ -23,6 +23,9 @@ public sealed partial class CrowdView : Node3D
     private static readonly Color GuardColour = new(0.85f, 0.25f, 0.25f);
 
     private readonly MultiMesh _multi;
+    private readonly MultiMesh _noses;
+    private readonly List<NpcSnapshot> _snapshots = new();
+    private readonly List<(int Index, Vector3 Position)> _visible = new();
 
     /// <summary>Creates the view.</summary>
     /// <param name="capacity">Number of characters it can show.</param>
@@ -37,6 +40,20 @@ public sealed partial class CrowdView : Node3D
             InstanceCount = capacity,
             VisibleInstanceCount = 0,
         };
+        _noses = new MultiMesh
+        {
+            TransformFormat = MultiMesh.TransformFormatEnum.Transform3D,
+            UseColors = true,
+            Mesh = new BoxMesh { Size = new Vector3(0.16f, 0.16f, 0.34f) },
+            InstanceCount = capacity,
+            VisibleInstanceCount = 0,
+        };
+        AddChild(new MultiMeshInstance3D
+        {
+            Multimesh = _noses,
+            MaterialOverride = new StandardMaterial3D { VertexColorUseAsAlbedo = true, Roughness = 1f },
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        });
         AddChild(new MultiMeshInstance3D
         {
             Multimesh = _multi,
@@ -45,23 +62,30 @@ public sealed partial class CrowdView : Node3D
         });
     }
 
+    /// <summary>The characters drawn in the last frame, with their positions in the city's frame (index into the crowd, position).</summary>
+    public IReadOnlyList<(int Index, Vector3 Position)> Shown => _visible;
+
     /// <summary>Writes the characters that are outside into the MultiMesh.</summary>
     /// <param name="crowd">The crowd.</param>
     /// <param name="nowMinutes">The game time in minutes.</param>
     /// <param name="ground">The ground, for each character's height.</param>
     /// <param name="bridges">The city's bridges (a character on one stands on the roadway).</param>
-    public void Show(Crowd crowd, double nowMinutes, IGroundSampler ground, IReadOnlyList<CityBridge> bridges)
+    /// <param name="deltaSeconds">Real seconds since the last frame, for the pace at which people ease out of each other's way.</param>
+    public void Show(Crowd crowd, double nowMinutes, double deltaSeconds, IGroundSampler ground, IReadOnlyList<CityBridge> bridges)
     {
+        crowd.CollectVisible(nowMinutes, deltaSeconds, _snapshots);
         int shown = 0;
-        for (int i = 0; i < crowd.Count; i++)
+        _visible.Clear();
+        foreach (NpcSnapshot s in _snapshots)
         {
-            if (!crowd.TryGetSnapshot(i, nowMinutes, out NpcSnapshot s))
-            {
-                continue;
-            }
-
+            int i = s.Id;
             double y = StandingHeight(s.X, s.Z, ground, bridges);
-            _multi.SetInstanceTransform(shown, new Transform3D(Basis.Identity, new Vector3((float)s.X, (float)(y + (Height / 2)), (float)s.Z)));
+            var position = new Vector3((float)s.X, (float)(y + (Height / 2)), (float)s.Z);
+            var facing = new Basis(Vector3.Up, (float)s.Heading);
+            _multi.SetInstanceTransform(shown, new Transform3D(facing, position));
+            // A nose on the front (the capsule's minus-Z side) shows which way the character faces.
+            _noses.SetInstanceTransform(shown, new Transform3D(facing, position + (facing * new Vector3(0, 0.45f, -0.34f))));
+            _visible.Add((i, position));
             float tint = 0.85f + (((s.Id * 37) % 100) / 100f * 0.3f);
             Color colour = s.Role switch
             {
@@ -70,10 +94,12 @@ public sealed partial class CrowdView : Node3D
                 _ => LoiterColour,
             };
             _multi.SetInstanceColor(shown, new Color(colour.R * tint, colour.G * tint, colour.B * tint));
+            _noses.SetInstanceColor(shown, s.Alert ? new Color(1f, 0.9f, 0.1f) : s.Noticing ? new Color(1f, 1f, 1f) : new Color(0.15f, 0.15f, 0.15f));
             shown++;
         }
 
         _multi.VisibleInstanceCount = shown;
+        _noses.VisibleInstanceCount = shown;
     }
 
     // The ground, or the roadway of a bridge when the point is on one.

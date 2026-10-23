@@ -1,0 +1,9 @@
+# Placeholder values, not design.
+id: profession.blacksmith
+name: Blacksmith
+tags: [craft]
+workplace: { service: service.blacksmith }
+share: { city: 0.04, town: 0.05 }
+day:
+  - { from: "07:00", to: "18:00", do: work }
+  - { from: "19:00", to: "21:30", do: inn }

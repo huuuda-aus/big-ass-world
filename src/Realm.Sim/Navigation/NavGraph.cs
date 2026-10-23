@@ -28,9 +28,9 @@ public sealed class NavGraph
         var degree = new int[n + 1];
         foreach (NavEdge e in edges)
         {
-            if ((uint)e.A >= (uint)n || (uint)e.B >= (uint)n || !(e.LengthMeters >= 0))
+            if ((uint)e.A >= (uint)n || (uint)e.B >= (uint)n || !(e.LengthMeters >= 0) || !(e.Weight >= 1))
             {
-                throw new ArgumentException($"Edge {e.A}-{e.B} refers to a missing node or has a bad length.", nameof(edges));
+                throw new ArgumentException($"Edge {e.A}-{e.B} refers to a missing node, or has a bad length or a weight below 1.", nameof(edges));
             }
 
             degree[e.A]++;

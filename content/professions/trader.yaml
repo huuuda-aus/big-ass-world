@@ -1,0 +1,9 @@
+# Placeholder values, not design.
+id: profession.trader
+name: Trader
+tags: [trade]
+workplace: { kind: stall }
+share: { city: 0.08, town: 0.06, hamlet: 0.05 }
+day:
+  - { from: "08:00", to: "18:00", do: work }
+  - { from: "19:00", to: "21:00", do: inn }

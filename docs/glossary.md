@@ -66,6 +66,7 @@
 - **Foliage** (`foliage` content type): a species of tree, bush or grass the generator scatters over the world.
 - **Grass cell**: a 32 m square of the baked grass density map; the game scatters its tufts at run time.
 - **Cloud climate**: two coarse world maps (cover and thickness of cloud) baked from the biomes' rainfall and the terrain height; the sky shader draws the clouds from them.
+- **Profession** (`profession` content type): a trade: where its people work, how many a settlement has and how they spend the day (a timetable of activities).
 - **Crowd** (`Crowd`, `NpcPlan`): the simulated characters of one settlement and their plans; each stands, walks along the walking graph or is inside a building, and its position is a function of time.
 - **Walking graph** (`NavGraph`): nodes (streets, gates, door fronts, bridge ends) joined by straight walkable edges; characters walk it instead of a navigation mesh and their position is a function of time (`NavRoute`).
 - **World clock** (`WorldClock`): the continuous time of day of the game world, advanced by real time; the sun, the moon and later NPC schedules read it.

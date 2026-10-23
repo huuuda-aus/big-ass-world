@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Realm.Data\Realm.Data.csproj" />
+    <ProjectReference Include="..\..\src\Realm.Sim\Realm.Sim.csproj" />
   </ItemGroup>
 
 </Project>

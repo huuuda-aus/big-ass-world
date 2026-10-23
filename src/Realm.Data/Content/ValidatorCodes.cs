@@ -62,4 +62,7 @@ public static class ValidatorCodes
 
     /// <summary>A <c>foliage</c> record has an unknown kind, a density, range or limit out of bounds, or a malformed pair.</summary>
     public const string InvalidFoliageField = "DATA019";
+
+    /// <summary>A <c>profession</c> record has an unknown workplace, tier or activity word, a bad time, overlapping blocks or a share out of range.</summary>
+    public const string InvalidProfessionField = "DATA020";
 }

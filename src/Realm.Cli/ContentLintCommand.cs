@@ -23,7 +23,7 @@ internal static class ContentLintCommand
 
         output.WriteLine(
             $"{db.Materials.Count} material(s), {db.Items.Count} item(s), {db.Biomes.Count} biome(s), " +
-            $"{db.Regions.Count} region(s), {db.Services.Count} service(s), {db.Foliage.Count} foliage species, " +
+            $"{db.Regions.Count} region(s), {db.Services.Count} service(s), {db.Foliage.Count} foliage species, {db.Professions.Count} profession(s), " +
             $"{report.Count(Severity.Error)} error(s), {report.Count(Severity.Warning)} warning(s).");
 
         return report.HasErrors ? ExitLintErrors : ExitOk;

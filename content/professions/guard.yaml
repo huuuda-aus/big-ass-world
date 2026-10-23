@@ -1,0 +1,8 @@
+# Placeholder values, not design.
+id: profession.guard
+name: Guard
+tags: [watch]
+workplace: { kind: gate_post }
+share: { city: 0.05, town: 0.04 }
+day:
+  - { from: "06:00", to: "18:00", do: work }

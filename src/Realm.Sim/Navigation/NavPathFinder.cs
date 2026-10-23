@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace Realm.Sim.Navigation;
 
 /// <summary>
-/// Finds shortest walks on a <see cref="NavGraph"/> with A*. One finder owns its scratch arrays and reuses them, so repeated searches
+/// Finds the cheapest walks on a <see cref="NavGraph"/> with A* (cost is length times the edge weight, so streets are preferred to short cuts across yards). One finder owns its scratch arrays and reuses them, so repeated searches
 /// do not allocate.
 /// </summary>
 /// <remarks>Determinism: ties are broken by node ID, so the same graph and query always give the same path. Thread-safety: one finder per thread.</remarks>
@@ -35,7 +35,7 @@ public sealed class NavPathFinder
     /// <param name="from">The start node ID.</param>
     /// <param name="to">The goal node ID.</param>
     /// <param name="path">Receives the node IDs from start to goal; cleared first.</param>
-    /// <param name="lengthMeters">Receives the walking length.</param>
+    /// <param name="lengthMeters">Receives the walking length (the sum of the straight legs, not the weighted cost).</param>
     /// <returns><c>true</c> when a walk exists.</returns>
     public bool TryFindPath(int from, int to, List<int> path, out double lengthMeters)
     {
@@ -61,13 +61,13 @@ public sealed class NavPathFinder
 
             if (node == to)
             {
-                lengthMeters = _cost[to];
                 for (int at = to; at >= 0; at = _parent[at])
                 {
                     path.Add(at);
                 }
 
                 path.Reverse();
+                lengthMeters = GeometricLength(path);
                 return true;
             }
 
@@ -76,7 +76,7 @@ public sealed class NavPathFinder
             {
                 NavEdge edge = _graph.Edges[edgeIndex];
                 int next = edge.Other(node);
-                double cost = _cost[node] + edge.LengthMeters;
+                double cost = _cost[node] + (edge.LengthMeters * edge.Weight);
                 if (_stamp[next] != _search)
                 {
                     Touch(next, cost, node);
@@ -93,6 +93,20 @@ public sealed class NavPathFinder
         }
 
         return false;
+    }
+
+    // The walking length of a path (not the weighted cost the search minimised).
+    private double GeometricLength(List<int> path)
+    {
+        double length = 0;
+        for (int i = 1; i < path.Count; i++)
+        {
+            NavNode a = _graph.Nodes[path[i - 1]];
+            NavNode b = _graph.Nodes[path[i]];
+            length += Math.Sqrt(((a.X - b.X) * (a.X - b.X)) + ((a.Z - b.Z) * (a.Z - b.Z)));
+        }
+
+        return length;
     }
 
     private void Touch(int node, double cost, int parent)

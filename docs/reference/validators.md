@@ -27,6 +27,7 @@ Run content validation with `dotnet run --project src/Realm.Cli -- content-lint`
 | DATA017 | Error | A region polygon extends outside the world square. | Move the vertices inside, or raise `world_size_m`. |
 | DATA018 | Error | A `service` record has an unknown tier, ward, `near`, `foundation` or `main_room` word, a count outside 1 to 8, a non-positive `min_area_m2`, or lists `wards` together with `outside_wall: true`. | Use one of the words the message lists; see the [service reference](content/service.md). |
 | DATA019 | Error | A `foliage` record has an unknown `kind`, a density outside its limits, a malformed `[low, high]` pair, or another out-of-range number. | Use the limits the message lists; see the [foliage reference](content/foliage.md). |
+| DATA020 | Error | A `profession` record has an unknown workplace kind, tier or activity word, a time that is not a quoted `HH:MM`, overlapping day blocks, a share outside 0 to 1, or the shares of a tier add up to more than 1. | Use the words and limits the message lists; see the [profession reference](content/profession.md). |
 
 Known content types today: `material`, `item`, `biome`, `world`, `service`.
 

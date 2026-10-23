@@ -92,7 +92,7 @@ public class NavigationTests
     }
 
     [Fact]
-    public void Astar_MatchesABruteForceShortestPath_OnRandomGraphs()
+    public void Astar_FindsTheCheapestWalk_OnRandomGraphsWithWeights()
     {
         var rng = new Realm.Core.Random.Rng(7);
         for (int trial = 0; trial < 20; trial++)
@@ -107,7 +107,7 @@ public class NavigationTests
                     double d = Math.Sqrt(Math.Pow(nodes[i].X - nodes[j].X, 2) + Math.Pow(nodes[i].Z - nodes[j].Z, 2));
                     if (d < 30)
                     {
-                        edges.Add(new NavEdge(i, j, d * (1 + rng.NextDouble())));
+                        edges.Add(new NavEdge(i, j, d, false, 1 + rng.NextDouble()));
                     }
                 }
             }
@@ -115,18 +115,73 @@ public class NavigationTests
             var graph = new NavGraph(nodes, edges);
             var finder = new NavPathFinder(graph);
             double[,] best = FloydWarshall(n, edges);
+            var path = new List<int>();
             for (int k = 0; k < 10; k++)
             {
                 int from = rng.NextInt(n);
                 int to = rng.NextInt(n);
-                bool found = finder.TryFindPath(from, to, new List<int>(), out double length);
+                bool found = finder.TryFindPath(from, to, path, out double length);
                 Assert.Equal(!double.IsInfinity(best[from, to]), found);
-                if (found)
+                if (!found)
                 {
-                    Assert.Equal(best[from, to], length, 6);
+                    continue;
                 }
+
+                // The path costs the cheapest possible (length times weight), and the length reported is the sum of its straight legs.
+                double cost = 0, legs = 0;
+                for (int i = 1; i < path.Count; i++)
+                {
+                    NavEdge e = edges.Where(x => (x.A == path[i - 1] && x.B == path[i]) || (x.B == path[i - 1] && x.A == path[i])).OrderBy(x => x.LengthMeters * x.Weight).First();
+                    cost += e.LengthMeters * e.Weight;
+                    legs += e.LengthMeters;
+                }
+
+                Assert.Equal(best[from, to], cost, 6);
+                Assert.Equal(legs, length, 6);
             }
         }
+    }
+
+    [Fact]
+    public void Weights_SteerAWalkAwayFromAShortCut_ButAWeightBelowOneIsRejected()
+    {
+        // Two ways from 0 to 3: a short cut through 1 (2 x 10 m, weight 2) or the long way through 2 (2 x 14 m, weight 1).
+        var nodes = new List<NavNode> { new(0, 0, NavNodeKind.Street), new(10, 0, NavNodeKind.Street), new(10, 14, NavNodeKind.Street), new(20, 0, NavNodeKind.Street) };
+        var edges = new List<NavEdge> { new(0, 1, 10, false, 2), new(1, 3, 10, false, 2), new(0, 2, 17.2, false, 1), new(2, 3, 17.2, false, 1) };
+        var finder = new NavPathFinder(new NavGraph(nodes, edges));
+        var path = new List<int>();
+
+        Assert.True(finder.TryFindPath(0, 3, path, out double length));
+
+        Assert.Equal(new[] { 0, 2, 3 }, path);
+        Assert.True(length > 20); // longer on the ground, but cheaper by weight
+        Assert.Throws<ArgumentException>(() => new NavGraph(nodes, new[] { new NavEdge(0, 1, 10, false, 0.5) }));
+    }
+
+    [Fact]
+    public void ASmoothedRoute_RoundsTheCorners_KeepsTheEnds_AndFacesAlongTheWalk()
+    {
+        var corner = new[] { (0.0, 0.0), (10.0, 0.0), (10.0, 10.0) };
+
+        var sharp = new NavRoute(corner);
+        var round = NavRoute.Smooth(corner, 2);
+
+        Assert.True(round.LengthMeters < sharp.LengthMeters);
+        round.PositionAt(0, out double x0, out double z0);
+        round.PositionAt(round.LengthMeters, out double x1, out double z1);
+        Assert.Equal((0.0, 0.0), (x0, z0));
+        Assert.Equal((10.0, 10.0), (x1, z1));
+        // Nobody passes through the exact corner any more.
+        double closest = Enumerable.Range(0, 200).Min(i =>
+        {
+            round.PositionAt(round.LengthMeters * i / 199, out double x, out double z);
+            return Math.Sqrt(Math.Pow(x - 10, 2) + Math.Pow(z, 2));
+        });
+        Assert.True(closest > 0.3);
+        // Facing: east along the first leg (yaw atan2(-1, 0) = -90 degrees), south along the last (atan2(0, -1) = 180 degrees).
+        Assert.Equal(-Math.PI / 2, round.HeadingAt(1), 6);
+        Assert.Equal(Math.PI, Math.Abs(round.HeadingAt(round.LengthMeters - 1)), 6);
+        Assert.True(NavRoute.Smooth(new[] { (0.0, 0.0), (5.0, 0.0) }, 2).LengthMeters > 0);
     }
 
     [Fact]
@@ -180,8 +235,8 @@ public class NavigationTests
 
         foreach (NavEdge e in edges)
         {
-            d[e.A, e.B] = Math.Min(d[e.A, e.B], e.LengthMeters);
-            d[e.B, e.A] = Math.Min(d[e.B, e.A], e.LengthMeters);
+            d[e.A, e.B] = Math.Min(d[e.A, e.B], e.LengthMeters * e.Weight);
+            d[e.B, e.A] = Math.Min(d[e.B, e.A], e.LengthMeters * e.Weight);
         }
 
         for (int k = 0; k < n; k++)

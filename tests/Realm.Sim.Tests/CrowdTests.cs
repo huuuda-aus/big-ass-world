@@ -73,7 +73,7 @@ public class CrowdTests
                 if (previous is { } p && previousT == t - 0.5)
                 {
                     double moved = Math.Sqrt(Math.Pow(s.X - p.X, 2) + Math.Pow(s.Z - p.Z, 2));
-                    Assert.True(moved <= (Speed * 0.5) + 1e-6, $"jumped {moved:F2} m in half a minute at {t}");
+                    Assert.True(moved <= (Speed * 0.5 * 1.31) + 1e-6, $"jumped {moved:F2} m in half a minute at {t}"); // the mid-walk is up to 30 percent faster than the average
                 }
 
                 previous = s;

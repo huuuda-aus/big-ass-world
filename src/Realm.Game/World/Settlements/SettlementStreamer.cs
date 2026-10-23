@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Godot;
 using Realm.Core.Validation;
+using Realm.Data.Content;
 using Realm.Gen.Population;
 using Realm.Gen.Settlements.Placement;
 using Realm.Sim.Time;
@@ -33,6 +34,12 @@ public sealed partial class SettlementStreamer : Node3D
 
     /// <summary>The world clock the characters live by; none means no characters appear.</summary>
     public WorldClock? Clock { get; set; }
+
+    /// <summary>The professions of the people (loaded from the content); none gives characters the simple behaviour of a role.</summary>
+    public IReadOnlyCollection<ProfessionDefinition>? Professions { get; set; }
+
+    /// <summary>The rain intensity (0 to 1) at a world position (x, z); none means dry.</summary>
+    public Func<double, double, double>? RainAt { get; set; }
 
     /// <summary>Multiplier on the number of characters in every settlement; 0 for none.</summary>
     public double CrowdScale { get; set; } = 1;
@@ -147,7 +154,8 @@ public sealed partial class SettlementStreamer : Node3D
                 _started[s.Id] = Time.GetTicksMsec();
                 _ground.TryGetValue(s.Id, out GroundGrid? grid);
                 int crowd = (int)Math.Round(CrowdGenerator.CountFor(s.Tier, CrowdSettings) * CrowdScale);
-                _building[s.Id] = Task.Run(() => CityBuild.Create(captured, grid, crowd));
+                IReadOnlyCollection<ProfessionDefinition>? professions = Professions;
+                _building[s.Id] = Task.Run(() => CityBuild.Create(captured, grid, crowd, professions));
             }
             else if (live && distance > s.PadRadiusMeters + unloadMargin)
             {
@@ -192,7 +200,7 @@ public sealed partial class SettlementStreamer : Node3D
 
         foreach (CityInstance city in _live.Values)
         {
-            city.Process(player, delta);
+            city.Process(player, delta, RainAt?.Invoke(city.Settlement.X, city.Settlement.Z) ?? 0);
         }
     }
 }

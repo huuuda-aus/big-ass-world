@@ -125,6 +125,20 @@ public class NavGraphTests
     }
 
     [Fact]
+    public void ShortCutsAcrossYards_CostMoreThanStreets_SoWalkersPreferTheStreets()
+    {
+        NavGraph g = NavGraphBuilder.Build(Make(3, 120, SettlementLayout.Radial)).Graph;
+
+        var yard = g.Edges.Where(e => g.Nodes[e.A].Kind == NavNodeKind.Door && g.Nodes[e.B].Kind == NavNodeKind.Door).ToList();
+        var street = g.Edges.Where(e => g.Nodes[e.A].Kind == NavNodeKind.Street && g.Nodes[e.B].Kind == NavNodeKind.Street).ToList();
+
+        Assert.NotEmpty(yard);
+        Assert.NotEmpty(street);
+        Assert.All(yard, e => Assert.True(e.Weight > 1));
+        Assert.All(street, e => Assert.Equal(1, e.Weight));
+    }
+
+    [Fact]
     public void SameCity_SameGraph()
     {
         NavGraph a = NavGraphBuilder.Build(Make(2, 80, SettlementLayout.Radial)).Graph;

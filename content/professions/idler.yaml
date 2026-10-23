@@ -1,0 +1,7 @@
+# Placeholder values, not design.
+id: profession.idler
+name: Idler
+tags: [leisure]
+share: { city: 0.26, town: 0.16, hamlet: 0.10 }
+day:
+  - { from: "09:30", to: "19:30", do: about }

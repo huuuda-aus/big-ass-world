@@ -1,0 +1,9 @@
+# Placeholder values, not design.
+id: profession.woodcutter
+name: Woodcutter
+tags: [labour, forest]
+workplace: { service: service.woodcutter }
+share: { city: 0.02, town: 0.03, hamlet: 0.10 }
+day:
+  - { from: "06:00", to: "16:30", do: work }
+  - { from: "17:30", to: "19:00", do: about }

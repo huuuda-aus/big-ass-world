@@ -6,6 +6,7 @@ using Realm.Core.Validation;
 using Realm.Data.Content;
 using Realm.Gen.Settlements.Generation;
 using Realm.Gen.Settlements.Meshing;
+using Realm.Gen.Settlements.Geometry;
 using Realm.Gen.Settlements.Model;
 using Realm.Gen.Settlements.Navigation;
 using Realm.Gen.Settlements.Placement;
@@ -160,7 +161,7 @@ public class ShippedSettlementTests
             var ground = new SettlementGround(s, grid);
             City city = CityGenerator.Generate(s.ToCityParams(ground));
             cities.Add(city);
-            graphs.Add(NavGraphBuilder.Build(city, ground));
+            graphs.Add(NavGraphBuilder.Build(city, ground, s.Fortification));
         }
 
         return (cities, graphs);

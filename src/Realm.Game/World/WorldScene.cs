@@ -5,7 +5,9 @@ using System.Linq;
 using System.Text.Json;
 using Godot;
 using Realm.Core.Geometry;
+using Realm.Data.Content;
 using Realm.Sim.Time;
+using Realm.Sim.Weather;
 using Realm.Core.Diagnostics;
 using Realm.Game.Bridge;
 using Realm.Game.World.Settlements;
@@ -42,6 +44,7 @@ public partial class WorldScene : Node3D
     private const float MouseSensitivity = 0.0025f;
     private const float PitchLimit = 1.5f;
     private const float FarPlane = 3000f;
+    private const double PickMeters = 40;
     private const float WalkFogDensity = 0.010f; // about 5 percent visibility at the 300 m walking view distance
     private const float FlyFogDensity = 0.0010f;
     private const double WalkLoadMeters = 300;
@@ -72,6 +75,9 @@ public partial class WorldScene : Node3D
     private Label _hud = null!; // Safe: set in _Ready.
     private CompassBar _compass = null!; // Safe: set in _Ready with the HUD.
     private WorldClock _clock = null!; // Safe: set in _Ready by BuildEnvironment.
+    private CloudClimate _climate = null!; // Safe: set in _Ready by BuildEnvironment.
+    private RainEffect? _rain;
+    private Label? _personLabel;
     private DayNightCycle _cycle = null!; // Safe: set in _Ready by BuildEnvironment.
     private Godot.Environment _environment = null!; // Safe: set in _Ready by BuildEnvironment.
     private LaunchArguments _args = new(Array.Empty<string>());
@@ -188,6 +194,8 @@ public partial class WorldScene : Node3D
                 _world.AddChild(_cities);
                 _cities.Clock = _clock;
                 _cities.CrowdScale = _args.Number("crowd-scale", 1);
+                _cities.Professions = LoadProfessions();
+                _cities.RainAt = RainAt;
                 if (_args.Flag("nav-debug", false))
                 {
                     _cities.ToggleNavDebug();
@@ -218,6 +226,8 @@ public partial class WorldScene : Node3D
         }
 
         BuildHud();
+        _rain = new RainEffect { Name = "Rain" };
+        _camera.AddChild(_rain);
         if (_cities is not null)
         {
             _map = WorldMap.Open(_source.Directory, _source.Manifest.WorldSizeMeters, _cities.Settlements, _roads);
@@ -330,6 +340,8 @@ public partial class WorldScene : Node3D
         _streamer.Update(_body.Position, _frame);
         _foliage?.Update(_body.Position, delta);
         _cycle.Update(delta, _body.Position);
+        _rain?.SetIntensity(RainAt(_body.Position.X, _body.Position.Z));
+        UpdatePersonLabel();
         _cities?.Process(_body.Position, delta, _streamer.Options.LoadDistanceMeters);
         if (_map is { Visible: true })
         {
@@ -625,7 +637,8 @@ public partial class WorldScene : Node3D
         {
             TimeScale = _args.Number("time-scale", 1),
         };
-        _cycle = new DayNightCycle(_clock, LoadClouds(), _source.Manifest.Seed);
+        _climate = LoadClouds();
+        _cycle = new DayNightCycle(_clock, _climate, _source.Manifest.Seed);
         _world.AddChild(_cycle);
         _environment = _cycle.Environment;
         _environment.FogDensity = WalkFogDensity;
@@ -656,6 +669,14 @@ public partial class WorldScene : Node3D
         _hud.AddThemeColorOverride("font_outline_color", Colors.Black);
         _hud.AddThemeConstantOverride("outline_size", 6);
         layer.AddChild(_hud);
+        _personLabel = new Label { HorizontalAlignment = HorizontalAlignment.Center, Visible = false };
+        _personLabel.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
+        _personLabel.Position = new Vector2(-400, -150);
+        _personLabel.Size = new Vector2(800, 80);
+        _personLabel.AddThemeFontSizeOverride("font_size", HudFontSize);
+        _personLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
+        _personLabel.AddThemeConstantOverride("outline_size", 6);
+        layer.AddChild(_personLabel);
         AddChild(layer);
         UpdateHud();
     }
@@ -668,12 +689,71 @@ public partial class WorldScene : Node3D
         float ground = _bridge.HeightAt(new Vector3(p.X, 0, p.Z));
         string groundText = float.IsNaN(ground) ? "?" : $"{ground:F0} m";
         _hud.Text =
-            $"{_clock.Time}{(_clock.TimeScale == 1 ? string.Empty : _clock.TimeScale == 0 ? " (paused)" : $" (x{_clock.TimeScale:0})")}   moon {MoonName(_cycle.Sky.MoonPhase)}\n" +
+            $"{_clock.Time}{(_clock.TimeScale == 1 ? string.Empty : _clock.TimeScale == 0 ? " (paused)" : $" (x{_clock.TimeScale:0})")}   moon {MoonName(_cycle.Sky.MoonPhase)}   rain {RainAt(p.X, p.Z):P0}\n" +
             $"{Engine.GetFramesPerSecond()} fps   {_smoothedFrameMs:F1} ms   {(_fly ? "FLY" : "WALK")}\n" +
             $"x {p.X:F0}  z {p.Z:F0}  ground {groundText}  region ({region.X}, {region.Y})\n" +
             $"terrain: {_streamer.LoadedCount} loaded, {_streamer.PendingCount} loading, last rebuild {_lastUpdateMs:F1} ms\n" +
             CityHudLine() +
             "WASD/arrows move  Shift run  Space jump  F fly  T time  N paths  F1 hide  Esc mouse";
+    }
+
+    // The rain at a place: from the region's clouds and the swing of the weather, or the fixed value of --rain.
+    private double RainAt(double x, double z)
+    {
+        if (_args.Has("rain"))
+        {
+            return Math.Clamp(_args.Number("rain", 0), 0, 1);
+        }
+
+        double half = _climate.WorldSizeMeters / 2.0;
+        double cx = Math.Clamp(x, -half, half);
+        double cz = Math.Clamp(z, -half, half);
+        return RainModel.Intensity(_climate.CoverAt(cx, cz), _climate.ThicknessAt(cx, cz), _cycle.CoverBias, _clock.Days);
+    }
+
+    // The professions come from the shipped content, found beside the baked world (the repository's content directory).
+    private IReadOnlyCollection<ProfessionDefinition>? LoadProfessions()
+    {
+        for (string? dir = _source.Directory; !string.IsNullOrEmpty(dir); dir = Path.GetDirectoryName(dir))
+        {
+            string content = Path.Combine(dir, "content");
+            if (Directory.Exists(content))
+            {
+                var report = new Realm.Core.Validation.ValidationReport();
+                ContentDatabase db = ContentLoader.Load(content, report);
+                foreach (Realm.Core.Validation.ValidationIssue issue in report.Issues)
+                {
+                    GD.PushWarning(issue.ToString());
+                }
+
+                return db.Professions.Values.ToList();
+            }
+        }
+
+        GD.PushWarning("[crowd] no content directory found beside the baked world; characters get the simple behaviour of a role");
+        return null;
+    }
+
+    // Looking at a character shows who it is and what it is doing; a guard that has stopped you speaks.
+    private void UpdatePersonLabel()
+    {
+        if (_personLabel is null || _cities is null)
+        {
+            return;
+        }
+
+        Vector3 origin = _camera.GlobalPosition;
+        Vector3 forward = -_camera.GlobalTransform.Basis.Z;
+        string? text = null;
+        bool challenged = false;
+        foreach (CityInstance city in _cities.Cities)
+        {
+            text ??= city.Pick(origin, forward, PickMeters);
+            challenged |= city.Challenged(_body.Position);
+        }
+
+        _personLabel.Text = challenged ? "Guard: \"Halt! State your business.\"" + (text is null ? string.Empty : "\n" + text) : text ?? string.Empty;
+        _personLabel.Visible = _hud.Visible && _personLabel.Text.Length > 0;
     }
 
     // The baked cloud climate, or an even partly cloudy one when the world has none.

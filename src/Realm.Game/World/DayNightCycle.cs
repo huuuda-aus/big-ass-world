@@ -312,6 +312,9 @@ void fragment() {
     /// <summary>The environment to give the world: sky, ambient light and fog colour follow the time of day.</summary>
     public Godot.Environment Environment { get; }
 
+    /// <summary>The slow swing of the weather over the days that the sky adds to the cloud cover (the rain model uses it too).</summary>
+    public double CoverBias { get; private set; }
+
     /// <summary>The sky now: sun and moon directions and the moon's phase.</summary>
     public CelestialMath.Sky Sky { get; private set; }
 
@@ -370,7 +373,8 @@ void fragment() {
         _material.SetShaderParameter("cloud_shadow", cloudShadow);
         double driftMeters = Clock.Days * Clock.RealSecondsPerGameDay * WindMetersPerSecond;
         var driftVector = new Godot.Vector2((float)(WindDirection.X * driftMeters), (float)(WindDirection.Y * driftMeters));
-        float coverBias = (float)((0.12 * Math.Sin(Clock.Days * 0.7)) + (0.06 * Math.Sin((Clock.Days * 2.3) + 1)));
+        CoverBias = (0.12 * Math.Sin(Clock.Days * 0.7)) + (0.06 * Math.Sin((Clock.Days * 2.3) + 1));
+        float coverBias = (float)CoverBias;
         foreach (ShaderMaterial material in new[] { _material, _shadowMaterial })
         {
             material.SetShaderParameter("drift", driftVector);

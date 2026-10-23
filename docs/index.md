@@ -10,6 +10,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
 - [Add an item](how-to/add-an-item.md)
 - [Add a service building](how-to/add-a-service-building.md)
 - [Add a foliage species](how-to/add-a-foliage-species.md)
+- [Add a profession](how-to/add-a-profession.md)
 - [Add a biome](how-to/add-a-biome.md)
 - [Add or change a region in the macro map](how-to/add-a-region.md)
 - [Preview and tune the terrain](how-to/tune-the-terrain.md)
@@ -28,7 +29,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
 - [Pinned versions](reference/versions.md)
 - [CLI commands](reference/cli.md)
 - [Validator codes](reference/validators.md)
-- Content types: [material](reference/content/material.md), [item](reference/content/item.md), [biome](reference/content/biome.md), [world / macro map](reference/content/world.md), [service](reference/content/service.md), [foliage](reference/content/foliage.md)
+- Content types: [material](reference/content/material.md), [item](reference/content/item.md), [biome](reference/content/biome.md), [world / macro map](reference/content/world.md), [service](reference/content/service.md), [foliage](reference/content/foliage.md), [profession](reference/content/profession.md)
 - [Baked terrain format](reference/baked-terrain.md)
 - [Baked settlements (`settlements.json`)](reference/settlements.md)
 - Save format, scripting API, other content schemas: **Planned**
@@ -37,6 +38,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
 - [Architecture](explanation/architecture.md)
 - [Determinism](explanation/determinism.md)
 - [World scale and seamless streaming](explanation/world-scale-and-streaming.md)
+- [Making character movement more realistic: options](explanation/making-npc-movement-realistic.md)
 - Generate-bake-edit, persistence, sim LOD, retro rendering: **Planned**
 
 ## Systems (as-built)
@@ -75,6 +77,8 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [0022 Clouds: a climate map and a shader-drawn sky](decisions/0022-clouds.md)
   - [0023 A walking graph per settlement](decisions/0023-settlement-walking-graph.md)
   - [0024 A crowd of capsules on the walking graph, and the world graph](decisions/0024-crowd-of-capsules.md)
+  - [0025 Professions, timetables, and reactions to the player and the rain](decisions/0025-professions-and-reactions.md)
+  - [0026 An even crowd, a life indoors, and bodies that do not enter buildings](decisions/0026-even-crowd-indoor-life-and-collisions.md)
 - [Devlog](devlog/)
   - [2026-10-20 Solution skeleton](devlog/2026-10-20-solution-skeleton.md)
   - [2026-10-20 Core and Data foundations](devlog/2026-10-20-core-data-foundations.md)

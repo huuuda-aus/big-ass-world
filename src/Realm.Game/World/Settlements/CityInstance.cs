@@ -45,7 +45,12 @@ public sealed partial class CityInstance : Node3D
     private double _scanTimer;
     private bool _attached;
     private const double WalkMetresPerSecond = 1.4;
+    private const double BodyRadiusMeters = 0.35;
     private const double CrowdActiveMeters = 450;
+    private const double PlayerNearMeters = 30;
+    private const double PickToleranceMeters = 0.35;
+    private static readonly float[] PickHeights = { -0.6f, 0f, 0.6f };
+    private const double PickGrowthPerMeter = 0.02;
     private Crowd? _crowd;
     private CrowdView? _crowdView;
     private WorldClock? _clock;
@@ -77,14 +82,19 @@ public sealed partial class CityInstance : Node3D
                 build.CrowdPlans,
                 clock.Days * GameTime.MinutesPerDay,
                 metresPerMinute,
-                (ax, az, bx, bz) => build.Open.Clear(new Vec2(ax, az), new Vec2(bx, bz)));
+                (ax, az, bx, bz) => build.Open.Clear(new Vec2(ax, az), new Vec2(bx, bz)),
+                (rx, rz, wx, wz) =>
+                {
+                    Vec2 v = build.Open.Constrain(new Vec2(rx, rz), new Vec2(wx, wz), BodyRadiusMeters);
+                    return (v.X, v.Y);
+                });
             _crowdView = new CrowdView(build.CrowdPlans.Count);
             AddChild(_crowdView);
         }
     }
 
     // The characters only live (and are drawn) while the player is near; when the player comes back the crowd catches up with the clock.
-    private void UpdateCrowd(Vector3 playerWorld)
+    private void UpdateCrowd(Vector3 playerWorld, double rain, double delta)
     {
         if (_crowd is null || _crowdView is null || _clock is null)
         {
@@ -96,8 +106,11 @@ public sealed partial class CityInstance : Node3D
         if (active)
         {
             double now = _clock.Days * GameTime.MinutesPerDay;
-            _crowd.Update(now);
-            _crowdView.Show(_crowd, now, _build.Ground, _build.City.Bridges);
+            // What the characters can sense: the rain, and the player when near (in the city's own frame).
+            Vector3 local = ToLocal(playerWorld);
+            bool near = _settlement.DistanceTo(playerWorld.X, playerWorld.Z) < _settlement.WallRadiusMeters + PlayerNearMeters;
+            _crowd.Update(now, new CrowdContext(rain, near, local.X, local.Z));
+            _crowdView.Show(_crowd, now, delta, _build.Ground, _build.City.Bridges);
         }
     }
 
@@ -116,6 +129,98 @@ public sealed partial class CityInstance : Node3D
         {
             _navDebug.Visible = visible;
         }
+    }
+
+    /// <summary>Finds the character the viewer is looking at: the one nearest the line of sight, within a tolerance that grows with distance.</summary>
+    /// <param name="origin">The viewer's position in the world.</param>
+    /// <param name="direction">The direction looked along (unit).</param>
+    /// <param name="maxMeters">How far to look.</param>
+    /// <returns>The description of the character, or null when none is in the line of sight.</returns>
+    public string? Pick(Vector3 origin, Vector3 direction, double maxMeters)
+    {
+        if (_crowd is null || _crowdView is null || !_crowdView.Visible || _clock is null)
+        {
+            return null;
+        }
+
+        int best = -1;
+        double bestScore = double.MaxValue;
+        foreach ((int index, Vector3 local) in _crowdView.Shown)
+        {
+            // The ray may pass anywhere along the body, not just through its middle: test the head, the middle and the feet.
+            foreach (float up in PickHeights)
+            {
+                Vector3 toward = ToGlobal(local + new Vector3(0, up, 0)) - origin;
+                double along = toward.Dot(direction);
+                if (along <= 0 || along > maxMeters)
+                {
+                    continue;
+                }
+
+                double across = (toward - (direction * (float)along)).Length();
+                if (across <= PickToleranceMeters + (PickGrowthPerMeter * along) && across < bestScore)
+                {
+                    bestScore = across;
+                    best = index;
+                }
+            }
+        }
+
+        return best < 0 ? null : Describe(best);
+    }
+
+    /// <summary>Says who a character is and what it is doing and why, in words.</summary>
+    /// <param name="index">The character's index.</param>
+    /// <returns>For example <c>Bram Fletcher, baker: walking to the inn (arrives about 18:40)</c>.</returns>
+    public string Describe(int index)
+    {
+        NpcPlan plan = _crowd!.PlanOf(index); // Safe: only called with a crowd.
+        NpcStatus status = _crowd.Describe(index);
+        string trade = plan.Profession.Length == 0 ? plan.Role.ToString().ToLowerInvariant() : plan.Profession.Replace("profession.", string.Empty).Replace('_', ' ');
+        string target = status.TargetNode >= 0 && _build.NodeLabels.TryGetValue(status.TargetNode, out string? label) ? label : "somewhere";
+        string until = $"{(int)(status.UntilMinute % GameTime.MinutesPerDay) / 60:00}:{(int)(status.UntilMinute % GameTime.MinutesPerDay) % 60:00}";
+        string doing = (status.State, status.Purpose) switch
+        {
+            (NpcState.Inside, NpcPurpose.Fields) => $"out in the fields (back about {until})",
+            (NpcState.Inside, NpcPurpose.Shelter) => $"sheltering from the rain in {target}",
+            (NpcState.Inside, NpcPurpose.Work) => $"working in {target} (until about {until})",
+            (NpcState.Inside, _) => $"inside {target}",
+            (NpcState.Walking, NpcPurpose.Work) => $"walking to work at {target} (arrives about {until})",
+            (NpcState.Walking, NpcPurpose.Home) => $"walking home (arrives about {until})",
+            (NpcState.Walking, NpcPurpose.Inn) => $"walking to the inn (arrives about {until})",
+            (NpcState.Walking, NpcPurpose.Errand) => $"on an errand to {target} (arrives about {until})",
+            (NpcState.Walking, NpcPurpose.Shelter) => $"hurrying out of the rain to {target}",
+            (NpcState.Walking, NpcPurpose.Fields) => "going out to the fields",
+            (NpcState.Walking, NpcPurpose.Patrol) => $"on patrol (next stop about {until})",
+            (NpcState.Walking, _) => $"strolling (stops about {until})",
+            (_, NpcPurpose.Patrol) => "pausing on patrol",
+            (_, NpcPurpose.Work) => "at the post",
+            (_, NpcPurpose.About) => "out and about",
+            _ => "standing about",
+        };
+        return $"{(plan.Name.Length == 0 ? $"#{plan.Id}" : plan.Name)}, {trade}: {doing}";
+    }
+
+    /// <summary>Whether a guard is challenging the player now (the player is close to a guard at a gate).</summary>
+    /// <param name="playerWorld">The player's world position.</param>
+    /// <returns><c>true</c> when a guard has stopped the player.</returns>
+    public bool Challenged(Vector3 playerWorld)
+    {
+        if (_crowd is null || _crowdView is null || !_crowdView.Visible || _clock is null)
+        {
+            return false;
+        }
+
+        double now = _clock.Days * GameTime.MinutesPerDay;
+        foreach ((int index, _) in _crowdView.Shown)
+        {
+            if (_crowd.TryGetSnapshot(index, now, out NpcSnapshot s) && s.Alert)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Number of characters that live here.</summary>
@@ -145,7 +250,8 @@ public sealed partial class CityInstance : Node3D
     /// <summary>Does one frame of work: attaches parts, adds far nodes, scans for near houses and finishes near builds.</summary>
     /// <param name="playerWorld">The player's world position.</param>
     /// <param name="delta">Seconds since the last call.</param>
-    public void Process(Vector3 playerWorld, double delta)
+    /// <param name="rain">The rain intensity at the city, 0 to 1.</param>
+    public void Process(Vector3 playerWorld, double delta, double rain = 0)
     {
         if (!_attached)
         {
@@ -153,7 +259,7 @@ public sealed partial class CityInstance : Node3D
             return;
         }
 
-        UpdateCrowd(playerWorld);
+        UpdateCrowd(playerWorld, rain, delta);
 
         for (int added = 0; added < FarNodesPerFrame && _nextFar < _far.Length; added++)
         {

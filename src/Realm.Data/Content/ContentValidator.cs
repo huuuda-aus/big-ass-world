@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Realm.Core.Ids;
 using Realm.Core.Validation;
 
@@ -59,6 +60,32 @@ public static class ContentValidator
                         $"Foliage '{species.Id}' grows in biome '{biome}', which does not exist.",
                         "Fix the ID or add the biome.");
                 }
+            }
+        }
+
+        foreach (ProfessionDefinition profession in database.Professions.Values)
+        {
+            if (profession.WorkplaceService is { } service && !database.Services.ContainsKey(service))
+            {
+                database.TryGetSource(profession.Id, out string location);
+                report.Error(
+                    ValidatorCodes.DanglingReference,
+                    location,
+                    $"Profession '{profession.Id}' works in service '{service}', which does not exist.",
+                    "Fix the ID or add the service building.");
+            }
+        }
+
+        foreach (string tier in ProfessionVocabulary.Tiers)
+        {
+            double total = database.Professions.Values.Sum(p => p.ShareFor(tier));
+            if (total > 1.0 + 1e-9)
+            {
+                report.Error(
+                    ValidatorCodes.InvalidProfessionField,
+                    "professions",
+                    $"The shares of the professions for tier '{tier}' add up to {total:0.###}, more than 1.",
+                    "Lower some shares; whoever is left over becomes the filler profession.");
             }
         }
     }
