@@ -23,7 +23,7 @@ public sealed record FoliageSettings
     public double RoadMarginMeters { get; init; } = 3;
 
     /// <summary>Clear margin outside a settlement's pad, metres.</summary>
-    public double SettlementMarginMeters { get; init; } = 25;
+    public double SettlementMarginMeters { get; init; } = 8;
 
     /// <summary>How far each neighbouring biome's density blends across a border, metres.</summary>
     public int BlendMeters { get; init; } = 600;

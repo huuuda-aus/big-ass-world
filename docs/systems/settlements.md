@@ -16,6 +16,7 @@ Generates walled cities and towns, places them on the natural terrain (nothing i
 | Two building styles: `Rich` (plaster, half-timber, 30 cm walls, several rooms and storeys) in every ward except slums, and `Slum` (mud walls and dark roof in flat colours, 15 cm walls, one storey, one room, at most one window, about a third of the floor area) in slum wards and on farmland; solid 15 cm interior walls and 30 cm floor and ceiling slabs in all of them | Implemented |
 | Ground grid baked per settlement; wall, towers and centrepiece laid over the terrain (no ground or street mesh: houses stand on the natural terrain, paths come later); per-building floor height; stone plinth, wooden pilings, pier with deck, door steps | Implemented |
 | Baked `settlements.json`; player spawns in the first city | Implemented |
+| Gate doors: two open leaves and a lintel at every gate (heavy iron-banded wood under stone in a city; planks under a log beam in a town) | Implemented |
 | 3D: far houses, near houses with interiors and collision, wall, gates, centrepieces, interior lamps | Implemented (first pass) |
 | Generated names (placeholder); roads (A* with slope and river costs, graded into the terrain, painted), bridges, `roads.json`, world map (M), HUD with the nearest settlement | Implemented |
 | Textures, time of day, window glow, animated fire, door opening, hamlets, road junction design | Planned / not ported |

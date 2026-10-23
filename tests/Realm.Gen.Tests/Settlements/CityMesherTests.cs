@@ -68,8 +68,47 @@ public class CityMesherTests
             Assert.DoesNotContain(tops, t => ContainsPlan(t, gate.X, gate.Y));
         }
 
+        // The opening is clear at ground level: only the lintel (5 m up) spans the line between the gate towers.
+        foreach (Vec2 gate in city.Gates)
+        {
+            int i = city.Wall.ToList().FindIndex(v => Vec2.Distance(v, gate) < 0.01);
+            Vec2 next = (city.Wall[(i + 1) % city.Wall.Count] - gate).Normalized();
+            Vec2 previous = (city.Wall[(i + city.Wall.Count - 1) % city.Wall.Count] - gate).Normalized();
+            Vec2 mid = gate + ((next + previous) * (CityMesher.GateWidthMeters / 4));
+            Assert.DoesNotContain(wall.Triangles, t => ContainsPlan(t, mid.X, mid.Y) && MathF.Min(t.A.Y, MathF.Min(t.B.Y, t.C.Y)) < 5f);
+            Assert.Contains(wall.Triangles, t => ContainsPlan(t, mid.X, mid.Y));
+        }
+
         Assert.Equal(CityMesher.WallHeight + 4, (double)wall.Max.Y, 3); // the gate towers are the tallest (wall height plus 4 m)
         Assert.Equal(-2.0, (double)wall.Min.Y, 3); // the wall is sunk 2 m into the ground so no gap shows on slopes
+    }
+
+    [Fact]
+    public void EveryStoneGate_HasTwoDoorLeavesSweptBackAlongThePassage_LeavingTheMiddleFree()
+    {
+        City city = Make(CentrepieceKind.None);
+
+        PropMesh wall = CityMesher.Wall(city)!;
+
+        int wide = 0;
+        foreach (Vec2 gate in city.Gates)
+        {
+            int i = city.Wall.ToList().FindIndex(v => Vec2.Distance(v, gate) < 0.01);
+            Vec2 chord = (city.Wall[(i + 1) % city.Wall.Count] - gate).Normalized() - (city.Wall[(i + city.Wall.Count - 1) % city.Wall.Count] - gate).Normalized();
+            if (chord.Length * CityMesher.GateWidthMeters / 2 < 7)
+            {
+                continue; // a sharp corner leaves no room for leaves
+            }
+
+            wide++;
+            // Dark wood leaves stand near the gate (within the opening), but the gate point itself has nothing at head height.
+            var leaves = wall.Triangles.Where(t => t.Colour == SettlementPalette.Wood).ToList();
+            Assert.Contains(leaves, t => Vec2.Distance(new Vec2(((t.A + t.B + t.C) / 3).X, ((t.A + t.B + t.C) / 3).Z), gate) < CityMesher.GateWidthMeters);
+            Assert.DoesNotContain(leaves, t => ContainsPlan(t, gate.X, gate.Y));
+            Assert.True(leaves.Count >= 2 * 12, "each gate has two leaves of at least a box each");
+        }
+
+        Assert.True(wide > 0, "no gate in this city is wide enough to test");
     }
 
     [Fact]

@@ -23,6 +23,9 @@ public static class SettlementPalette
     /// <summary>Street surface.</summary>
     public static Vector3 Street { get; } = Hex(0xa89878);
 
+    /// <summary>Dark iron of door bands.</summary>
+    public static Vector3 Iron { get; } = Hex(0x33312f);
+
     /// <summary>Timber beams, doors and rough wood.</summary>
     public static Vector3 Wood { get; } = Hex(0x5b3b22);
 

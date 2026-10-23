@@ -5,6 +5,7 @@ All notable changes are recorded here. Format: [Keep a Changelog](https://keepac
 ## [Unreleased]
 
 ### Added
+- Gate doors: every gate has two open leaves swung back along the passage and a lintel above it. City gates: heavy dark-wood leaves with iron bands under a stone lintel across the gate towers. Palisade gates: plank leaves with log braces under a log beam between the watchtowers. A sharp wall corner leaves too narrow an opening for leaves, so it gets only the lintel. The leaves are not obstacles; people walk through the middle.
 - Professions and purposeful movement (ADR 0025): the `profession` content type (`DATA020`, eleven placeholder professions: idler, townsperson, baker, blacksmith, trader, innkeeper, farmer, guard, watchman, labourer, woodcutter) with workplace, shares per tier and a day of timetable blocks; characters get a name, a trade, a home and a workplace and follow their day (work in spells inside their building, stand at a stall or a post, patrol, go to the fields, idle in the square, the inn, errands, home); own walking speed, a lane on the right, rounded corners, easing, facing and doorstep pauses; street-preferring paths (`NavEdge.Weight`); `RainModel` from the cloud model, rain streaks, people taking shelter and hurrying; characters look at the player, step aside, guards challenge; an inspector label for the person you look at; `--rain`.
 - Crowds (ADR 0024): `WorldNavBuilder` joins the settlement walking graphs with the roads (`NAV003`); `OpenGround`; `Realm.Sim.Npcs` (`NpcPlan`, `Crowd`) and `Realm.Gen.Population.CrowdGenerator`; capsule characters in every settlement (220 in a city, crowded round the fountain; 40 in a town; 12 in a hamlet) that stand about, go on errands, visit buildings and sleep at home; `--crowd-scale`.
 - Settlement walking graph (ADR 0023): `Realm.Sim.Navigation` (`NavGraph`, `NavPathFinder` A*, `NavRoute`) and `NavGraphBuilder` (streets, gates, bridges, door fronts, lanes) with validators `NAV001`/`NAV002`; a debug drawing in the game (key `N`, `--nav-debug`).
@@ -105,6 +106,7 @@ All notable changes are recorded here. Format: [Keep a Changelog](https://keepac
 - The scale-reference measure tape, houses and trees were removed from the game (`ReferenceStrip`, `MeasureTape`, `PropMeshConverter`). The Godot-free models (`Realm.Gen.Props`: cottage, town house, three tree kinds, `StripLayout`) and their tests stay for later use.
 
 ### Changed
+- Trees may grow closer to settlements: `FoliageSettings.SettlementMarginMeters` 25 m to 8 m beyond the pad. Re-run `bake-terrain` to see it in the shipped world.
 - A yellower sun: warmer noon sun light and disc colour; clouds stay white at noon (only the low sun tints them) and the high wisps no longer dull the sun's disc.
 - Translucent clouds: cloud opacity grows slowly with density and tops out below 1, so the sun and moon show through gaps and thin edges, with a scattered-light halo in the cloud around them; thick overcast hides them but leaves a faint glow.
 - Bridges stand 20 cm above the ground at their ends: the timber road bridge deck is lifted by `DeckLift` and the arched city bridge roadway by `EndLift` (was 5 cm).

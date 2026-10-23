@@ -61,6 +61,14 @@ public static class CityMesher
     private const double GateTowerRise = 4;
     private const int TowerSides = 10;
     private const double SameCorner = 0.01;
+    private const double MinLeafMeters = 1;
+    private const double StoneLeafHeight = 4.8;
+    private const double StoneLeafThickness = 0.45;
+    private const double StoneLintelBase = 5.2;
+    private const double StoneLintelHeight = 1.8;
+    private const double PalisadeLeafHeight = 3.3;
+    private const double PalisadeLeafThickness = 0.3;
+    private const double PalisadeBeamHeight = 4.4;
 
     /// <summary>Builds the meshes of a city.</summary>
     /// <param name="city">The generated city.</param>
@@ -139,6 +147,7 @@ public static class CityMesher
                 Vec2 back = (wall[previous] - a).Normalized();
                 Tower(b, ground, a + (dir * (GateWidthMeters / 2)), GateTowerRadius, height + (float)GateTowerRise);
                 Tower(b, ground, a + (back * (GateWidthMeters / 2)), GateTowerRadius, height + (float)GateTowerRise);
+                GateDoors(b, ground, a, dir, back, GateTowerRadius, stone: true);
             }
             else if (water is null || !water.IsWater(a.X, a.Y))
             {
@@ -216,6 +225,7 @@ public static class CityMesher
                 Vec2 back = (wall[previous] - a).Normalized();
                 Watchtower(b, ground, a + (dir * (GateWidthMeters / 2 + WatchtowerSide / 2)));
                 Watchtower(b, ground, a + (back * (GateWidthMeters / 2 + WatchtowerSide / 2)));
+                GateDoors(b, ground, a, dir, back, 0, stone: false);
             }
         }
 
@@ -264,6 +274,55 @@ public static class CityMesher
         }
 
         return logs;
+    }
+
+    // A gate stands open: two leaves hinged at the sides of the opening and swung back along the passage, so nobody is blocked,
+    // under a heavy lintel (stone, over the gate towers) or a log beam (palisade). `a` is the gate corner, `dir` and `back` the unit
+    // directions of the two wall arms; `reach` is how far the tower or watchtower face stands from the tower centre.
+    private static void GateDoors(PropMeshBuilder b, IGroundSampler ground, Vec2 a, Vec2 dir, Vec2 back, double reach, bool stone)
+    {
+        Vec2 p1 = a + (dir * (GateWidthMeters / 2));
+        Vec2 p2 = a + (back * (GateWidthMeters / 2));
+        Vec2 mid = Vec2.Lerp(p1, p2, 0.5);
+        double gap = Vec2.Distance(p1, p2);
+        double leafLength = (gap / 2) - reach;
+        // Outward is away from the inside of the corner; a straight wall (no corner) opens along its normal, away from the centre.
+        Vec2 sum = dir + back;
+        Vec2 outward = sum.Length < 0.1 ? new Vec2(-dir.Y, dir.X) : (-sum).Normalized();
+        if (sum.Length < 0.1 && Vec2.Dot(outward, a) < 0)
+        {
+            outward = -outward;
+        }
+
+        float yaw = (float)Math.Atan2(outward.Y, outward.X);
+        float height = (float)(stone ? StoneLeafHeight : PalisadeLeafHeight);
+        float thick = (float)(stone ? StoneLeafThickness : PalisadeLeafThickness);
+        // A sharp wall corner leaves a narrow opening between the towers: no room for leaves, only the lintel.
+        foreach (Vec2 post in leafLength < MinLeafMeters ? Array.Empty<Vec2>() : new[] { p1, p2 })
+        {
+            Vec2 toMid = (mid - post).Normalized();
+            Vec2 hinge = post + (toMid * reach);
+            Vec2 centre = hinge + (outward * (leafLength / 2)) + (toMid * (thick / 2));
+            double h = ground.HeightAt(centre.X, centre.Y) - 0.05;
+            b.YawBox(P(centre, h), yaw, new Vector3((float)leafLength, height, thick), stone ? SettlementPalette.Wood : SettlementPalette.Plank);
+            float[] bands = stone ? new[] { 0.7f, 2.3f, 3.9f } : new[] { 0.5f, 2.4f };
+            foreach (float y in bands)
+            {
+                b.YawBox(P(centre, h + y), yaw, new Vector3((float)leafLength, stone ? 0.3f : 0.2f, thick + 0.12f), stone ? SettlementPalette.Iron : SettlementPalette.Log(0));
+            }
+        }
+
+        double beamBase = ground.HeightAt(mid.X, mid.Y);
+        if (stone)
+        {
+            Vector3 centre = P(mid, beamBase + StoneLintelBase + (StoneLintelHeight / 2));
+            Vector3 along = Vector3.Normalize(P(p2, 0) - P(p1, 0));
+            b.OrientedBox(centre, along, Vector3.UnitY, Vector3.Cross(along, Vector3.UnitY), new Vector3((float)gap, (float)StoneLintelHeight, (float)WallThickness), SettlementPalette.Wall);
+        }
+        else
+        {
+            b.Tube(P(p1, beamBase + PalisadeBeamHeight), P(p2, beamBase + PalisadeBeamHeight), 0.24f, 0.24f, LogSides, SettlementPalette.Log(1));
+        }
     }
 
     // Four posts, a platform and a pointed roof.
