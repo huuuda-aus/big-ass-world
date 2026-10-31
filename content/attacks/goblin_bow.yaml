@@ -1,0 +1,10 @@
+id: attack.goblin_bow
+name: Goblin bow
+tags: [ranged]
+recovery_s: 1.5
+range_m: 25
+damage: 1d6
+attack_bonus: 1
+applies:
+  condition: condition.poisoned
+  chance: 20

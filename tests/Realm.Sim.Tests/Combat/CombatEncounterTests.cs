@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Realm.Core.Geometry;
+using Realm.Core.Random;
 using Realm.Sim.Combat;
 using static Realm.Sim.Tests.Combat.CombatFixtures;
 
@@ -11,7 +12,7 @@ public class CombatEncounterTests
     private static int CountAttacks(CombatEncounter fight, int actorId) =>
         fight.Events.Count(e => e.Kind == CombatEventKind.Attacked && e.ActorId == actorId);
 
-    private static CombatEncounter Duel(AttackDefinition attack, Combatant? target = null)
+    private static CombatEncounter Duel(Attack attack, Combatant? target = null)
     {
         var fight = new CombatEncounter(Seed, 1);
         fight.Add(At(1, 0, 0, attack: attack), NearestEnemyBrain.Instance);
@@ -51,7 +52,7 @@ public class CombatEncounterTests
     [Fact]
     public void AreaAttack_HitsEveryoneInside_IncludingTheCaster()
     {
-        var fireball = new AttackDefinition("attack.fireball", 20, 20, new Dice(0, 1, 10)) { AreaRadiusMeters = 3, DamageType = DamageTypes.Fire };
+        var fireball = new Attack("attack.fireball", 20, 20, new Dice(0, 1, 10)) { AreaRadiusMeters = 3, DamageType = DamageTypes.Fire };
         Combatant caster = At(1, 0, 0, attack: fireball);
         Combatant target = At(2, 1, 2);
         Combatant bystander = At(3, 2, 4);
@@ -76,8 +77,8 @@ public class CombatEncounterTests
     [InlineData(10, 1)]
     public void NearestEnemyBrain_PicksTheStrongestAttack_ThatWillNotHitItself(double distance, int expectedAttack)
     {
-        var club = new AttackDefinition("attack.club", 20, 2, new Dice(1, 6));
-        var fireball = new AttackDefinition("attack.fireball", 20, 20, new Dice(3, 6)) { AreaRadiusMeters = 3 };
+        var club = new Attack("attack.club", 20, 2, new Dice(1, 6));
+        var fireball = new Attack("attack.fireball", 20, 20, new Dice(3, 6)) { AreaRadiusMeters = 3 };
         var self = new Combatant(1, "hero", 0, new Point2D(0, 0), 50, 0, 0, new[] { club, fireball });
         var fight = new CombatEncounter(Seed, 1);
         fight.Add(self, NearestEnemyBrain.Instance);
@@ -91,7 +92,7 @@ public class CombatEncounterTests
     [Fact]
     public void OutOfRange_TheBrainWaits()
     {
-        var club = new AttackDefinition("attack.club", 20, 2, new Dice(1, 6));
+        var club = new Attack("attack.club", 20, 2, new Dice(1, 6));
         CombatEncounter fight = Duel(club, At(2, 1, 5));
 
         fight.Run(50);
@@ -102,7 +103,7 @@ public class CombatEncounterTests
     [Fact]
     public void Poison_PulsesUntilItWearsOff()
     {
-        AttackDefinition sting = SureHit(0, recoveryTicks: 1000) with { Applies = new ConditionApplication(Poisoned, 100) };
+        Attack sting = SureHit(0, recoveryTicks: 1000) with { Applies = new ConditionApplication(Poisoned, 100) };
         Combatant target = At(2, 1, 2);
         CombatEncounter fight = Duel(sting, target);
 
@@ -118,7 +119,7 @@ public class CombatEncounterTests
     [Fact]
     public void Asleep_StopsActing_UntilDamageWakesIt()
     {
-        AttackDefinition lullaby = SureHit(0, recoveryTicks: 1000) with { Applies = new ConditionApplication(Asleep, 100) };
+        Attack lullaby = SureHit(0, recoveryTicks: 1000) with { Applies = new ConditionApplication(Asleep, 100) };
         var poke = new HeldIntentBrain();
         var fight = new CombatEncounter(Seed, 1);
         fight.Add(At(1, 0, 0, attack: lullaby), NearestEnemyBrain.Instance);
@@ -157,7 +158,7 @@ public class CombatEncounterTests
     {
         static CombatEncounter Brawl(long number)
         {
-            var sword = new AttackDefinition("attack.sword", 20, 2, new Dice(1, 8, 1));
+            var sword = new Attack("attack.sword", 20, 2, new Dice(1, 8, 1));
             var fight = new CombatEncounter(Seed, number);
             fight.Add(new Combatant(1, "a", 0, new Point2D(0, 0), 40, 2, 3, new[] { sword }), NearestEnemyBrain.Instance);
             fight.Add(new Combatant(2, "b", 1, new Point2D(1, 0), 40, 2, 3, new[] { sword }), NearestEnemyBrain.Instance);

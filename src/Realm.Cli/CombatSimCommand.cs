@@ -1,6 +1,9 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
+using Realm.Core.Validation;
+using Realm.Data.Content;
 using Realm.Sim.Combat;
 
 namespace Realm.Cli;
@@ -14,13 +17,14 @@ internal static class CombatSimCommand
     private const int DefaultMaxSeconds = 300;
     private const double Percent = 100.0;
     private const string Usage =
-        "Usage: realm combat-sim [scenario] [--fights N] [--seed N] [--max-seconds S] [--min-win-rate F] [--max-win-rate F] [--list]";
+        "Usage: realm combat-sim [scenario] [--content dir] [--fights N] [--seed N] [--max-seconds S] [--min-win-rate F] [--max-win-rate F] [--list]";
 
     /// <summary>Runs one scenario many times and prints the win rate and fight lengths.</summary>
-    /// <returns>0 on success, 1 when the win rate is outside the requested band, 2 on bad arguments.</returns>
+    /// <returns>0 on success, 1 when the win rate is outside the requested band or the content has errors, 2 on bad arguments.</returns>
     public static int Run(string[] args, TextWriter output, TextWriter error)
     {
         string scenario = "goblin-ambush";
+        string contentDirectory = "content";
         int fights = DefaultFights;
         ulong seed = 1;
         int maxSeconds = DefaultMaxSeconds;
@@ -32,6 +36,10 @@ internal static class CombatSimCommand
             if (arg == "--fights" && i + 1 < args.Length && int.TryParse(args[++i], NumberStyles.None, CultureInfo.InvariantCulture, out int f) && f > 0)
             {
                 fights = f;
+            }
+            else if (arg == "--content" && i + 1 < args.Length)
+            {
+                contentDirectory = args[++i];
             }
             else if (arg == "--seed" && i + 1 < args.Length && ulong.TryParse(args[++i], NumberStyles.None, CultureInfo.InvariantCulture, out ulong s))
             {
@@ -69,15 +77,29 @@ internal static class CombatSimCommand
             }
         }
 
-        if (CombatScenarios.Build(scenario, seed, 0) is null)
+        if (!CombatScenarios.All.Any(s => s.Name == scenario))
         {
             error.WriteLine($"Unknown scenario '{scenario}'. Run 'realm combat-sim --list'.");
             return ExitUsage;
         }
 
-        int ticksPerSecond = CombatRules.Default.TicksPerSecond;
+        var report = new ValidationReport();
+        ContentDatabase db = ContentLoader.Load(contentDirectory, report);
+        if (report.HasErrors)
+        {
+            foreach (ValidationIssue issue in report.Issues)
+            {
+                output.WriteLine(issue);
+            }
+
+            output.WriteLine($"The content has {report.Count(Severity.Error)} error(s); fix them first ('realm content-lint').");
+            return ExitOutOfBand;
+        }
+
+        var content = new CombatContent(db);
+        int ticksPerSecond = content.Rules.TicksPerSecond;
         CombatSimSummary summary = CombatSimRunner.Run(
-            n => CombatScenarios.Build(scenario, seed, n)!, // the name was checked above
+            n => CombatScenarios.Build(scenario, content, seed, n)!, // the name was checked above
             fights,
             (long)maxSeconds * ticksPerSecond,
             CombatScenarios.HeroTeam);

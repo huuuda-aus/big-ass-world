@@ -28,8 +28,12 @@ Run content validation with `dotnet run --project src/Realm.Cli -- content-lint`
 | DATA018 | Error | A `service` record has an unknown tier, ward, `near`, `foundation` or `main_room` word, a count outside 1 to 8, a non-positive `min_area_m2`, or lists `wards` together with `outside_wall: true`. | Use one of the words the message lists; see the [service reference](content/service.md). |
 | DATA019 | Error | A `foliage` record has an unknown `kind`, a density outside its limits, a malformed `[low, high]` pair, or another out-of-range number. | Use the limits the message lists; see the [foliage reference](content/foliage.md). |
 | DATA020 | Error | A `profession` record has an unknown workplace kind, tier or activity word, a time that is not a quoted `HH:MM`, overlapping day blocks, a share outside 0 to 1, or the shares of a tier add up to more than 1. | Use the words and limits the message lists; see the [profession reference](content/profession.md). |
+| DATA021 | Error | An `attack` record has a `damage` that is not a dice expression, an invalid `damage_type` word, or a `recovery_s`, `range_m`, `area_radius_m`, `ap_cost`, `attack_bonus` or `applies.chance` out of bounds, or `applies` without both `condition` and `chance`. | Fix the value the message names; see the [attack reference](content/attack.md). |
+| DATA022 | Error | A `condition` record has a `duration_s` out of bounds, or a `pulse` without `every_s` and `damage`, with `every_s` longer than the duration, negative damage or an invalid damage type word. | See the [condition reference](content/condition.md). |
+| DATA023 | Error | A `creature` record has an unknown `behaviour`, a `health` that is not positive, an `attack_rating` or `defence` out of bounds, a resistance outside 0 to 100, or a tier with an empty `attacks` list or a bad value. | See the [creature reference](content/creature.md). |
+| DATA024 | Warning | A creature resists a damage type that no `attack` or `condition` deals. Usually a typo (`fier` for `fire`). | Fix the spelling; ignore it if the damage type is coming in later content. |
 
-Known content types today: `material`, `item`, `biome`, `world`, `service`.
+Known content types today: `material`, `item`, `biome`, `world`, `service`, `foliage`, `profession`, `condition`, `attack`, `creature`.
 
 ## Terrain generator (`TERR`)
 

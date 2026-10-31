@@ -11,7 +11,7 @@ public class TacticalPauseTests
     private static readonly CombatRules NoRegen = CombatRules.Default with { ActionPointRegenTicks = 1_000_000 };
 
     // The player (id 2) only acts through the pause; the enemy (id 1) is a punching bag unless given an attack.
-    private static (CombatEncounter Fight, Combatant Player, Combatant Enemy) Setup(int maxAp = 6, AttackDefinition? enemyAttack = null, CombatRules? rules = null)
+    private static (CombatEncounter Fight, Combatant Player, Combatant Enemy) Setup(int maxAp = 6, Attack? enemyAttack = null, CombatRules? rules = null)
     {
         var fight = new CombatEncounter(Seed, 1, rules ?? NoRegen);
         Combatant enemy = At(EnemyId, 1, 2, health: 1000, attack: enemyAttack);
@@ -100,7 +100,7 @@ public class TacticalPauseTests
     [Fact]
     public void FallingAsleep_InterruptsTheQueue()
     {
-        AttackDefinition lullaby = SureHit(0, recoveryTicks: 1000) with { Applies = new ConditionApplication(Asleep, 100) };
+        Attack lullaby = SureHit(0, recoveryTicks: 1000) with { Applies = new ConditionApplication(Asleep, 100) };
         (CombatEncounter fight, Combatant player, _) = Setup(enemyAttack: lullaby);
         fight.Pause(PlayerId);
         for (int i = 0; i < 3; i++)

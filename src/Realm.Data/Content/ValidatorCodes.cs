@@ -65,4 +65,16 @@ public static class ValidatorCodes
 
     /// <summary>A <c>profession</c> record has an unknown workplace, tier or activity word, a bad time, overlapping blocks or a share out of range.</summary>
     public const string InvalidProfessionField = "DATA020";
+
+    /// <summary>An <c>attack</c> record has bad dice, a damage type, recovery, range, area, cost or chance out of bounds.</summary>
+    public const string InvalidAttackField = "DATA021";
+
+    /// <summary>A <c>condition</c> record has a duration, pulse interval, pulse damage or damage type out of bounds.</summary>
+    public const string InvalidConditionField = "DATA022";
+
+    /// <summary>A <c>creature</c> record has an unknown behaviour, no attacks, or a health, rating, defence, resistance or tier value out of bounds.</summary>
+    public const string InvalidCreatureField = "DATA023";
+
+    /// <summary>Warning: a creature resists a damage type that no attack or condition deals (often a typo).</summary>
+    public const string UnusedDamageType = "DATA024";
 }

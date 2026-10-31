@@ -1,0 +1,9 @@
+id: attack.fireball
+name: Fireball
+tags: [spell, fire]
+recovery_s: 2
+range_m: 25
+damage: 2d6+2
+damage_type: fire
+area_radius_m: 3
+ap_cost: 5

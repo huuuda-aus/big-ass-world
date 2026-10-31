@@ -17,7 +17,8 @@ This is an **M5 spike**: the rules are real and tested, but the encounter is a s
 | Tactical pause: pause, queue with action points, cancel (refund), confirm, gap between queued actions, interrupt, AP regeneration | Implemented |
 | AI: `NearestEnemyBrain` (one profile) | Implemented |
 | Headless balance runs: `CombatSimRunner`, `realm combat-sim` | Implemented |
-| Attacks, conditions, creatures and scenarios as YAML content with schemas and validators | Planned |
+| Attacks, conditions and creature families with tiers as YAML content (`DATA021`–`DATA024`), turned into combat objects by `CombatContent` | Implemented |
+| `combat-sim` scenarios as data (today: code that places content creatures) | Planned |
 | Movement, line of sight, projectiles in flight | Planned |
 | Combat inside `Simulation` as components and a system; saves | Planned |
 | More AI profiles (ranged kiter, caster, pack, coward); the hero using the pause in `combat-sim` | Planned |
@@ -32,7 +33,10 @@ flowchart LR
   P["Player input<br/>Pause / QueueAction / Confirm / CancelPause"] --> E
   E --> C["Combatant<br/>health, ready time, AP, conditions"]
   E --> R[CombatRules]
-  E --> A["AttackDefinition / ConditionDefinition"]
+  E --> A["Attack / Condition"]
+  Y["content: attack, condition,<br/>creature (Realm.Data)"] --> CC[CombatContent]
+  CC -->|builds| A
+  CC -->|CreateCreature| C
   E --> Ev["Events (CombatEvent list)"]
   Run[CombatSimRunner] -->|builds and runs N| E
   Cli["realm combat-sim"] --> Run
@@ -54,7 +58,9 @@ One `Step()` is one tick, in this order:
 - Threading: single-threaded, on the simulation thread.
 
 ## 4. Data
-None from content yet. Attacks, conditions and the `combat-sim` scenarios are built in code (`src/Realm.Cli/CombatScenarios.cs`). They become content types (with schemas, reference pages and validators) when the spike moves into the simulation.
+Consumes [`attack`](../reference/content/attack.md), [`condition`](../reference/content/condition.md) and [`creature`](../reference/content/creature.md) records through `CombatContent`, which converts each attack and condition once (seconds to ticks with `CombatRules.TicksPerSecond`, rounding half away from zero, at least one tick), builds a `Combatant` from any creature tier (`CreateCreature(id, tier, combatantId, team, position)`) and maps its `behaviour` word to a brain (`CombatBrains.ForBehaviour`; a test keeps it in step with `CombatVocabulary.Behaviours`). `Dice` lives in `Realm.Core.Random` so content and rules share it.
+
+The runtime types `Attack` and `Condition` can still be built directly in code (tests do). The `combat-sim` scenarios are code in `src/Realm.Cli/CombatScenarios.cs` that places content creatures; the hero is built there too, with content attacks, because the player is not a creature.
 
 Damage types are open strings (`physical`, `fire`, `poison` in `DamageTypes`), so content can add more without code.
 
@@ -66,12 +72,13 @@ Damage types are open strings (`physical`, `fire`, `poison` in `DamageTypes`), s
 
 ## 6. Extension points
 - New AI profile: implement `ICombatBrain` (decide only from encounter state).
-- New attack or condition: construct an `AttackDefinition` / `ConditionDefinition` (content types later).
+- New creature, attack or condition: add YAML under `content/`. See [Add a creature family with tiers](../how-to/add-a-creature.md).
+- New behaviour profile: implement `ICombatBrain`, add the word to `CombatVocabulary.Behaviours` and the mapping to `CombatBrains.ForBehaviour`.
 - New scenario for balance runs: add a case to `CombatScenarios.Build` and a line to `CombatScenarios.All`. See [Run a combat balance sweep](../how-to/run-a-combat-balance-sweep.md).
 - No mod hooks yet.
 
 ## 7. Validation
-Constructors reject bad values (non-positive recovery, range or duration, chances outside 0–100, resistances outside 0–100, no attacks). No content validators yet, since nothing is loaded from content. `realm combat-sim --min-win-rate/--max-win-rate` is the balance check: exit code 1 outside the band.
+Constructors reject bad values (non-positive recovery, range or duration, chances outside 0–100, resistances outside 0–100, no attacks). Content is checked on load: `DATA021` (attack), `DATA022` (condition), `DATA023` (creature), `DATA013`/`DATA014` (references) and warning `DATA024` (a resistance to a damage type nothing deals); see [validators](../reference/validators.md). `realm combat-sim --min-win-rate/--max-win-rate` is the balance check: exit code 1 outside the band.
 
 ## 8. Performance notes
 `combat-sim goblin-ambush --fights 10000` (four combatants, about 9 s of fight time each) runs in about 1.3 s including process start, Debug build, on the development machine. Not yet profiled per tick.
@@ -88,5 +95,5 @@ Known allocations per action (fine for a spike, not for the hot path): `Rng.ForK
 
 ## 10. History
 - [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md): combat model.
-- [Devlog 2026-10-31 combat design](../devlog/2026-10-31-combat-design.md), [devlog 2026-10-31 combat spike](../devlog/2026-10-31-combat-spike.md).
+- [Devlog 2026-10-31 combat design](../devlog/2026-10-31-combat-design.md), [devlog 2026-10-31 combat spike](../devlog/2026-10-31-combat-spike.md), [devlog 2026-11-01 combat content](../devlog/2026-11-01-combat-content.md).
 - Design explanation: [Combat](../explanation/combat.md).

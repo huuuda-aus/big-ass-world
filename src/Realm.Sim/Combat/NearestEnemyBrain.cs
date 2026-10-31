@@ -44,7 +44,7 @@ public sealed class NearestEnemyBrain : ICombatBrain
         double bestDamage = double.MinValue;
         for (int i = 0; i < self.Attacks.Count; i++)
         {
-            AttackDefinition attack = self.Attacks[i];
+            Attack attack = self.Attacks[i];
             if (best > attack.RangeMeters || (attack.IsArea && best <= attack.AreaRadiusMeters))
             {
                 continue;

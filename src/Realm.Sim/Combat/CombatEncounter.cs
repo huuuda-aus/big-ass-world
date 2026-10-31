@@ -26,7 +26,7 @@ public sealed class CombatEncounter
     private readonly List<CombatEvent> _events = new();
     private readonly List<CombatAction> _queue = new();
     private readonly List<Combatant> _victims = new();
-    private readonly List<(ConditionDefinition Condition, int Amount)> _pulses = new();
+    private readonly List<(Condition Condition, int Amount)> _pulses = new();
     private Combatant? _pausedBy;
     private long _nextQueuedAt;
     private int _lastQueuedRecovery;
@@ -194,7 +194,7 @@ public sealed class CombatEncounter
     /// <returns>False when not paused, the action is invalid (attack index, dead or out-of-range target), or there are not enough action points.</returns>
     public bool QueueAction(CombatAction action)
     {
-        if (Phase != CombatPhase.Paused || _pausedBy is null || !IsValid(_pausedBy, action, out AttackDefinition? attack))
+        if (Phase != CombatPhase.Paused || _pausedBy is null || !IsValid(_pausedBy, action, out Attack? attack))
         {
             return false;
         }
@@ -311,7 +311,7 @@ public sealed class CombatEncounter
         }
     }
 
-    private bool IsValid(Combatant actor, CombatAction action, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out AttackDefinition? attack)
+    private bool IsValid(Combatant actor, CombatAction action, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out Attack? attack)
     {
         attack = null;
         if (action.AttackIndex < 0 || action.AttackIndex >= actor.Attacks.Count)
@@ -320,7 +320,7 @@ public sealed class CombatEncounter
         }
 
         Combatant? target = Find(action.TargetId);
-        AttackDefinition candidate = actor.Attacks[action.AttackIndex];
+        Attack candidate = actor.Attacks[action.AttackIndex];
         if (target is null || !target.IsAlive || actor.DistanceTo(target) > candidate.RangeMeters)
         {
             return false;
@@ -332,7 +332,7 @@ public sealed class CombatEncounter
 
     private bool TryExecute(Combatant actor, CombatAction action)
     {
-        if (!IsValid(actor, action, out AttackDefinition? attack))
+        if (!IsValid(actor, action, out Attack? attack))
         {
             return false;
         }
@@ -372,7 +372,7 @@ public sealed class CombatEncounter
         return true;
     }
 
-    private void Strike(Combatant actor, Combatant victim, AttackDefinition attack, Rng rng)
+    private void Strike(Combatant actor, Combatant victim, Attack attack, Rng rng)
     {
         Damage(victim, actor.Id, attack.Damage.Roll(rng), attack.DamageType, attack.Id);
         if (attack.Applies is { } application && victim.IsAlive && rng.NextInt(CombatRules.PercentScale) < application.ChancePercent)
@@ -408,7 +408,7 @@ public sealed class CombatEncounter
         }
     }
 
-    private void ApplyCondition(Combatant victim, int actorId, ConditionDefinition condition)
+    private void ApplyCondition(Combatant victim, int actorId, Condition condition)
     {
         var active = new ActiveCondition(condition, Tick + condition.DurationTicks, Tick + condition.PulseIntervalTicks);
         List<ActiveCondition> conditions = victim.MutableConditions;
@@ -439,7 +439,7 @@ public sealed class CombatEncounter
             for (int i = 0; i < conditions.Count; i++)
             {
                 ActiveCondition active = conditions[i];
-                ConditionDefinition def = active.Definition;
+                Condition def = active.Definition;
                 if (def.PulseIntervalTicks > 0 && active.NextPulseAt <= Tick)
                 {
                     _pulses.Add((def, def.PulseDamage));
@@ -456,7 +456,7 @@ public sealed class CombatEncounter
                 }
             }
 
-            foreach ((ConditionDefinition condition, int amount) in _pulses)
+            foreach ((Condition condition, int amount) in _pulses)
             {
                 if (c.IsAlive)
                 {

@@ -1,6 +1,6 @@
 # Combat: how it is meant to work
 
-> **Status: partly built (M5 spike).** The timeline, hit and damage rolls, area effects, conditions, the tactical pause and the balance runs exist as a standalone, tested spike: see [the combat system](../systems/combat.md) for exactly what is built. Movement, projectiles in flight, content files, death and everything on screen are still **Planned**. Decisions: [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md).
+> **Status: partly built (M5 spike).** The timeline, hit and damage rolls, area effects, conditions, the tactical pause and the balance runs exist as a standalone, tested spike: see [the combat system](../systems/combat.md) for exactly what is built. Attacks, conditions and creatures are YAML content ([creature](../reference/content/creature.md)). Movement, projectiles in flight, death and everything on screen are still **Planned**. Decisions: [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md).
 
 The game follows *Might and Magic VI–VIII* for the rules (recovery time, typed damage, conditions, target-based attacks) and modern Fallout's VATS for the tactical layer (a pause where you queue a few aimed actions). You play **one character**.
 

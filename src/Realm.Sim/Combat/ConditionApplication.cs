@@ -11,7 +11,7 @@ public sealed record ConditionApplication
     /// <param name="chancePercent">Chance per hit, 0 to 100.</param>
     /// <exception cref="ArgumentNullException"><paramref name="condition"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="chancePercent"/> is outside 0 to 100.</exception>
-    public ConditionApplication(ConditionDefinition condition, int chancePercent)
+    public ConditionApplication(Condition condition, int chancePercent)
     {
         ArgumentNullException.ThrowIfNull(condition);
         ArgumentOutOfRangeException.ThrowIfNegative(chancePercent);
@@ -21,7 +21,7 @@ public sealed record ConditionApplication
     }
 
     /// <summary>The condition to apply.</summary>
-    public ConditionDefinition Condition { get; }
+    public Condition Condition { get; }
 
     /// <summary>Chance per hit, 0 to 100.</summary>
     public int ChancePercent { get; }

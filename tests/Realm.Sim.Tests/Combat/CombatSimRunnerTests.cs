@@ -1,5 +1,6 @@
 using System;
 using Realm.Core.Geometry;
+using Realm.Core.Random;
 using Realm.Sim.Combat;
 
 namespace Realm.Sim.Tests.Combat;
@@ -8,7 +9,7 @@ public class CombatSimRunnerTests
 {
     private static CombatEncounter Duel(long number, int heroHealth)
     {
-        var sword = new AttackDefinition("attack.sword", 20, 2, new Dice(1, 8));
+        var sword = new Attack("attack.sword", 20, 2, new Dice(1, 8));
         var fight = new CombatEncounter(CombatFixtures.Seed, number);
         fight.Add(new Combatant(1, "hero", 0, new Point2D(0, 0), heroHealth, 2, 2, new[] { sword }), NearestEnemyBrain.Instance);
         fight.Add(new Combatant(2, "rival", 1, new Point2D(1, 0), 30, 2, 2, new[] { sword }), NearestEnemyBrain.Instance);

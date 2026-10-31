@@ -1,13 +1,14 @@
 using System;
+using Realm.Core.Random;
 
 namespace Realm.Sim.Combat;
 
 /// <summary>
 /// One thing a combatant can do to a target: a weapon swing, a bow shot or a spell.
-/// Spike: defined in code; becomes a YAML content type later (ADR 0029).
+/// The runtime form of an <c>attack</c> record, built by <see cref="CombatContent"/>; tests may also build one directly.
 /// </summary>
 /// <remarks>Thread-safety: immutable.</remarks>
-public sealed record AttackDefinition
+public sealed record Attack
 {
     /// <summary>Creates an attack.</summary>
     /// <param name="id">Stable identifier, for example <c>attack.longsword</c>.</param>
@@ -16,7 +17,7 @@ public sealed record AttackDefinition
     /// <param name="damage">Damage dice.</param>
     /// <exception cref="ArgumentException"><paramref name="id"/> is empty.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="recoveryTicks"/> or <paramref name="rangeMeters"/> is not positive.</exception>
-    public AttackDefinition(string id, int recoveryTicks, double rangeMeters, Dice damage)
+    public Attack(string id, int recoveryTicks, double rangeMeters, Dice damage)
     {
         ArgumentException.ThrowIfNullOrEmpty(id);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(recoveryTicks);

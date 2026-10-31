@@ -4,17 +4,17 @@ namespace Realm.Sim.Combat;
 
 /// <summary>
 /// A condition such as poisoned or asleep: how long it lasts and what it does while active.
-/// Spike: defined in code; becomes a YAML content type later (ADR 0029).
+/// The runtime form of a <c>condition</c> record, built by <see cref="CombatContent"/>; tests may also build one directly.
 /// </summary>
 /// <remarks>Thread-safety: immutable.</remarks>
-public sealed record ConditionDefinition
+public sealed record Condition
 {
     /// <summary>Creates a condition.</summary>
     /// <param name="id">Stable identifier, for example <c>condition.poisoned</c>.</param>
     /// <param name="durationTicks">How long it lasts once applied; must be positive.</param>
     /// <exception cref="ArgumentException"><paramref name="id"/> is empty.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="durationTicks"/> is not positive.</exception>
-    public ConditionDefinition(string id, int durationTicks)
+    public Condition(string id, int durationTicks)
     {
         ArgumentException.ThrowIfNullOrEmpty(id);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(durationTicks);

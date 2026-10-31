@@ -1,0 +1,6 @@
+id: attack.goblin_club
+name: Goblin club
+tags: [melee, blunt]
+recovery_s: 1.3
+range_m: 2
+damage: 1d6

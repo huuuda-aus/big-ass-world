@@ -73,6 +73,7 @@
 - **Grass cell**: a 32 m square of the baked grass density map; the game scatters its tufts at run time.
 - **Cloud climate**: two coarse world maps (cover and thickness of cloud) baked from the biomes' rainfall and the terrain height; the sky shader draws the clouds from them.
 - **Profession** (`profession` content type): a trade: where its people work, how many a settlement has and how they spend the day (a timetable of activities).
+- **Creature family** (`creature.*`): a content record for a kind of creature, such as goblins, with its tiers. Tier 1 is the family itself; higher tiers override some of its values.
 - **Crowd** (`Crowd`, `NpcPlan`): the simulated characters of one settlement and their plans; each stands, walks along the walking graph or is inside a building, and its position is a function of time.
 - **Walking graph** (`NavGraph`): nodes (streets, gates, door fronts, bridge ends) joined by straight walkable edges; characters walk it instead of a navigation mesh and their position is a function of time (`NavRoute`).
 - **World clock** (`WorldClock`): the continuous time of day of the game world, advanced by real time; the sun, the moon and later NPC schedules read it.
@@ -86,6 +87,7 @@
 - **Terrain3D region**: Terrain3D's data unit: `region_size` vertices at `vertex_spacing` metres (here 256 x 4 m = 1,024 m). At most 32 x 32 regions exist.
 - **Thermal erosion**: slumping of slopes steeper than the stable slope, mass-conserving, run on the full-resolution field.
 - **Tick**: one step of the simulation. `TicksPerGameMinute` ticks make one game minute.
+- **Tier** (creature): one variant of a creature family, numbered from 1 (for example Goblin, Goblin Archer, Goblin Chief), resolved from the family plus the tier's own overrides (`CreatureTier`).
 - **Tile** (`RegionTile`): one baked region on disk: heights, colours and a checksum.
 - **Validation report** (`ValidationReport`): list of issues (severity, stable code, location, message, suggested fix) returned by validators and the content loader.
 - **Vertex spacing** (`SpacingMeters`): distance between neighbouring height-field vertices. Development default 8 m; the final value is a proposal (2 m).

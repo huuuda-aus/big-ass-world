@@ -99,4 +99,17 @@ public class ShippedContentTests
             Assert.True(db.Professions.Values.Sum(p => p.ShareFor(tier)) <= 1.0, tier);
         }
     }
+    [Fact]
+    public void ShippedCombatContent_HasTheGoblinFamily()
+    {
+        var report = new ValidationReport();
+        ContentDatabase db = ContentLoader.Load(Path.Combine(RepoRoot(), "content"), report);
+
+        Assert.Empty(report.Issues);
+        CreatureDefinition goblin = db.Creatures[ContentId.Parse("creature.goblin")];
+        Assert.Equal(new[] { "Goblin", "Goblin Archer", "Goblin Chief" }, goblin.Tiers.Select(t => t.Name).ToArray());
+        Assert.All(goblin.Tiers.SelectMany(t => t.Attacks), a => Assert.True(db.Attacks.ContainsKey(a), a.Value));
+        Assert.True(db.Attacks.ContainsKey(ContentId.Parse("attack.longsword")));
+        Assert.True(db.Attacks.ContainsKey(ContentId.Parse("attack.fireball")));
+    }
 }

@@ -43,9 +43,19 @@ public static class ContentLoader
     private static readonly TypeSpec<ProfessionDefinition> ProfessionSpec =
         new("professions", "profession", ProfessionParser.Parse, p => p.Id);
 
+    private static readonly TypeSpec<ConditionDefinition> ConditionSpec =
+        new("conditions", "condition", ConditionParser.Parse, c => c.Id);
+
+    private static readonly TypeSpec<AttackDefinition> AttackSpec =
+        new("attacks", "attack", AttackParser.Parse, a => a.Id);
+
+    private static readonly TypeSpec<CreatureDefinition> CreatureSpec =
+        new("creatures", "creature", CreatureParser.Parse, c => c.Id);
+
     private static readonly string[] KnownDirectories =
     {
         MaterialSpec.Directory, ItemSpec.Directory, BiomeSpec.Directory, WorldSpec.Directory, ServiceSpec.Directory, FoliageSpec.Directory, ProfessionSpec.Directory,
+        ConditionSpec.Directory, AttackSpec.Directory, CreatureSpec.Directory,
     };
 
     /// <summary>Loads and validates all content under a root directory, including cross-record references.</summary>
@@ -90,13 +100,17 @@ public static class ContentLoader
         Dictionary<ContentId, FoliageDefinition> foliage = LoadType(rootDirectory, FoliageSpec, report, sources);
 
         Dictionary<ContentId, ProfessionDefinition> professions = LoadType(rootDirectory, ProfessionSpec, report, sources);
+        Dictionary<ContentId, ConditionDefinition> conditions = LoadType(rootDirectory, ConditionSpec, report, sources);
+        Dictionary<ContentId, AttackDefinition> attacks = LoadType(rootDirectory, AttackSpec, report, sources);
+        Dictionary<ContentId, CreatureDefinition> creatures = LoadType(rootDirectory, CreatureSpec, report, sources);
 
-        var database = new ContentDatabase(materials, items, biomes, maps, regions, services, foliage, professions, sources);
+        var database = new ContentDatabase(materials, items, biomes, maps, regions, services, foliage, professions, conditions, attacks, creatures, sources);
         ContentValidator.ValidateReferences(database, report);
 
         Logger.Info(
             $"Loaded {materials.Count} material(s), {items.Count} item(s), {biomes.Count} biome(s), " +
-            $"{maps.Count} world map(s) with {regions.Count} region(s), {services.Count} service(s), {foliage.Count} foliage species, {professions.Count} profession(s) from '{rootDirectory}'.");
+            $"{maps.Count} world map(s) with {regions.Count} region(s), {services.Count} service(s), {foliage.Count} foliage species, {professions.Count} profession(s), " +
+            $"{conditions.Count} condition(s), {attacks.Count} attack(s), {creatures.Count} creature(s) from '{rootDirectory}'.");
         return database;
     }
 

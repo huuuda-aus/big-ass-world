@@ -40,7 +40,7 @@ public sealed class Combatant
         int maxHealth,
         int attackRating,
         int defence,
-        IReadOnlyList<AttackDefinition> attacks,
+        IReadOnlyList<Attack> attacks,
         int maxActionPoints = 0,
         IReadOnlyDictionary<string, int>? resistances = null)
     {
@@ -102,7 +102,7 @@ public sealed class Combatant
     public int Defence { get; }
 
     /// <summary>What it can do, by index.</summary>
-    public IReadOnlyList<AttackDefinition> Attacks { get; }
+    public IReadOnlyList<Attack> Attacks { get; }
 
     /// <summary>Action-point pool for the tactical pause.</summary>
     public int MaxActionPoints { get; }

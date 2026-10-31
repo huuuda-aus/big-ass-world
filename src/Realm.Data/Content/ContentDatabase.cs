@@ -21,6 +21,9 @@ public sealed class ContentDatabase
         new Dictionary<ContentId, ServiceBuildingDefinition>(),
         new Dictionary<ContentId, FoliageDefinition>(),
         new Dictionary<ContentId, ProfessionDefinition>(),
+        new Dictionary<ContentId, ConditionDefinition>(),
+        new Dictionary<ContentId, AttackDefinition>(),
+        new Dictionary<ContentId, CreatureDefinition>(),
         new Dictionary<ContentId, string>());
 
     private readonly IReadOnlyDictionary<ContentId, string> _sources;
@@ -34,6 +37,9 @@ public sealed class ContentDatabase
     /// <param name="services">Service buildings by ID; copied and sorted.</param>
     /// <param name="foliage">Foliage species by ID; copied and sorted.</param>
     /// <param name="professions">Professions by ID; copied and sorted.</param>
+    /// <param name="conditions">Combat conditions by ID; copied and sorted.</param>
+    /// <param name="attacks">Attacks by ID; copied and sorted.</param>
+    /// <param name="creatures">Creature families by ID; copied and sorted.</param>
     /// <param name="sources">File location of each record, by ID.</param>
     internal ContentDatabase(
         IDictionary<ContentId, MaterialDefinition> materials,
@@ -44,6 +50,9 @@ public sealed class ContentDatabase
         IDictionary<ContentId, ServiceBuildingDefinition> services,
         IDictionary<ContentId, FoliageDefinition> foliage,
         IDictionary<ContentId, ProfessionDefinition> professions,
+        IDictionary<ContentId, ConditionDefinition> conditions,
+        IDictionary<ContentId, AttackDefinition> attacks,
+        IDictionary<ContentId, CreatureDefinition> creatures,
         IDictionary<ContentId, string> sources)
     {
         ArgumentNullException.ThrowIfNull(materials);
@@ -54,6 +63,9 @@ public sealed class ContentDatabase
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(foliage);
         ArgumentNullException.ThrowIfNull(professions);
+        ArgumentNullException.ThrowIfNull(conditions);
+        ArgumentNullException.ThrowIfNull(attacks);
+        ArgumentNullException.ThrowIfNull(creatures);
         ArgumentNullException.ThrowIfNull(sources);
 
         Materials = Sorted(materials);
@@ -64,6 +76,9 @@ public sealed class ContentDatabase
         Services = Sorted(services);
         Foliage = Sorted(foliage);
         Professions = Sorted(professions);
+        Conditions = Sorted(conditions);
+        Attacks = Sorted(attacks);
+        Creatures = Sorted(creatures);
         _sources = new ReadOnlyDictionary<ContentId, string>(new Dictionary<ContentId, string>(sources));
     }
 
@@ -91,12 +106,22 @@ public sealed class ContentDatabase
     /// <summary>All professions, enumerated in ordinal ID order.</summary>
     public IReadOnlyDictionary<ContentId, ProfessionDefinition> Professions { get; }
 
+    /// <summary>All combat conditions, enumerated in ordinal ID order.</summary>
+    public IReadOnlyDictionary<ContentId, ConditionDefinition> Conditions { get; }
+
+    /// <summary>All attacks, enumerated in ordinal ID order.</summary>
+    public IReadOnlyDictionary<ContentId, AttackDefinition> Attacks { get; }
+
+    /// <summary>All creature families, enumerated in ordinal ID order.</summary>
+    public IReadOnlyDictionary<ContentId, CreatureDefinition> Creatures { get; }
+
     /// <summary>Checks whether any loaded record has this ID.</summary>
     /// <param name="id">The ID to look for.</param>
     /// <returns><c>true</c> when a record exists.</returns>
     public bool Contains(ContentId id) =>
         Materials.ContainsKey(id) || Items.ContainsKey(id) || Biomes.ContainsKey(id)
-        || MacroMaps.ContainsKey(id) || Regions.ContainsKey(id) || Services.ContainsKey(id) || Foliage.ContainsKey(id) || Professions.ContainsKey(id);
+        || MacroMaps.ContainsKey(id) || Regions.ContainsKey(id) || Services.ContainsKey(id) || Foliage.ContainsKey(id) || Professions.ContainsKey(id)
+        || Conditions.ContainsKey(id) || Attacks.ContainsKey(id) || Creatures.ContainsKey(id);
 
     /// <summary>Finds the file a record was loaded from.</summary>
     /// <param name="id">The record ID. For a region this is the file of its macro map.</param>

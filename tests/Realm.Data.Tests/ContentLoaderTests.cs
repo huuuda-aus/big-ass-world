@@ -119,7 +119,7 @@ public sealed class ContentLoaderTests : IDisposable
     [Fact]
     public void UnknownDirectory_IsAWarning_AndIgnored()
     {
-        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\n");
+        Write("recipes/sword.yaml", "id: recipe.sword\nname: Sword\n");
 
         var report = new ValidationReport();
         ContentDatabase db = ContentLoader.Load(_root, report);
@@ -270,5 +270,53 @@ regions:
 
         Assert.Single(ContentLoader.Load(_root, report).Materials);
         Assert.Empty(report.Issues);
+    }
+    private const string Club = "id: attack.club\nname: Club\nrecovery_s: 1\nrange_m: 2\ndamage: 1d6\n";
+
+    [Fact]
+    public void CombatContent_LoadsAndLinks()
+    {
+        Write("conditions/poisoned.yaml", "id: condition.poisoned\nname: Poisoned\nduration_s: 5\npulse: { every_s: 1, damage: 1, type: poison }\n");
+        Write("attacks/club.yaml", Club);
+        Write("attacks/bow.yaml", "id: attack.bow\nname: Bow\nrecovery_s: 1.5\nrange_m: 20\ndamage: 1d6\napplies: { condition: condition.poisoned, chance: 10 }\n");
+        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\nbehaviour: nearest_enemy\nhealth: 10\nattacks: [attack.club]\nresistances: { poison: 20 }\ntiers: [{ name: Archer, attacks: [attack.bow] }]\n");
+
+        var report = new ValidationReport();
+        ContentDatabase db = ContentLoader.Load(_root, report);
+
+        Assert.Empty(report.Issues);
+        Assert.Single(db.Conditions);
+        Assert.Equal(2, db.Attacks.Count);
+        Assert.Equal(2, db.Creatures[ContentId.Parse("creature.goblin")].Tiers.Count);
+        Assert.True(db.Contains(ContentId.Parse("attack.bow")));
+    }
+
+    [Fact]
+    public void CombatContent_DanglingReferences_AreErrors()
+    {
+        Write("attacks/bow.yaml", "id: attack.bow\nname: Bow\nrecovery_s: 1.5\nrange_m: 20\ndamage: 1d6\napplies: { condition: condition.missing, chance: 10 }\n");
+        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\nbehaviour: nearest_enemy\nhealth: 10\nattacks: [attack.bow]\ntiers: [{ name: Chief, attacks: [attack.axe] }]\n");
+
+        var report = new ValidationReport();
+        ContentLoader.Load(_root, report);
+
+        Assert.Equal(2, report.Issues.Count(i => i.Code == ValidatorCodes.DanglingReference));
+        Assert.Contains(report.Issues, i => i.Message.Contains("condition.missing", StringComparison.Ordinal));
+        Assert.Contains(report.Issues, i => i.Message.Contains("tier 2 uses attack 'attack.axe'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ResistanceToADamageTypeNothingDeals_IsAWarning()
+    {
+        Write("attacks/club.yaml", Club);
+        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\nbehaviour: nearest_enemy\nhealth: 10\nattacks: [attack.club]\nresistances: { fier: 20, physical: 5 }\n");
+
+        var report = new ValidationReport();
+        ContentLoader.Load(_root, report);
+
+        ValidationIssue issue = Assert.Single(report.Issues);
+        Assert.Equal(Severity.Warning, issue.Severity);
+        Assert.Equal(ValidatorCodes.UnusedDamageType, issue.Code);
+        Assert.Contains("'fier'", issue.Message, StringComparison.Ordinal);
     }
 }

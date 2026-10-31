@@ -1,0 +1,6 @@
+id: condition.asleep
+name: Asleep
+tags: [mind]
+duration_s: 10
+prevents_actions: true
+breaks_on_damage: true

@@ -1,0 +1,6 @@
+id: attack.longsword
+name: Longsword
+tags: [melee, blade]
+recovery_s: 1.2
+range_m: 2
+damage: 1d8+2

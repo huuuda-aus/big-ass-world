@@ -21,17 +21,17 @@ Loads and validates all content under `dir` (default `content`). Prints one line
 
 ```
 $ dotnet run --project src/Realm.Cli -- content-lint
-[Info] Data.Loader: Loaded 3 material(s), 3 item(s), 7 biome(s), 1 world map(s) with 7 region(s), 9 service(s) from 'content'.
-3 material(s), 3 item(s), 7 biome(s), 7 region(s), 9 service(s), 0 error(s), 0 warning(s).
+[Info] Data.Loader: Loaded 3 material(s), 3 item(s), 7 biome(s), 1 world map(s) with 7 region(s), 9 service(s), 5 foliage species, 11 profession(s), 2 condition(s), 5 attack(s), 1 creature(s) from 'content'.
+3 material(s), 3 item(s), 7 biome(s), 7 region(s), 9 service(s), 5 foliage species, 11 profession(s), 2 condition(s), 5 attack(s), 1 creature(s), 0 error(s), 0 warning(s).
 ```
 
 With a typo in a file:
 
 ```
 $ dotnet run --project src/Realm.Cli -- content-lint /tmp/broken
-[Info] Data.Loader: Loaded 0 material(s), 0 item(s), 0 biome(s), 0 world map(s) with 0 region(s), 0 service(s) from '/tmp/broken'.
+[Info] Data.Loader: Loaded 0 material(s), 0 item(s), 0 biome(s), 0 world map(s) with 0 region(s), 0 service(s), 0 foliage species, 0 profession(s), 0 condition(s), 0 attack(s), 0 creature(s) from '/tmp/broken'.
 Error DATA001 materials/x.yaml:3: Unknown field 'bogus'. (fix: Check the field names and value types against docs/reference/content/material.md.)
-0 material(s), 0 item(s), 0 biome(s), 0 region(s), 0 service(s), 1 error(s), 0 warning(s).
+0 material(s), 0 item(s), 0 biome(s), 0 region(s), 0 service(s), 0 foliage species, 0 profession(s), 0 condition(s), 0 attack(s), 0 creature(s), 1 error(s), 0 warning(s).
 ```
 
 ## `macro-map [dir]`
@@ -123,13 +123,14 @@ $ dotnet run --project src/Realm.Cli -c Release -- bake-terrain
 
 `--region-size` must divide the world and give an even number of regions per axis, at most 32 (Terrain3D's limit); otherwise `TERR018` is reported and nothing is written. If `--out` already holds a `locks.json` (written by the [terrain editor](../how-to/sculpt-terrain.md) when it saves a hand edit, [format](baked-terrain.md)), every locked region's tile is kept as-is instead of being overwritten, reported as `TERR019`; `--no-locks` ignores the file and regenerates everything. Timings are from the development machine with the Release build (Debug is several times slower).
 
-## `combat-sim [scenario] [--fights N] [--seed N] [--max-seconds S] [--min-win-rate F] [--max-win-rate F] [--list]`
+## `combat-sim [scenario] [--content dir] [--fights N] [--seed N] [--max-seconds S] [--min-win-rate F] [--max-win-rate F] [--list]`
 
-Runs one combat scenario many times (fight `i` uses encounter number `i`) and prints the hero's win rate, fight lengths and health left in wins. Spike: scenarios are built in code (`src/Realm.Cli/CombatScenarios.cs`); see [the combat system](../systems/combat.md).
+Loads the content, then runs one combat scenario many times (fight `i` uses encounter number `i`) and prints the hero's win rate, fight lengths and health left in wins. Creatures and attacks come from content ([creature](content/creature.md), [attack](content/attack.md)); the scenarios themselves (who stands where) are still code in `src/Realm.Cli/CombatScenarios.cs`. See [the combat system](../systems/combat.md).
 
 | Option | Default | Meaning |
 |---|---|---|
-| `scenario` | `goblin-ambush` | Scenario name; `--list` prints them. |
+| `scenario` | `goblin-ambush` | Scenario name: `duel`, `goblin-ambush`, `goblin-chief`; `--list` describes them. |
+| `--content dir` | `content` | Content directory. If it has errors they are printed and the command exits with `1`. |
 | `--fights N` | 1000 | Number of fights. |
 | `--seed N` | 1 | Root seed. |
 | `--max-seconds S` | 300 | Fight time limit; a fight still running counts as timed out. |
@@ -144,7 +145,7 @@ combat-sim goblin-ambush: 10000 fights, seed 7
   health left   47.6 % on average in a win
 ```
 
-Exit codes: `0` success, `1` win rate outside the band, `2` bad arguments or unknown scenario. How-to: [Run a combat balance sweep](../how-to/run-a-combat-balance-sweep.md).
+Exit codes: `0` success, `1` win rate outside the band or content errors, `2` bad arguments or unknown scenario. How-to: [Run a combat balance sweep](../how-to/run-a-combat-balance-sweep.md).
 
 ## `help`
 
@@ -153,7 +154,7 @@ Prints usage. This is also the default when no command is given.
 ```
 $ dotnet run --project src/Realm.Cli -- help
 Usage: realm <command>
-Commands: version, combat-sim [scenario] [--fights N] [--seed N] [--max-seconds S] [--min-win-rate F] [--max-win-rate F] [--list], bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode], content-lint [dir], macro-map [dir], height-field [dir] [--seed N] [--spacing M] [--blend M] [--erode] [--iterations N] [--strength S] [--threshold KM2] [--min-lake-area KM2] [--png file], help
+Commands: version, combat-sim [scenario] [--content dir] [--fights N] [--seed N] [--max-seconds S] [--min-win-rate F] [--max-win-rate F] [--list], bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode], content-lint [dir], macro-map [dir], height-field [dir] [--seed N] [--spacing M] [--blend M] [--erode] [--iterations N] [--strength S] [--threshold KM2] [--min-lake-area KM2] [--png file], help
 ```
 
 ## Planned

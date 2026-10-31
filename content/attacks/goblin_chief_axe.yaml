@@ -1,0 +1,6 @@
+id: attack.goblin_chief_axe
+name: Goblin chief's axe
+tags: [melee, blade]
+recovery_s: 1.6
+range_m: 2
+damage: 1d10+1
