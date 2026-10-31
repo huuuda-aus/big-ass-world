@@ -1,6 +1,6 @@
 # Combat: how it is meant to work
 
-> **Status: Planned (M5).** Nothing on this page is built yet. It records the agreed design so the code has something to follow. Decisions: [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md).
+> **Status: partly built (M5 spike).** The timeline, hit and damage rolls, area effects, conditions, the tactical pause and the balance runs exist as a standalone, tested spike: see [the combat system](../systems/combat.md) for exactly what is built. Movement, projectiles in flight, content files, death and everything on screen are still **Planned**. Decisions: [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md).
 
 The game follows *Might and Magic VI–VIII* for the rules (recovery time, typed damage, conditions, target-based attacks) and modern Fallout's VATS for the tactical layer (a pause where you queue a few aimed actions). You play **one character**.
 
@@ -45,7 +45,7 @@ Because the pause and real time share one timeline and one formula set, they can
 ## Resolving an attack
 
 1. **Target-based**: you attack the selected target. The sim checks range and line of sight. No swing arcs or hit volumes.
-2. **Hit roll**: one roll against a chance from attack rating minus defence, on a smooth curve clamped to a minimum and maximum (values are data).
+2. **Hit roll**: one roll against a chance from attack rating minus defence, clamped to a minimum and maximum (values are data). The spike uses a straight line (75 % at equal rating, 5 % per point, 5–95 %); a smoother curve can replace it once real stats exist.
 3. **Damage**: dice plus bonuses, of a **damage type** (physical, fire, cold, and so on), reduced by the target's resistance to that type.
 4. **Effects**: conditions (poisoned, asleep, afraid, …), knockback, and interactions with material tags (fire against something `flammable`), using the same tag rules as crafting.
 
@@ -63,9 +63,9 @@ You wake at a temple. There is no gold or item loss. Time passes and the world k
 
 Weapons, spells and abilities (composed from small effects: damage, condition, projectile, area, heal), damage types and resistances, conditions, skills and their mastery ranks, AP costs and recovery times, and creature behaviour profiles. Lua is only for unusual ability hooks.
 
-## How balance is checked (planned)
+## How balance is checked
 
-A headless `Realm.Cli combat-sim` command will run thousands of fights (for example, a level-5 character against a pack of tier-2 goblins) and check win rates and fight lengths against configured ranges in CI, the combat equivalent of generator seed sweeps.
+The headless `realm combat-sim` command runs thousands of fights of a scenario and reports win rate, fight lengths and health left, failing when the win rate leaves a given band: the combat equivalent of generator seed sweeps. Scenarios are still built in code; wiring the bands into CI is planned. See [Run a combat balance sweep](../how-to/run-a-combat-balance-sweep.md).
 
 ## Related
 - [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md)

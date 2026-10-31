@@ -1,7 +1,7 @@
 # System: Sim (`Realm.Sim`)
 
 ## 1. Purpose and scope
-The tick-driven simulation core: a clock, entities with components, and systems that run each tick. It references only Core and Data and never Godot. It does not yet contain any game rules, NPCs, economy, combat, saves or simulation LOD.
+The tick-driven simulation core: a clock, entities with components, and systems that run each tick. It references only Core and Data and never Godot. It does not yet contain economy, saves or simulation LOD. Combat rules exist as a standalone spike, not yet run by `Simulation`: see [Combat](combat.md).
 
 ## 2. Status
 | Feature | State |
@@ -15,7 +15,8 @@ The tick-driven simulation core: a clock, entities with components, and systems 
 | Day length / pacing | Decided: 20 ticks per game minute, 24 real minutes per day at 20 Hz |
 | Save/load of world state and deltas | Planned (M2) |
 | Multi-component queries, per-zone ticking (sim LOD) | Planned |
-| `Realm.Sim.World.TerrainSampler`, NPCs, tasks, economy, crafting, combat | Planned |
+| `Realm.Sim.World.TerrainSampler`, tasks, economy, crafting | Planned |
+| Combat (`Realm.Sim.Combat`): timeline, hit and damage, conditions, tactical pause | Spike, standalone `CombatEncounter`; see [Combat](combat.md) |
 
 ## 3. Architecture
 ```mermaid

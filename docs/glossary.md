@@ -1,15 +1,18 @@
 # Glossary
 
-- **Action points** (AP, planned): the resource spent on actions queued in the tactical pause; refills over time. Real-time attacks don't use it (ADR 0029).
+- **Action points** (AP): the resource spent on actions queued in the tactical pause; refills over time. Real-time attacks don't use it (ADR 0029).
 - **Architecture test**: test that reads `.csproj` files and fails when the dependency rules are broken.
 - **Bake**: turning generated terrain into files the game streams: region tiles plus a manifest (`realm bake-terrain`).
+- **Balance sweep** (combat): running one combat scenario thousands of times with `realm combat-sim` and checking the win rate against a band.
 - **Basin fill**: erosion step that raises depressions that are not kept lakes to their water level, standing for sediment-filled floodplains, so rivers cross them.
 - **Biome**: content record (`biome.*`) describing the character of an area for the terrain generator; tags such as `ocean`, free-form numeric properties.
 - **Blend radius** (`BlendRadiusMeters`): how far biome terrain values blend to each side of a region border (default 512 m, rounded up to whole macro cells). Larger gives gentler coasts and borders.
+- **Brain** (combat, `ICombatBrain`): what decides a combatant's action when it is ready: an AI profile such as `NearestEnemyBrain`, or the player's held input (`HeldIntentBrain`).
 - **Bridge**: a timber deck where a road crosses a river; baked in `roads.json` and built by the game.
 - **Brush stroke** (`BrushStroke`): one dab of the terrain editor's brush — a centre, radius and strength in a region's own vertex grid, plus a mode (raise, lower, smooth, flatten).
 - **Catchment** (flow): the area draining to a point, measured in effective square kilometres: rainfall 1 counts a full km2, rainfall 0.5 half.
 - **Chunk**: streaming unit of the overworld (proposed 256 m square). Baked as one contiguous blob and loaded or unloaded as a whole.
+- **Combat encounter** (`CombatEncounter`): one fight on one timeline: its combatants, their brains, the tactical-pause queue and the event log.
 - **Commit** (streaming): the main-thread step that adds prepared chunk data to the Godot scene, time-sliced to a per-frame budget.
 - **Component**: plain-data `struct` attached to an entity, such as a position. Stored by type in `SimWorld`.
 - **Confluence**: where one river joins another; the river that ends there has the mouth kind `Confluence`.
@@ -37,7 +40,7 @@
 - **Presentation layer**: `Realm.Game` (Godot). Renders the simulation; never mutates it directly.
 - **Rainfall** (`rainfall`): biome property, 0 to 1; how much water each area adds to the flow, which drives how many rivers there are.
 - **Rebuild** (shared-texture rebuild): Terrain3D's `update_maps`, which re-uploads the maps of all loaded regions. Its cost grows with the loaded pixels and sets the height of a streaming frame spike (ADR 0009).
-- **Ready time / recovery** (combat, planned): a combatant's ready time is the sim time when it may act next; an action sets it to now plus the action's recovery, changed by stats, skill and conditions (ADR 0029).
+- **Ready time / recovery** (combat): a combatant's ready time is the sim time when it may act next; an action sets it to now plus the action's recovery, changed by stats, skill and conditions (ADR 0029).
 - **Reference** (content): a field holding another record's ID, such as `item.material`. Checked after loading (`DATA013`, `DATA014`); a reference to a missing record is a *dangling reference*.
 - **Region** (`region.*`): a named area of the world made of one or more polygons with one biome. Ocean is a region with an `ocean` biome. Defined inside a macro map.
 - **Region field** (`RegionField`): the macro map rasterised to a grid of macro cells, each holding its owning region.
@@ -78,7 +81,7 @@
 - **Stable slope** (`max_slope_deg`): biome property; steepest slope in degrees that stays put. Steeper slopes slump during thermal erosion.
 - **Stream**: PCG selector that gives an independent sequence for the same seed.
 - **System** (`ISystem`): logic that runs once per tick over components. Systems run in registration order.
-- **Tactical pause** (combat, planned): VATS-style pause that stops the sim clock so the player can queue targeted actions paid with action points; they then resolve on the normal clock (ADR 0029).
+- **Tactical pause** (combat): VATS-style pause that stops the sim clock so the player can queue targeted actions paid with action points; they then resolve on the normal clock (ADR 0029).
 - **Tag** (`TagSet`): a lowercase label such as `metal` attached to content. Behaviour composes from tags and properties, not class hierarchies.
 - **Terrain3D region**: Terrain3D's data unit: `region_size` vertices at `vertex_spacing` metres (here 256 x 4 m = 1,024 m). At most 32 x 32 regions exist.
 - **Thermal erosion**: slumping of slopes steeper than the stable slope, mass-conserving, run on the full-resolution field.

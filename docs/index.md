@@ -24,6 +24,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
 - [Add a content type (developers)](how-to/add-a-content-type.md)
 - [Add a simulation system (developers)](how-to/add-a-system.md)
 - [Profile the simulation](how-to/profile-the-simulation.md)
+- [Run a combat balance sweep](how-to/run-a-combat-balance-sweep.md)
 - Debug a failing seed lands with the first generator: **Planned**
 
 ## Reference
@@ -40,13 +41,14 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
 - [Determinism](explanation/determinism.md)
 - [World scale and seamless streaming](explanation/world-scale-and-streaming.md)
 - [Making character movement more realistic: options](explanation/making-npc-movement-realistic.md)
-- [Combat: how it is meant to work](explanation/combat.md) (Planned)
+- [Combat: how it is meant to work](explanation/combat.md) (partly built: spike)
 - Generate-bake-edit, persistence, sim LOD, retro rendering: **Planned**
 
 ## Systems (as-built)
 - [Core](systems/core.md)
 - [Data](systems/data.md)
 - [Sim](systems/sim.md)
+- [Combat](systems/combat.md)
 - [Navigation](systems/navigation.md)
 - [Characters and crowds](systems/npcs.md)
 - [Gen](systems/gen.md)
@@ -106,6 +108,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [2026-10-23 street graph](devlog/2026-10-23-street-graph.md)
   - [2026-10-31 Windows first run](devlog/2026-10-31-windows-first-run.md)
   - [2026-10-31 Combat design](devlog/2026-10-31-combat-design.md)
+  - [2026-10-31 Combat spike](devlog/2026-10-31-combat-spike.md)
 - [Known issues](known-issues.md)
 - [Glossary](glossary.md)
 - [Changelog](../CHANGELOG.md)

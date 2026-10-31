@@ -123,6 +123,29 @@ $ dotnet run --project src/Realm.Cli -c Release -- bake-terrain
 
 `--region-size` must divide the world and give an even number of regions per axis, at most 32 (Terrain3D's limit); otherwise `TERR018` is reported and nothing is written. If `--out` already holds a `locks.json` (written by the [terrain editor](../how-to/sculpt-terrain.md) when it saves a hand edit, [format](baked-terrain.md)), every locked region's tile is kept as-is instead of being overwritten, reported as `TERR019`; `--no-locks` ignores the file and regenerates everything. Timings are from the development machine with the Release build (Debug is several times slower).
 
+## `combat-sim [scenario] [--fights N] [--seed N] [--max-seconds S] [--min-win-rate F] [--max-win-rate F] [--list]`
+
+Runs one combat scenario many times (fight `i` uses encounter number `i`) and prints the hero's win rate, fight lengths and health left in wins. Spike: scenarios are built in code (`src/Realm.Cli/CombatScenarios.cs`); see [the combat system](../systems/combat.md).
+
+| Option | Default | Meaning |
+|---|---|---|
+| `scenario` | `goblin-ambush` | Scenario name; `--list` prints them. |
+| `--fights N` | 1000 | Number of fights. |
+| `--seed N` | 1 | Root seed. |
+| `--max-seconds S` | 300 | Fight time limit; a fight still running counts as timed out. |
+| `--min-win-rate F`, `--max-win-rate F` | 0, 1 | Band for the win rate (0 to 1); exit code `1` outside it. |
+| `--list` | | Print the scenarios and exit. |
+
+```
+$ dotnet run --project src/Realm.Cli -- combat-sim goblin-ambush --fights 10000 --seed 7
+combat-sim goblin-ambush: 10000 fights, seed 7
+  win rate      97.6 % (9758 won, 242 lost, 0 timed out)
+  fight length  mean 9.1 s, median 9.3 s, p90 11.7 s
+  health left   47.6 % on average in a win
+```
+
+Exit codes: `0` success, `1` win rate outside the band, `2` bad arguments or unknown scenario. How-to: [Run a combat balance sweep](../how-to/run-a-combat-balance-sweep.md).
+
 ## `help`
 
 Prints usage. This is also the default when no command is given.
@@ -130,7 +153,7 @@ Prints usage. This is also the default when no command is given.
 ```
 $ dotnet run --project src/Realm.Cli -- help
 Usage: realm <command>
-Commands: version, content-lint [dir], macro-map [dir], height-field [dir] [--seed N] [--spacing M] [--blend M] [--erode] [--iterations N] [--strength S] [--threshold KM2] [--min-lake-area KM2] [--png file], help
+Commands: version, combat-sim [scenario] [--fights N] [--seed N] [--max-seconds S] [--min-win-rate F] [--max-win-rate F] [--list], bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode], content-lint [dir], macro-map [dir], height-field [dir] [--seed N] [--spacing M] [--blend M] [--erode] [--iterations N] [--strength S] [--threshold KM2] [--min-lake-area KM2] [--png file], help
 ```
 
 ## Planned

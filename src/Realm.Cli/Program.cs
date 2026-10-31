@@ -23,9 +23,11 @@ switch (command)
         return HeightFieldCommand.Run(args, Console.Out, Console.Error);
     case "bake-terrain":
         return BakeTerrainCommand.Run(args, Console.Out, Console.Error);
+    case "combat-sim":
+        return CombatSimCommand.Run(args, Console.Out, Console.Error);
     case "help":
         Console.WriteLine("Usage: realm <command>");
-        Console.WriteLine("Commands: version, bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode], content-lint [dir], macro-map [dir], height-field [dir] [--seed N] [--spacing M] [--blend M] [--erode] [--iterations N] [--strength S] [--threshold KM2] [--min-lake-area KM2] [--png file], help");
+        Console.WriteLine("Commands: version, combat-sim [scenario] [--fights N] [--seed N] [--max-seconds S] [--min-win-rate F] [--max-win-rate F] [--list], bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode], content-lint [dir], macro-map [dir], height-field [dir] [--seed N] [--spacing M] [--blend M] [--erode] [--iterations N] [--strength S] [--threshold KM2] [--min-lake-area KM2] [--png file], help");
         return ExitOk;
     default:
         Console.Error.WriteLine($"Unknown command '{command}'. Try 'realm help'.");
