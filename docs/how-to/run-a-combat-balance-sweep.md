@@ -13,6 +13,7 @@ Goal: find out how a fight plays out over thousands of runs (win rate, fight len
    duel             hero (longsword, fireball) against one goblin with a club, 1.5 m apart
    goblin-ambush    hero against two club goblins at 1.5 m and a goblin archer with poison arrows at 12 m
    goblin-chief     hero against the goblin chief at 1.5 m and a goblin archer at 12 m
+   goblin-charge    three club goblins charge the hero from 15 m while a goblin archer shoots from 20 m
    ```
 2. Run one (1000 fights by default):
    ```
@@ -34,7 +35,7 @@ Goal: find out how a fight plays out over thousands of runs (win rate, fight len
 The same scenario, seed and fight count always print the same numbers. A different `--seed` gives slightly different numbers.
 
 ## Troubleshooting
-- **Many timeouts:** a melee combatant can't reach its target (there is no movement yet), so the fight never ends. Put melee fighters within their attack's range, or raise `--max-seconds` if the fight is just long.
+- **Many timeouts:** a melee creature with `speed_m_s: 0` never reaches anyone, and a walker boxed in by others waits (there is no pathfinding yet). Give it a speed, spread the starting positions, or raise `--max-seconds` if the fight is just long.
 - **`Unknown scenario`:** check `--list`; names are case-sensitive.
 - **`The content has N error(s)`:** run `content-lint` and fix what it reports.
 - **Win rate looks wrong:** remember the hero doesn't use the tactical pause in these runs, and `NearestEnemyBrain` skips area attacks that would hit itself.

@@ -30,8 +30,9 @@ public sealed class Combatant
     /// <param name="attacks">What it can do; at least one.</param>
     /// <param name="maxActionPoints">Action-point pool for the tactical pause; zero for anyone who can't pause.</param>
     /// <param name="resistances">Percent reduction per damage type, 0 to 100; missing types resist nothing.</param>
+    /// <param name="speedMetersPerSecond">Walking speed; zero (the default) for anyone who never moves.</param>
     /// <exception cref="ArgumentException">Bad name, no attacks, or a resistance outside 0 to 100.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxHealth"/> is not positive or <paramref name="maxActionPoints"/> is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxHealth"/> is not positive, or <paramref name="maxActionPoints"/> or <paramref name="speedMetersPerSecond"/> is negative or not finite.</exception>
     public Combatant(
         int id,
         string name,
@@ -42,11 +43,16 @@ public sealed class Combatant
         int defence,
         IReadOnlyList<Attack> attacks,
         int maxActionPoints = 0,
-        IReadOnlyDictionary<string, int>? resistances = null)
+        IReadOnlyDictionary<string, int>? resistances = null,
+        double speedMetersPerSecond = 0)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxHealth);
         ArgumentOutOfRangeException.ThrowIfNegative(maxActionPoints);
+        if (!double.IsFinite(speedMetersPerSecond) || speedMetersPerSecond < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(speedMetersPerSecond), speedMetersPerSecond, "Speed must be zero or more.");
+        }
         ArgumentNullException.ThrowIfNull(attacks);
         if (attacks.Count == 0)
         {
@@ -75,6 +81,7 @@ public sealed class Combatant
         Attacks = attacks.ToArray();
         MaxActionPoints = maxActionPoints;
         ActionPoints = maxActionPoints;
+        SpeedMetersPerSecond = speedMetersPerSecond;
     }
 
     /// <summary>Identifier, unique within the encounter.</summary>
@@ -86,8 +93,11 @@ public sealed class Combatant
     /// <summary>Side; combatants on different teams are enemies.</summary>
     public int Team { get; }
 
-    /// <summary>Where it stands. The spike has no movement, so this never changes.</summary>
-    public Point2D Position { get; }
+    /// <summary>Where it stands; changed by the encounter as it walks.</summary>
+    public Point2D Position { get; internal set; }
+
+    /// <summary>Walking speed in metres per second; zero for anyone who never moves.</summary>
+    public double SpeedMetersPerSecond { get; }
 
     /// <summary>Health when unhurt.</summary>
     public int MaxHealth { get; }

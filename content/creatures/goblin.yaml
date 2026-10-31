@@ -5,6 +5,7 @@ behaviour: nearest_enemy
 health: 14
 attack_rating: 1
 defence: 2
+speed_m_s: 4
 attacks: [attack.goblin_club]
 tiers:
   - name: Goblin Archer
@@ -12,12 +13,14 @@ tiers:
     health: 10
     attack_rating: 2
     defence: 1
+    speed_m_s: 3.5
     attacks: [attack.goblin_bow]
   - name: Goblin Chief
     tags: [leader]
     health: 30
     attack_rating: 3
     defence: 4
+    speed_m_s: 4.5
     attacks: [attack.goblin_chief_axe]
     resistances:
       poison: 50

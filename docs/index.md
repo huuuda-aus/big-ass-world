@@ -111,6 +111,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [2026-10-31 Combat design](devlog/2026-10-31-combat-design.md)
   - [2026-10-31 Combat spike](devlog/2026-10-31-combat-spike.md)
   - [2026-11-01 Combat content](devlog/2026-11-01-combat-content.md)
+  - [2026-11-01 Combat movement](devlog/2026-11-01-combat-movement.md)
 - [Known issues](known-issues.md)
 - [Glossary](glossary.md)
 - [Changelog](../CHANGELOG.md)

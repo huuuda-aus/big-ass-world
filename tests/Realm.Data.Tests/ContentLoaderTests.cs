@@ -279,7 +279,7 @@ regions:
         Write("conditions/poisoned.yaml", "id: condition.poisoned\nname: Poisoned\nduration_s: 5\npulse: { every_s: 1, damage: 1, type: poison }\n");
         Write("attacks/club.yaml", Club);
         Write("attacks/bow.yaml", "id: attack.bow\nname: Bow\nrecovery_s: 1.5\nrange_m: 20\ndamage: 1d6\napplies: { condition: condition.poisoned, chance: 10 }\n");
-        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\nbehaviour: nearest_enemy\nhealth: 10\nattacks: [attack.club]\nresistances: { poison: 20 }\ntiers: [{ name: Archer, attacks: [attack.bow] }]\n");
+        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\nbehaviour: nearest_enemy\nhealth: 10\nspeed_m_s: 4\nattacks: [attack.club]\nresistances: { poison: 20 }\ntiers: [{ name: Archer, attacks: [attack.bow] }]\n");
 
         var report = new ValidationReport();
         ContentDatabase db = ContentLoader.Load(_root, report);
@@ -295,7 +295,7 @@ regions:
     public void CombatContent_DanglingReferences_AreErrors()
     {
         Write("attacks/bow.yaml", "id: attack.bow\nname: Bow\nrecovery_s: 1.5\nrange_m: 20\ndamage: 1d6\napplies: { condition: condition.missing, chance: 10 }\n");
-        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\nbehaviour: nearest_enemy\nhealth: 10\nattacks: [attack.bow]\ntiers: [{ name: Chief, attacks: [attack.axe] }]\n");
+        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\nbehaviour: nearest_enemy\nhealth: 10\nspeed_m_s: 4\nattacks: [attack.bow]\ntiers: [{ name: Chief, attacks: [attack.axe] }]\n");
 
         var report = new ValidationReport();
         ContentLoader.Load(_root, report);
@@ -309,7 +309,7 @@ regions:
     public void ResistanceToADamageTypeNothingDeals_IsAWarning()
     {
         Write("attacks/club.yaml", Club);
-        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\nbehaviour: nearest_enemy\nhealth: 10\nattacks: [attack.club]\nresistances: { fier: 20, physical: 5 }\n");
+        Write("creatures/goblin.yaml", "id: creature.goblin\nname: Goblin\nbehaviour: nearest_enemy\nhealth: 10\nspeed_m_s: 4\nattacks: [attack.club]\nresistances: { fier: 20, physical: 5 }\n");
 
         var report = new ValidationReport();
         ContentLoader.Load(_root, report);

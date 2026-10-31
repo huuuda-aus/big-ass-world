@@ -1,20 +1,24 @@
 using System;
 using System.Collections.Generic;
+using Realm.Core.Geometry;
 using Realm.Core.Random;
 
 namespace Realm.Sim.Combat;
 
 /// <summary>
-/// One fight on one timeline (ADR 0029): every combatant acts when its ready time comes up, attacks resolve with one
-/// hit roll and a damage roll, conditions pulse and expire, and one combatant may stop the clock for a tactical pause
-/// and queue actions paid with action points.
+/// One fight on one timeline (ADR 0029): every combatant acts when its ready time comes up and walks in between,
+/// attacks resolve with one hit roll and a damage roll, conditions pulse and expire, and one combatant may stop the clock
+/// for a tactical pause and queue actions paid with action points.
 /// </summary>
 /// <remarks>
 /// Each <see cref="Step"/> is one sim tick, in this order: conditions (pulses, then expiry), action-point regeneration,
-/// the pause queue (when resolving), then every ready combatant in <see cref="Combatant.Id"/> order, then the end check.
+/// the pause queue (when resolving), then every living, unprevented combatant in <see cref="Combatant.Id"/> order: its
+/// brain decides, it acts if ready and the action is valid, and otherwise walks one tick towards where the brain wants
+/// (keeping <see cref="CombatRules.MinSeparationMeters"/> from others). Then the end check.
 /// Determinism: every roll comes from <c>Rng.ForKey(seed, "combat", encounterNumber, tick, actorId)</c>, one generator
 /// per action, and combatants are processed in ID order; the same seed, number, combatants and brain decisions give the
-/// same <see cref="Events"/>. Integer arithmetic only, apart from distances, which compare against ranges.
+/// same <see cref="Events"/> and positions. Integer arithmetic for rolls and time; positions use only +, -, *, / and square
+/// roots, which IEEE 754 makes identical on every machine.
 /// Thread-safety: not thread-safe; owned by the simulation thread.
 /// </remarks>
 public sealed class CombatEncounter
@@ -129,7 +133,10 @@ public sealed class CombatEncounter
         RegenerateActionPoints();
         CheckEnd();
 
-        if (Phase == CombatPhase.Resolving)
+        // Whoever is resolving a pause queue sits out the rest of the tick, including the tick its last queued action
+        // lands in: a combatant that acts in a tick does not also walk.
+        Combatant? queueActor = Phase == CombatPhase.Resolving ? _pausedBy : null;
+        if (queueActor is not null)
         {
             ResolveQueue();
         }
@@ -141,19 +148,88 @@ public sealed class CombatEncounter
                 break;
             }
 
-            if (!c.IsAlive || c.ReadyAt > Tick || c.IsPrevented || c == _pausedBy)
+            if (!c.IsAlive || c.IsPrevented || c == queueActor || c == _pausedBy)
             {
                 continue;
             }
 
-            CombatAction? action = _brains[c.Id].Decide(this, c);
-            if (action is { } a && TryExecute(c, a))
+            CombatDecision decision = _brains[c.Id].Decide(this, c);
+            if (c.ReadyAt <= Tick && decision.Action is { } a && TryExecute(c, a))
             {
                 c.ReadyAt = Tick + c.Attacks[a.AttackIndex].RecoveryTicks;
+            }
+            else if (decision.MoveTo is { } to)
+            {
+                Walk(c, to, decision.StopWithinMeters);
             }
         }
 
         Tick++;
+    }
+
+    // One tick of walking: straight at the goal; when another combatant is in the way, 45 degrees to the left or right;
+    // failing that, sideways (90 degrees), which slides the walker round whoever blocks it.
+    // Only exact arithmetic and square roots (no trigonometry), so positions match on every machine.
+    private void Walk(Combatant c, Point2D to, double stopWithin)
+    {
+        double dx = to.X - c.Position.X;
+        double dz = to.Z - c.Position.Z;
+        double distance = Math.Sqrt((dx * dx) + (dz * dz));
+        double step = Math.Min(c.SpeedMetersPerSecond / Rules.TicksPerSecond, distance - stopWithin);
+        if (step <= 0)
+        {
+            return;
+        }
+
+        double fx = dx / distance, fz = dz / distance;
+        double diagonal = Math.Sqrt(0.5);
+        Span<(double X, double Z)> directions = stackalloc (double, double)[]
+        {
+            (fx, fz),
+            ((fx - fz) * diagonal, (fz + fx) * diagonal),
+            ((fx + fz) * diagonal, (fz - fx) * diagonal),
+            (-fz, fx),
+            (fz, -fx),
+        };
+
+        foreach ((double x, double z) in directions)
+        {
+            var next = new Point2D(c.Position.X + (x * step), c.Position.Z + (z * step));
+            if (IsFree(c, next))
+            {
+                c.Position = next;
+                return;
+            }
+        }
+    }
+
+    // A spot is free when it keeps the minimum separation from every other living combatant, or at least does not
+    // bring the walker closer to one it already overlaps (so two that start too close can walk apart).
+    private bool IsFree(Combatant walker, Point2D next)
+    {
+        double min = Rules.MinSeparationMeters;
+        foreach (Combatant other in _combatants)
+        {
+            if (other == walker || !other.IsAlive)
+            {
+                continue;
+            }
+
+            double nx = other.Position.X - next.X, nz = other.Position.Z - next.Z;
+            double after = (nx * nx) + (nz * nz);
+            if (after >= min * min)
+            {
+                continue;
+            }
+
+            double cx = other.Position.X - walker.Position.X, cz = other.Position.Z - walker.Position.Z;
+            if (after < (cx * cx) + (cz * cz))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>Runs ticks until the fight is over, it pauses, or <paramref name="maxTicks"/> ticks have passed.</summary>

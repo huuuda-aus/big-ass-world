@@ -81,7 +81,7 @@ public sealed class CombatContent
     /// <param name="id">Combatant ID, unique within its encounter.</param>
     /// <param name="team">Side.</param>
     /// <param name="position">Where it stands.</param>
-    /// <returns>The combatant, named after the tier; creatures have no action-point pool.</returns>
+    /// <returns>The combatant, named after the tier, with the tier's speed; creatures have no action-point pool.</returns>
     /// <exception cref="KeyNotFoundException">No such creature or attack.</exception>
     /// <exception cref="ArgumentOutOfRangeException">The family has no such tier.</exception>
     public Combatant CreateCreature(ContentId creature, int tier, int id, int team, Point2D position)
@@ -93,7 +93,7 @@ public sealed class CombatContent
             attacks.Add(Attack(attack));
         }
 
-        return new Combatant(id, t.Name, team, position, t.Health, t.AttackRating, t.Defence, attacks, 0, t.Resistances);
+        return new Combatant(id, t.Name, team, position, t.Health, t.AttackRating, t.Defence, attacks, 0, t.Resistances, t.SpeedMetersPerSecond);
     }
 
     /// <summary>The AI brain for a creature family's behaviour.</summary>

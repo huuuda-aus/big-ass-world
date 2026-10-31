@@ -33,6 +33,12 @@ public sealed record CombatRules
     /// <summary>Ticks to regain one action point (one per second at 20 Hz).</summary>
     public int ActionPointRegenTicks { get; init; } = 20;
 
+    /// <summary>Closest two living combatants may stand, centre to centre, in metres; walking never brings them closer.</summary>
+    public double MinSeparationMeters { get; init; } = 0.8;
+
+    /// <summary>How far inside an attack's range an approaching combatant stops, so rounding never leaves it just out of reach.</summary>
+    public double ApproachMarginMeters { get; init; } = 0.05;
+
     /// <summary>The chance, in percent, that an attack with rating <paramref name="attackRating"/> hits defence <paramref name="defence"/>.</summary>
     /// <param name="attackRating">Attacker's rating plus the attack's bonus.</param>
     /// <param name="defence">Target's defence.</param>

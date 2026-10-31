@@ -129,7 +129,7 @@ Loads the content, then runs one combat scenario many times (fight `i` uses enco
 
 | Option | Default | Meaning |
 |---|---|---|
-| `scenario` | `goblin-ambush` | Scenario name: `duel`, `goblin-ambush`, `goblin-chief`; `--list` describes them. |
+| `scenario` | `goblin-ambush` | Scenario name: `duel`, `goblin-ambush`, `goblin-chief`, `goblin-charge`; `--list` describes them. |
 | `--content dir` | `content` | Content directory. If it has errors they are printed and the command exits with `1`. |
 | `--fights N` | 1000 | Number of fights. |
 | `--seed N` | 1 | Root seed. |

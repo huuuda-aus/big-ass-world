@@ -4,12 +4,14 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Realm.Core.Ids;
 using Realm.Core.Validation;
+using YamlDotNet.Serialization;
 
 namespace Realm.Data.Content;
 
 /// <summary>
 /// Parses and validates one <c>creature</c> YAML record (a family) and resolves its tiers: tier 1 is the family's own
-/// values; each entry of <c>tiers</c> is the next tier and overrides only the fields it gives. A tier's <c>attacks</c>
+/// values; each entry of <c>tiers</c> is the next tier and overrides only the fields it gives (health, attack rating,
+/// defence, speed). A tier's <c>attacks</c>
 /// replace the list, its <c>resistances</c> are merged over the family's per damage type, and its <c>tags</c> are added.
 /// </summary>
 /// <remarks>Determinism: no randomness. Thread-safety: stateless.</remarks>
@@ -67,10 +69,21 @@ public static class CreatureParser
         IReadOnlyList<ContentId> attacks = Attacks(dto.Attacks, "attacks", required: true, location, report) ?? Array.Empty<ContentId>();
         IReadOnlyDictionary<string, int> resistances = CombatParserSupport.Resistances(dto.Resistances, location, report);
 
+        double speed = 0;
+        if (dto.SpeedMS is not { } sp)
+        {
+            report.Error(ValidatorCodes.MissingField, location, "Missing required field 'speed_m_s'.", "For example: speed_m_s: 4 (0 for a creature that never moves).");
+        }
+        else
+        {
+            speed = sp;
+            CombatParserSupport.Range(sp, 0, CombatVocabulary.MaxSpeedMetersPerSecond, false, "speed_m_s", Code, location, report);
+        }
+
         var tiers = new List<CreatureTier>
         {
             // Safe: a missing name is reported as an error, which returns null before this list is used.
-            new(1, dto.Name ?? string.Empty, tags, health, dto.AttackRating, dto.Defence, attacks, resistances),
+            new(1, dto.Name ?? string.Empty, tags, health, dto.AttackRating, dto.Defence, attacks, resistances, speed),
         };
 
         foreach (TierDto t in dto.Tiers ?? new List<TierDto>())
@@ -86,6 +99,11 @@ public static class CreatureParser
             if (t.Health is { } th)
             {
                 CombatParserSupport.Range(th, 0, CombatVocabulary.MaxStat, true, $"{field}.health", Code, location, report);
+            }
+
+            if (t.SpeedMS is { } ts)
+            {
+                CombatParserSupport.Range(ts, 0, CombatVocabulary.MaxSpeedMetersPerSecond, false, $"{field}.speed_m_s", Code, location, report);
             }
 
             Stat(t.AttackRating ?? 0, $"{field}.attack_rating", location, report);
@@ -107,7 +125,8 @@ public static class CreatureParser
                 t.AttackRating ?? family.AttackRating,
                 t.Defence ?? family.Defence,
                 tierAttacks ?? family.Attacks,
-                new ReadOnlyDictionary<string, int>(mergedResistances)));
+                new ReadOnlyDictionary<string, int>(mergedResistances),
+                t.SpeedMS ?? family.SpeedMetersPerSecond));
         }
 
         if (report.Count(Severity.Error) > errorsBefore)
@@ -171,6 +190,9 @@ public static class CreatureParser
 
         public Dictionary<string, int>? Resistances { get; set; }
 
+        [YamlMember(Alias = "speed_m_s")]
+        public double? SpeedMS { get; set; }
+
         public List<TierDto>? Tiers { get; set; }
     }
 
@@ -189,5 +211,8 @@ public static class CreatureParser
         public List<string?>? Attacks { get; set; }
 
         public Dictionary<string, int>? Resistances { get; set; }
+
+        [YamlMember(Alias = "speed_m_s")]
+        public double? SpeedMS { get; set; }
     }
 }

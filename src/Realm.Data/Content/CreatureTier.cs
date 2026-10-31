@@ -15,6 +15,7 @@ namespace Realm.Data.Content;
 /// <param name="Defence">Subtracted from an attacker's rating for hit rolls.</param>
 /// <param name="Attacks">The <c>attack</c> records it can use, in order.</param>
 /// <param name="Resistances">Percent reduction per damage type, 0 to 100, sorted by type.</param>
+/// <param name="SpeedMetersPerSecond">Walking speed; zero for a creature that never moves.</param>
 public sealed record CreatureTier(
     int Tier,
     string Name,
@@ -23,4 +24,5 @@ public sealed record CreatureTier(
     int AttackRating,
     int Defence,
     IReadOnlyList<ContentId> Attacks,
-    IReadOnlyDictionary<string, int> Resistances);
+    IReadOnlyDictionary<string, int> Resistances,
+    double SpeedMetersPerSecond);

@@ -84,13 +84,13 @@ public class CombatEncounterTests
         fight.Add(self, NearestEnemyBrain.Instance);
         fight.Add(At(2, 1, distance), new HeldIntentBrain());
 
-        CombatAction? action = NearestEnemyBrain.Instance.Decide(fight, self);
+        CombatAction? action = NearestEnemyBrain.Instance.Decide(fight, self).Action;
 
         Assert.Equal(new CombatAction(expectedAttack, 2), action);
     }
 
     [Fact]
-    public void OutOfRange_TheBrainWaits()
+    public void OutOfRange_WithoutSpeed_ItWaits()
     {
         var club = new Attack("attack.club", 20, 2, new Dice(1, 6));
         CombatEncounter fight = Duel(club, At(2, 1, 5));

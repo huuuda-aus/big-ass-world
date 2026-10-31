@@ -33,6 +33,7 @@ internal static class CombatFixtures
         int health = 100,
         Attack? attack = null,
         int maxAp = 0,
-        IReadOnlyDictionary<string, int>? resistances = null) =>
-        new(id, $"c{id}", team, new Point2D(x, 0), health, 0, 0, new[] { attack ?? SureHit(1) }, maxAp, resistances);
+        IReadOnlyDictionary<string, int>? resistances = null,
+        double speed = 0) =>
+        new(id, $"c{id}", team, new Point2D(x, 0), health, 0, 0, new[] { attack ?? SureHit(1) }, maxAp, resistances, speed);
 }

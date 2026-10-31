@@ -37,6 +37,7 @@
 - **Pad**: the flattened ground under a settlement (wall radius plus 30 m) that blends back into the terrain over 100 m.
 - **Patch / ward**: one Voronoi cell of a city plan; inside the wall it has a ward type (market, cathedral, merchant, craftsmen, slum, park).
 - **PCG32**: the pseudo-random algorithm behind `Rng` (XSH-RR variant).
+- **Personal space** (combat, `CombatRules.MinSeparationMeters`): the 0.8 m two living combatants keep between their centres; walking never brings them closer.
 - **Presentation layer**: `Realm.Game` (Godot). Renders the simulation; never mutates it directly.
 - **Rainfall** (`rainfall`): biome property, 0 to 1; how much water each area adds to the flow, which drives how many rivers there are.
 - **Rebuild** (shared-texture rebuild): Terrain3D's `update_maps`, which re-uploads the maps of all loaded regions. Its cost grows with the loaded pixels and sets the height of a streaming frame spike (ADR 0009).

@@ -1,6 +1,6 @@
 # Combat: how it is meant to work
 
-> **Status: partly built (M5 spike).** The timeline, hit and damage rolls, area effects, conditions, the tactical pause and the balance runs exist as a standalone, tested spike: see [the combat system](../systems/combat.md) for exactly what is built. Attacks, conditions and creatures are YAML content ([creature](../reference/content/creature.md)). Movement, projectiles in flight, death and everything on screen are still **Planned**. Decisions: [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md).
+> **Status: partly built (M5 spike).** The timeline, hit and damage rolls, area effects, conditions, the tactical pause, walking on open ground and the balance runs exist as a standalone, tested spike: see [the combat system](../systems/combat.md) for exactly what is built. Attacks, conditions and creatures are YAML content ([creature](../reference/content/creature.md)). Pathfinding round obstacles, projectiles in flight, death and everything on screen are still **Planned**. Decisions: [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md).
 
 The game follows *Might and Magic VI–VIII* for the rules (recovery time, typed damage, conditions, target-based attacks) and modern Fallout's VATS for the tactical layer (a pause where you queue a few aimed actions). You play **one character**.
 
@@ -22,6 +22,12 @@ sequenceDiagram
 ```
 
 In real time the clock simply runs. Holding an attack does not make you faster than your recovery allows, so there is no click-fest: speed is a character property, not a finger property.
+
+## Moving
+
+Movement is not an action and has no recovery. Everyone walks at their own speed while they wait to be ready again, the way *Might and Magic* monsters close in between swings. In a tick when someone attacks, they stand still.
+
+A goblin with a club walks up until the club reaches, then swings every time it is ready. An archer already in bow range stays where it is and shoots. Combatants keep a little personal space and step round each other. They don't yet find paths round walls or hills; that comes with the world's navigation. During the tactical pause nobody moves, and while your queued actions play out you stand still and let them land.
 
 ## The tactical pause
 

@@ -19,6 +19,7 @@ internal static class CombatScenarios
     private const int GoblinTier = 1;
     private const int ArcherTier = 2;
     private const int ChiefTier = 3;
+    private const double HeroSpeedMetersPerSecond = 5;
 
     private static readonly ContentId Goblin = ContentId.Parse("creature.goblin");
 
@@ -28,6 +29,7 @@ internal static class CombatScenarios
         ("duel", "hero (longsword, fireball) against one goblin with a club, 1.5 m apart"),
         ("goblin-ambush", "hero against two club goblins at 1.5 m and a goblin archer with poison arrows at 12 m"),
         ("goblin-chief", "hero against the goblin chief at 1.5 m and a goblin archer at 12 m"),
+        ("goblin-charge", "three club goblins charge the hero from 15 m while a goblin archer shoots from 20 m"),
     };
 
     /// <summary>Builds fight number <paramref name="number"/> of a scenario.</summary>
@@ -56,6 +58,13 @@ internal static class CombatScenarios
                 AddGoblin(fight, content, ChiefTier, 2, new Point2D(1.5, 0));
                 AddGoblin(fight, content, ArcherTier, 3, new Point2D(0, 12));
                 return fight;
+            case "goblin-charge":
+                fight.Add(Hero(content), NearestEnemyBrain.Instance);
+                AddGoblin(fight, content, GoblinTier, 2, new Point2D(15, 0));
+                AddGoblin(fight, content, GoblinTier, 3, new Point2D(12, 9));
+                AddGoblin(fight, content, GoblinTier, 4, new Point2D(12, -9));
+                AddGoblin(fight, content, ArcherTier, 5, new Point2D(-20, 0));
+                return fight;
             default:
                 return null;
         }
@@ -74,5 +83,6 @@ internal static class CombatScenarios
         4,
         new[] { content.Attack(ContentId.Parse("attack.longsword")), content.Attack(ContentId.Parse("attack.fireball")) },
         10,
-        new Dictionary<string, int>(StringComparer.Ordinal) { [DamageTypes.Poison] = 25 });
+        new Dictionary<string, int>(StringComparer.Ordinal) { [DamageTypes.Poison] = 25 },
+        HeroSpeedMetersPerSecond);
 }

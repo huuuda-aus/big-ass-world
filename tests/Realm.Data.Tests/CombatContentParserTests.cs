@@ -101,10 +101,10 @@ public class CombatContentParserTests
     // ---- creature ----
 
     private const string Goblin =
-        "id: creature.goblin\nname: Goblin\ntags: [humanoid]\nbehaviour: nearest_enemy\nhealth: 14\nattack_rating: 1\ndefence: 2\n" +
+        "id: creature.goblin\nname: Goblin\ntags: [humanoid]\nbehaviour: nearest_enemy\nhealth: 14\nattack_rating: 1\ndefence: 2\nspeed_m_s: 4\n" +
         "attacks: [attack.goblin_club]\nresistances: { poison: 10 }\n" +
         "tiers:\n" +
-        "  - { name: Goblin Archer, tags: [ranged], health: 10, attacks: [attack.goblin_bow] }\n" +
+        "  - { name: Goblin Archer, tags: [ranged], health: 10, speed_m_s: 3.5, attacks: [attack.goblin_bow] }\n" +
         "  - { name: Goblin Chief, defence: 4, resistances: { poison: 50, fire: 20 } }\n";
 
     [Fact]
@@ -126,9 +126,10 @@ public class CombatContentParserTests
         Assert.Equal(new[] { ContentId.Parse("attack.goblin_bow") }, archer.Attacks);
         Assert.Equal(new[] { "humanoid", "ranged" }, archer.Tags.ToArray());
         Assert.Equal(10, archer.Resistances["poison"]);
+        Assert.Equal(3.5, archer.SpeedMetersPerSecond);
 
         CreatureTier chief = c.Tier(3);
-        Assert.Equal((14, 4), (chief.Health, chief.Defence)); // from the family, not the archer
+        Assert.Equal((14, 4, 4.0), (chief.Health, chief.Defence, chief.SpeedMetersPerSecond)); // from the family, not the archer
         Assert.Equal(new[] { ContentId.Parse("attack.goblin_club") }, chief.Attacks);
         Assert.Equal(new[] { "humanoid" }, chief.Tags.ToArray());
         Assert.Equal(new[] { "fire", "poison" }, chief.Resistances.Keys.ToArray());
@@ -147,18 +148,40 @@ public class CombatContentParserTests
     [InlineData("behaviour: nearest_enemy\nhealth: 5\nattacks: [attack.a]\ntiers: [{ health: 9 }]\n", ValidatorCodes.MissingField)]
     [InlineData("behaviour: nearest_enemy\nhealth: 5\nattacks: [attack.a]\ntiers: [{ name: Big, health: -1 }]\n", ValidatorCodes.InvalidCreatureField)]
     [InlineData("behaviour: nearest_enemy\nhealth: 5\nattacks: [attack.a]\ntiers: [{ name: Big, attacks: [] }]\n", ValidatorCodes.InvalidCreatureField)]
+    [InlineData("behaviour: nearest_enemy\nhealth: 5\nattacks: [attack.a]\ntiers: [{ name: Big, speed_m_s: -2 }]\n", ValidatorCodes.InvalidCreatureField)]
     public void Creature_BadValues_AreReported(string body, string code)
     {
         var report = new ValidationReport();
-        Assert.Null(CreatureParser.Parse("id: creature.x\nname: X\n" + body, "c.yaml", report));
+        Assert.Null(CreatureParser.Parse("id: creature.x\nname: X\nspeed_m_s: 3\n" + body, "c.yaml", report));
         Assert.Equal(code, SingleError(report).Code);
+    }
+
+    [Theory]
+    [InlineData("", ValidatorCodes.MissingField)]
+    [InlineData("speed_m_s: -1\n", ValidatorCodes.InvalidCreatureField)]
+    [InlineData("speed_m_s: 99\n", ValidatorCodes.InvalidCreatureField)]
+    public void Creature_Speed_IsRequiredAndBounded(string speed, string code)
+    {
+        var report = new ValidationReport();
+        Assert.Null(CreatureParser.Parse("id: creature.x\nname: X\nbehaviour: nearest_enemy\nhealth: 5\nattacks: [attack.a]\n" + speed, "c.yaml", report));
+        Assert.Equal(code, SingleError(report).Code);
+    }
+
+    [Fact]
+    public void Creature_SpeedZero_IsAStationaryCreature()
+    {
+        var report = new ValidationReport();
+        CreatureDefinition? c = CreatureParser.Parse("id: creature.x\nname: X\nbehaviour: nearest_enemy\nhealth: 5\nspeed_m_s: 0\nattacks: [attack.a]\n", "c.yaml", report);
+
+        Assert.Empty(report.Issues);
+        Assert.Equal(0, c!.Tier(1).SpeedMetersPerSecond);
     }
 
     [Fact]
     public void Creature_UnknownField_IsReported()
     {
         var report = new ValidationReport();
-        Assert.Null(CreatureParser.Parse("id: creature.x\nname: X\nbehaviour: nearest_enemy\nhealth: 5\nattacks: [attack.a]\nloot: [item.torch]\n", "c.yaml", report));
+        Assert.Null(CreatureParser.Parse("id: creature.x\nname: X\nbehaviour: nearest_enemy\nhealth: 5\nspeed_m_s: 3\nattacks: [attack.a]\nloot: [item.torch]\n", "c.yaml", report));
         Assert.Equal(ValidatorCodes.YamlInvalid, SingleError(report).Code);
     }
 }

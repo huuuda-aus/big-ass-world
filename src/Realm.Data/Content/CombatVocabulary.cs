@@ -28,6 +28,9 @@ public static class CombatVocabulary
     /// <summary>Longest condition, in seconds (one hour).</summary>
     public const double MaxDurationSeconds = 3600;
 
+    /// <summary>Fastest walking speed, in metres per second.</summary>
+    public const double MaxSpeedMetersPerSecond = 50;
+
     /// <summary>Largest health, damage per pulse, attack rating or defence magnitude.</summary>
     public const int MaxStat = 1_000_000;
 

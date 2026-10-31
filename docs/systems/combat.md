@@ -3,7 +3,7 @@
 ## 1. Purpose and scope
 The combat rules from [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md): one timeline where everyone acts when their recovery allows, target-based attacks with one hit roll, typed damage and resistances, conditions, area effects that hit everyone inside, and the VATS-style tactical pause. Godot-free; it runs in tests and the CLI.
 
-It does not move combatants, fly projectiles, read content files, save anything or draw anything. Those are listed under Status.
+It does not fly projectiles, find paths round obstacles, save anything or draw anything. Those are listed under Status.
 
 This is an **M5 spike**: the rules are real and tested, but the encounter is a standalone object, not yet part of `Simulation`/`SimWorld`.
 
@@ -15,11 +15,12 @@ This is an **M5 spike**: the rules are real and tested, but the encounter is a s
 | Area attacks: no hit roll, hit every living combatant in the radius, the user included | Implemented |
 | Conditions: duration, damage pulses, prevents actions, breaks on damage (poisoned, asleep as examples) | Implemented |
 | Tactical pause: pause, queue with action points, cancel (refund), confirm, gap between queued actions, interrupt, AP regeneration | Implemented |
-| AI: `NearestEnemyBrain` (one profile) | Implemented |
+| AI: `NearestEnemyBrain` (one profile: attack the nearest enemy, walk into reach first) | Implemented |
+| Movement on open, flat ground: speed per combatant (`speed_m_s` in content), walking while recovering, 0.8 m personal space, 45° and 90° side-steps round whoever blocks the way | Implemented |
 | Headless balance runs: `CombatSimRunner`, `realm combat-sim` | Implemented |
 | Attacks, conditions and creature families with tiers as YAML content (`DATA021`–`DATA024`), turned into combat objects by `CombatContent` | Implemented |
 | `combat-sim` scenarios as data (today: code that places content creatures) | Planned |
-| Movement, line of sight, projectiles in flight | Planned |
+| Pathfinding round walls and terrain, line of sight, projectiles in flight, fleeing and kiting | Planned |
 | Combat inside `Simulation` as components and a system; saves | Planned |
 | More AI profiles (ranged kiter, caster, pack, coward); the hero using the pause in `combat-sim` | Planned |
 | Stats, skills and masteries feeding attack rating, defence and recovery | Planned |
@@ -29,7 +30,7 @@ This is an **M5 spike**: the rules are real and tested, but the encounter is a s
 ## 3. Architecture
 ```mermaid
 flowchart LR
-  B["ICombatBrain<br/>(NearestEnemyBrain, HeldIntentBrain)"] -->|CombatAction| E[CombatEncounter]
+  B["ICombatBrain<br/>(NearestEnemyBrain, HeldIntentBrain)"] -->|"CombatDecision<br/>(action, move to)"| E[CombatEncounter]
   P["Player input<br/>Pause / QueueAction / Confirm / CancelPause"] --> E
   E --> C["Combatant<br/>health, ready time, AP, conditions"]
   E --> R[CombatRules]
@@ -47,8 +48,14 @@ One `Step()` is one tick, in this order:
 2. Action points regenerate (one per `ActionPointRegenTicks`).
 3. End check.
 4. If resolving a pause queue: the next queued action runs when its gap is up, or the queue is dropped if its actor is dead or prevented.
-5. Every living, ready, not-prevented combatant in ID order asks its brain for an action. A valid action runs and sets `ReadyAt = tick + recovery`. The combatant resolving a queue is skipped.
+5. Every living, not-prevented combatant in ID order asks its brain for a `CombatDecision` (an action, a point to walk to, or both). If it is ready and the action is valid, the action runs and sets `ReadyAt = tick + recovery`, and it does not walk this tick. Otherwise it walks one tick towards the point (see below). The combatant resolving a pause queue, and the one who paused, sit the tick out.
 6. The clock advances.
+
+Walking, one tick: the step is `speed / ticks per second`, cut short so it stops `StopWithinMeters` from the goal. It tries straight at the goal, then 45° left, 45° right, 90° left, 90° right, and takes the first spot that keeps `CombatRules.MinSeparationMeters` (0.8 m) from every other living combatant (or at least doesn't get closer to one it already overlaps). If all five are blocked it stands still. Directions use only `+ - * /` and `sqrt` (no trigonometry), so positions are bit-identical on every machine.
+
+`NearestEnemyBrain` walks towards its target until the longest-reaching attack that would work from there is in range, stopping `CombatRules.ApproachMarginMeters` (0.05 m) inside it so rounding never leaves it just short. An archer already in bow range stands and shoots; a melee goblin walks up. An area attack never counts as "working" while the blast would reach the user.
+
+`HeldIntentBrain` (the player) walks towards `MoveTo` when set; the game will set it from the movement keys.
 
 `Step()` does nothing while paused or over. `Run(maxTicks)` steps until over, paused or the limit.
 
@@ -66,8 +73,8 @@ Damage types are open strings (`physical`, `fire`, `poison` in `DamageTypes`), s
 
 ## 5. Determinism and persistence notes
 - Every roll comes from `Rng.ForKey(seed, "combat", encounterNumber, tick, actorId)`: one generator per action, so changing one combatant's actions doesn't reshuffle unrelated rolls in other ticks. Test: `SameSeedAndNumber_GiveTheSameFight_AndAnotherNumberDiffers`.
-- Integer arithmetic for hit chances, damage, resistance and time. Distances (doubles) are only compared against ranges and radii.
-- Combatants act in ID order; area victims are collected in ID order.
+- Integer arithmetic for hit chances, damage, resistance and time. Positions are doubles changed only with `+ - * /` and `sqrt`, which IEEE 754 rounds exactly, so the same fight walks the same way on every machine. Test: `SameSeed_GivesTheSamePositions`.
+- Combatants act and walk in ID order, so a lower ID gets first pick of a free spot; area victims are collected in ID order.
 - Nothing is saved yet. Open question for later: whether reloading a save replays the same rolls (it does if the encounter number and tick are saved).
 
 ## 6. Extension points
@@ -81,12 +88,12 @@ Damage types are open strings (`physical`, `fire`, `poison` in `DamageTypes`), s
 Constructors reject bad values (non-positive recovery, range or duration, chances outside 0–100, resistances outside 0–100, no attacks). Content is checked on load: `DATA021` (attack), `DATA022` (condition), `DATA023` (creature), `DATA013`/`DATA014` (references) and warning `DATA024` (a resistance to a damage type nothing deals); see [validators](../reference/validators.md). `realm combat-sim --min-win-rate/--max-win-rate` is the balance check: exit code 1 outside the band.
 
 ## 8. Performance notes
-`combat-sim goblin-ambush --fights 10000` (four combatants, about 9 s of fight time each) runs in about 1.3 s including process start, Debug build, on the development machine. Not yet profiled per tick.
+`combat-sim goblin-ambush --fights 10000` (four combatants, about 9 s of fight time each) runs in about 1.3 s including process start, Debug build, on the development machine. With movement, `goblin-charge --fights 10000` (five combatants, about 12 s each, walking from 15 to 20 m) takes about 4.6 s: every combatant now asks its brain every tick, and `NearestEnemyBrain` scans every combatant, so a tick costs O(n²) in the number of combatants. Fine for fights of a handful; revisit before large battles. Not yet profiled per tick.
 
 Known allocations per action (fine for a spike, not for the hot path): `Rng.ForKey` boxes its keys, and the event list grows without limit. Moving into the sim needs a reusable event buffer the presentation drains each frame.
 
 ## 9. Known limitations and TODOs
-- No movement: positions are fixed, so a melee combatant out of reach waits forever (fights can time out).
+- Movement is local only: no pathfinding, walls or terrain. A walker boxed in by others waits (in `Walkers_KeepTheirDistance_AndGoAroundEachOther` three of four attackers reach the target, the fourth is boxed in). A melee creature with `speed_m_s: 0` never reaches anyone.
 - No line of sight and no projectile travel time: ranged attacks land instantly.
 - The hit curve is linear and clamped; ADR 0029 mentions a smooth curve. Revisit when balancing with real stats.
 - The `combat-sim` hero never uses the tactical pause, so pause balance (AP costs, regen) isn't covered by the runner yet.
@@ -95,5 +102,5 @@ Known allocations per action (fine for a spike, not for the hot path): `Rng.ForK
 
 ## 10. History
 - [ADR 0029](../decisions/0029-combat-model-solo-character-hybrid-pause.md): combat model.
-- [Devlog 2026-10-31 combat design](../devlog/2026-10-31-combat-design.md), [devlog 2026-10-31 combat spike](../devlog/2026-10-31-combat-spike.md), [devlog 2026-11-01 combat content](../devlog/2026-11-01-combat-content.md).
+- [Devlog 2026-10-31 combat design](../devlog/2026-10-31-combat-design.md), [devlog 2026-10-31 combat spike](../devlog/2026-10-31-combat-spike.md), [devlog 2026-11-01 combat content](../devlog/2026-11-01-combat-content.md), [devlog 2026-11-01 combat movement](../devlog/2026-11-01-combat-movement.md).
 - Design explanation: [Combat](../explanation/combat.md).

@@ -54,11 +54,13 @@ Goal: add a new creature family, for example wolves with a stronger dire-wolf ti
    health: 12
    attack_rating: 2
    defence: 2
+   speed_m_s: 6
    attacks: [attack.wolf_bite]
    tiers:
      - name: Dire Wolf
        health: 28
        defence: 3
+       speed_m_s: 5.5
        attacks: [attack.dire_wolf_bite]
        resistances: { cold: 30 }
    ```
@@ -78,20 +80,22 @@ Goal: add a new creature family, for example wolves with a stronger dire-wolf ti
    case "wolf-pack":
        fight.Add(Hero(content), NearestEnemyBrain.Instance);
        var wolf = ContentId.Parse("creature.wolf");
-       fight.Add(content.CreateCreature(wolf, 1, 2, MonsterTeam, new Point2D(1.2, 0)), content.BrainFor(wolf));
-       fight.Add(content.CreateCreature(wolf, 1, 3, MonsterTeam, new Point2D(-1.2, 0)), content.BrainFor(wolf));
-       fight.Add(content.CreateCreature(wolf, 2, 4, MonsterTeam, new Point2D(0, 1.5)), content.BrainFor(wolf));
+       fight.Add(content.CreateCreature(wolf, 1, 2, MonsterTeam, new Point2D(12, 0)), content.BrainFor(wolf));
+       fight.Add(content.CreateCreature(wolf, 1, 3, MonsterTeam, new Point2D(-12, 0)), content.BrainFor(wolf));
+       fight.Add(content.CreateCreature(wolf, 2, 4, MonsterTeam, new Point2D(0, 15)), content.BrainFor(wolf));
        return fight;
    ```
    Then run `dotnet run --project src/Realm.Cli -- combat-sim wolf-pack`. See [Run a combat balance sweep](run-a-combat-balance-sweep.md).
 
 ## Verify
-`content-lint` shows `0 error(s)`, and `combat-sim` with your scenario prints a win rate with no `timed out` fights. Put melee creatures within their attack's `range_m` of the hero: nothing moves yet.
+`content-lint` shows `0 error(s)`, and `combat-sim` with your scenario prints a win rate with no `timed out` fights. The wolves run in from 12 to 15 m at their `speed_m_s` and bite once in reach.
 
 ## Troubleshooting
 - **`DATA013` … uses attack 'attack.x', which does not exist:** a typo in `attacks`, or the attack file is missing or failed to parse (look for its own error above).
 - **`DATA021` damage is not a dice expression:** use lowercase `d` and no spaces: `2d6+1`, not `2D6 + 1`.
 - **`DATA023` tier needs a name:** every entry under `tiers` needs `name`.
+- **`DATA002` missing `speed_m_s`:** every creature needs a speed; use `0` for one that never moves.
+- **Fights time out:** a creature with `speed_m_s: 0` and only melee attacks never reaches anyone; give it a speed or a ranged attack.
 - **A tier fights with the wrong weapon:** a tier's `attacks` replaces the family's list; repeat any attack you want to keep.
 - **`DATA008` warning:** the file name doesn't match the ID; `creature.wolf` lives in `wolf.yaml`.
 
