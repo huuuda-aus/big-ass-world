@@ -8,9 +8,10 @@ namespace Realm.Gen.Textures;
 /// large shapes, billowing cells, fine erosion and streaks without computing noise per pixel.
 /// </summary>
 /// <remarks>
-/// Channels: R large soft shapes; G billowy cell noise (bright in the middle of a cell, like cumulus tops); B fine detail; A long streaks
-/// along the horizontal axis (for high wispy cloud). Determinism: integer hashing and IEEE double arithmetic from <see cref="Rng"/>-derived
-/// seeds, identical on every machine. Thread-safety: pure.
+/// Channels: R large soft shapes (tileable gradient noise, <see cref="SurfaceTextureGenerator.GradientFbm"/> - smoother and less
+/// blocky than value noise); G billowy cell noise (Worley, bright in the middle of a cell, like cumulus tops); B fine detail
+/// (also gradient noise); A long streaks along the horizontal axis (for high wispy cloud). Determinism: integer hashing and
+/// IEEE double arithmetic from <see cref="Rng"/>-derived seeds, identical on every machine. Thread-safety: pure.
 /// </remarks>
 public static class CloudTextureGenerator
 {
@@ -18,13 +19,13 @@ public static class CloudTextureGenerator
     public const string GeneratorId = "gen.textures.clouds";
 
     /// <summary>Generator version; bump when the pixels change and regenerate the golden checksums.</summary>
-    public const int Version = 1;
+    public const int Version = 2;
 
     /// <summary>Default width and height in pixels.</summary>
     public const int DefaultSize = 256;
 
-    private const int ShapeCells = 4;
-    private const int BillowCells = 8;
+    private const int ShapeCells = 5;
+    private const int BillowCells = 14;
     private const int DetailCells = 24;
     private const int StreakCellsAcross = 48;
     private const int StreakCellsAlong = 6;
@@ -53,9 +54,9 @@ public static class CloudTextureGenerator
             {
                 double u = (double)x / size;
                 int p = ((y * size) + x) * 4;
-                pixels[p] = ToByte(SurfaceTextureGenerator.Fbm(shapeKey, u, v, ShapeCells));
+                pixels[p] = ToByte(SurfaceTextureGenerator.GradientFbm(shapeKey, u, v, ShapeCells));
                 pixels[p + 1] = ToByte(Billow(billowKey, u, v));
-                pixels[p + 2] = ToByte(SurfaceTextureGenerator.Fbm(detailKey, u, v, DetailCells / 2));
+                pixels[p + 2] = ToByte(SurfaceTextureGenerator.GradientFbm(detailKey, u, v, DetailCells / 2));
                 pixels[p + 3] = ToByte(Streak(streakKey, u, v));
             }
         }

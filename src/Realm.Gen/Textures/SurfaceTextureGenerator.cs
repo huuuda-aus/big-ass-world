@@ -167,6 +167,55 @@ public static class SurfaceTextureGenerator
         return sum / total;
     }
 
+    // Tileable gradient (Perlin-style) fractal noise in [0, 1]: smoother and less blocky than ValueNoise, since it
+    // interpolates slopes at the lattice corners instead of the corners' own values. Used where ValueNoise's
+    // "rounded blob centred in each cell" look reads as too regular, e.g. cloud shapes.
+    internal static double GradientFbm(ulong key, double u, double v, int baseCells)
+    {
+        double sum = 0;
+        double amplitude = 1;
+        double total = 0;
+        int cells = baseCells;
+        for (int octave = 0; octave < Octaves; octave++)
+        {
+            sum += amplitude * TileableGradientNoise(key + (ulong)octave, u * cells, v * cells, cells);
+            total += amplitude;
+            amplitude *= Persistence;
+            cells *= 2;
+        }
+
+        return sum / total;
+    }
+
+    // Classic 2D gradient noise (corner gradients dotted with the offset to the sample point, quintic-faded
+    // interpolation) but with each corner's gradient angle hashed from (x mod period, y mod period) via the
+    // existing periodic Lattice hash, so it tiles seamlessly at any period, same as ValueNoise.
+    internal static double TileableGradientNoise(ulong key, double x, double y, int period)
+    {
+        int x0 = (int)Math.Floor(x);
+        int y0 = (int)Math.Floor(y);
+        double fx = x - x0;
+        double fy = y - y0;
+        double n00 = GradientDot(key, x0, y0, period, fx, fy);
+        double n10 = GradientDot(key, x0 + 1, y0, period, fx - 1, fy);
+        double n01 = GradientDot(key, x0, y0 + 1, period, fx, fy - 1);
+        double n11 = GradientDot(key, x0 + 1, y0 + 1, period, fx - 1, fy - 1);
+        double u = Quintic(fx);
+        double v = Quintic(fy);
+        double top = Lerp(n00, n10, u);
+        double bottom = Lerp(n01, n11, u);
+        double n = Lerp(top, bottom, v);
+        return Math.Clamp((n * 1.4142135623730951 * 0.5) + 0.5, 0, 1); // [-1, 1]-ish (2D gradient noise peaks at sqrt(2)/2) to [0, 1]
+    }
+
+    private static double GradientDot(ulong key, int x, int y, int period, double dx, double dy)
+    {
+        double angle = Lattice(key, x, y, period) * 2 * Math.PI;
+        return (Math.Cos(angle) * dx) + (Math.Sin(angle) * dy);
+    }
+
+    private static double Quintic(double t) => t * t * t * ((t * ((t * 6) - 15)) + 10);
+
     internal static double ValueNoise(ulong key, double x, double y, int period)
     {
         int x0 = (int)Math.Floor(x);

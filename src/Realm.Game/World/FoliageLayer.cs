@@ -237,7 +237,9 @@ public sealed partial class FoliageLayer : Node3D
             {
                 Multimesh = multi,
                 MaterialOverride = _materials[species],
-                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                // Near trees cast shadows (they sit within the sun's shadow distance, DayNightCycle.DirectionalShadowMaxDistance);
+                // far ones don't, since shadowing ~950 m of MultiMesh instances would cost far more than it's worth.
+                CastShadow = level == 0 ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off,
                 VisibilityRangeEnd = level == 0 ? NearEndMeters : FarEndMeters,
                 VisibilityRangeBegin = level == 0 ? 0 : FarBeginMeters,
             };

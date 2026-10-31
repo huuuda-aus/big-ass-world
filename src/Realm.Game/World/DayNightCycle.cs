@@ -33,15 +33,17 @@ uniform float cover_bias = 0.0;
 uniform float low_altitude = 1800.0;
 
 // Density of the low (cumulus) cloud at a world position: shape and billows thresholded by the local cover, eroded by fine detail.
+// Scale (11000, was 7000) spreads the cloud masses further apart; a milder detail term (4.0x and 0.08, was 6.3x and 0.16)
+// and a slightly higher threshold cut the small-scale clutter so a few bigger, calmer formations show instead of a busy sky.
 float cumulus(vec2 xz, float cover, float thickness) {
-    vec2 uv = (xz + drift) / 7000.0;
+    vec2 uv = (xz + drift) / 11000.0;
     float shape = texture(cloud_noise, uv).r;
     float billow = texture(cloud_noise, uv * 1.9 + vec2(0.37, 0.11)).g;
-    float detail = texture(cloud_noise, uv * 6.3 + vec2(0.71, 0.29)).b;
-    float n = 0.6 * shape + 0.4 * billow;
-    float threshold = mix(0.82, 0.26, clamp(cover, 0.0, 1.0));
+    float detail = texture(cloud_noise, uv * 4.0 + vec2(0.71, 0.29)).b;
+    float n = 0.75 * shape + 0.25 * billow; // shape (now gradient noise) leads; billow (Worley, inherently cell-shaped) only textures it
+    float threshold = mix(0.86, 0.32, clamp(cover, 0.0, 1.0));
     float softness = mix(0.16, 0.08, thickness);
-    return smoothstep(threshold, threshold + softness, n - (detail - 0.5) * 0.16 + 0.04);
+    return smoothstep(threshold, threshold + softness, n - (detail - 0.5) * 0.08 + 0.04);
 }
 
 ";

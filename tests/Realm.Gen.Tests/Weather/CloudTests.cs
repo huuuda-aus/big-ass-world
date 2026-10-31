@@ -163,5 +163,5 @@ public class CloudTests
         Assert.Equal(GoldenChecksum, hash);
     }
 
-    private const ulong GoldenChecksum = 5372056789878938765UL;
+    private const ulong GoldenChecksum = 14311956598798832229UL;
 }
