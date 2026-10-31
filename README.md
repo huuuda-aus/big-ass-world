@@ -23,7 +23,7 @@ dotnet run --project src/Realm.Cli -- bake-terrain              # bake the world
 
 ## Try it (for another developer)
 
-Works on Linux and Windows (Terrain3D binaries are vendored for those two only). Only Linux has been run so far.
+Works on Linux and Windows (Terrain3D binaries are vendored for those two only, through Git LFS). Tested on both.
 
 1. Install [git](https://git-scm.com), [git-lfs](https://git-lfs.com) and the .NET 8 SDK, then run `git lfs install` once.
 2. Clone: `git clone https://github.com/huuuda-aus/big-ass-world.git`. The clone downloads the baked terrain (about 210 MB) through Git LFS, which counts against the repository owner's LFS bandwidth quota.

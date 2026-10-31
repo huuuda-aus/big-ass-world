@@ -11,3 +11,4 @@ baked/**/*.bin filter=lfs diff=lfs merge=lfs -text
 **/assets/**/*.ogg filter=lfs diff=lfs merge=lfs -text
 **/assets/**/*.wav filter=lfs diff=lfs merge=lfs -text
 baked/**/*.tile filter=lfs diff=lfs merge=lfs -text
+src/Realm.Game/addons/terrain_3d/bin/** filter=lfs diff=lfs merge=lfs -text

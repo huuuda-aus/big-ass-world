@@ -30,6 +30,8 @@ Goal: have a Godot build that can run the C# projects, with the Terrain3D addon,
 
 ## Troubleshooting
 - `The Terrain3D extension is not loaded`: the addon folder is missing, or the project was never imported. Run step 6.
+- `GDExtension dynamic library not found: 'res://addons/terrain_3d/terrain.gdextension'`: `addons/terrain_3d/bin/` is empty or holds LFS pointer files. Run `git lfs pull`. On a checkout older than 2026-10-31 the binaries were not committed at all (the `.gitignore` rule `bin/` swallowed them); pull the latest, or unpack `addons/terrain_3d/bin/` from the verified 1.0.2 zip (step 5).
+- On Windows, the Godot executable is `Godot_v4.5.1-stable_mono_win64.exe`; the `_console.exe` next to it is the same build with a console window, useful for `--headless --import` and for reading the log.
 - `Terrain3D x.y.z is installed but Realm requires 1.0.2`: you changed the addon. Update `TerrainBridge.RequiredVersion`, re-run the streaming spike and write an ADR before upgrading.
 - Restore seems stuck: the first restore of GodotSharp is slow, not hung. Wait about a minute.
 - The Godot window does not open: check Vulkan with `vulkaninfo --summary`.

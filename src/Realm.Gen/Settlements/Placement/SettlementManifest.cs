@@ -34,7 +34,7 @@ public sealed class SettlementManifest
     public IReadOnlyList<Settlement> Settlements { get; init; } = Array.Empty<Settlement>();
 
     /// <summary>Serialises to JSON.</summary>
-    /// <returns>Indented JSON text.</returns>
+    /// <returns>Indented JSON text with <c>\n</c> line endings on every platform, so the bytes (and the golden hash) match across operating systems.</returns>
     public string ToJson()
     {
         var dto = new Dto
@@ -56,7 +56,9 @@ public sealed class SettlementManifest
             });
         }
 
-        return JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        // WriteIndented uses Environment.NewLine on .NET 8 (JsonSerializerOptions.NewLine arrives in .NET 9), so normalise to LF.
+        return JsonSerializer.Serialize(dto, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
+            .Replace("\r\n", "\n", StringComparison.Ordinal);
     }
 
     /// <summary>Reads a manifest.</summary>

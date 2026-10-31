@@ -1,5 +1,7 @@
 # .NET
 bin/
+# ...but keep vendored GDExtension binaries (Terrain3D), which also live in a bin/ folder.
+!src/Realm.Game/addons/terrain_3d/bin/
 obj/
 *.user
 *.suo

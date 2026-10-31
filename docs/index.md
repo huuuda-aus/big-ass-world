@@ -102,6 +102,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [2026-10-23 night windows](devlog/2026-10-23-night-windows.md)
   - [2026-10-23 professions and reactions](devlog/2026-10-23-professions-and-reactions.md)
   - [2026-10-23 street graph](devlog/2026-10-23-street-graph.md)
+  - [2026-10-31 Windows first run](devlog/2026-10-31-windows-first-run.md)
 - [Known issues](known-issues.md)
 - [Glossary](glossary.md)
 - [Changelog](../CHANGELOG.md)

@@ -197,4 +197,15 @@ public class SettlementTerrainTests
             Assert.Equal(SettlementCodes.ManifestInvalid, Assert.Single(bad.Issues).Code);
         }
     }
+
+    [Fact]
+    public void Manifest_Json_UsesLfLineEndings_OnEveryPlatform()
+    {
+        var manifest = new SettlementManifest { World = "world.test", Seed = 7, Settlements = new[] { At(10.5, -20.25) } };
+
+        string json = manifest.ToJson();
+
+        Assert.Contains('\n', json);
+        Assert.DoesNotContain('\r', json);
+    }
 }
