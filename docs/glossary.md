@@ -6,6 +6,7 @@
 - **Biome**: content record (`biome.*`) describing the character of an area for the terrain generator; tags such as `ocean`, free-form numeric properties.
 - **Blend radius** (`BlendRadiusMeters`): how far biome terrain values blend to each side of a region border (default 512 m, rounded up to whole macro cells). Larger gives gentler coasts and borders.
 - **Bridge**: a timber deck where a road crosses a river; baked in `roads.json` and built by the game.
+- **Brush stroke** (`BrushStroke`): one dab of the terrain editor's brush — a centre, radius and strength in a region's own vertex grid, plus a mode (raise, lower, smooth, flatten).
 - **Catchment** (flow): the area draining to a point, measured in effective square kilometres: rainfall 1 counts a full km2, rainfall 0.5 half.
 - **Chunk**: streaming unit of the overworld (proposed 256 m square). Baked as one contiguous blob and loaded or unloaded as a whole.
 - **Commit** (streaming): the main-thread step that adds prepared chunk data to the Godot scene, time-sliced to a per-frame budget.

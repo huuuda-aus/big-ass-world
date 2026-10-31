@@ -289,6 +289,68 @@ public class TerrainBakerTests
     }
 
     [Fact]
+    public void Bake_RespectsLocks_KeepingTheExistingTileAndReportingIt()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "realm-bake-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            TerrainBaker.Bake(Indexed(), null, "w", 1, Array.Empty<string>(), dir, new ValidationReport(), RegionSize);
+
+            // Hand-edit region (0, 0) after the first bake, same as the terrain editor would.
+            RegionTile original = RegionTileFile.Read(Path.Combine(dir, "region_0_0.tile"));
+            var editedHeights = (float[])original.Heights.Clone();
+            editedHeights[0] += 1000f;
+            var edited = new RegionTile(original.RegionX, original.RegionZ, original.Size, original.SpacingMeters, editedHeights, original.Colours);
+            RegionTileFile.Write(dir, edited);
+            byte[] editedBytes = File.ReadAllBytes(Path.Combine(dir, "region_0_0.tile"));
+
+            TerrainLocks locks = TerrainLocks.Empty.WithLock(0, 0, "hand-edited");
+            var report = new ValidationReport();
+            TerrainManifest rebaked = TerrainBaker.Bake(
+                Field((x, z) => (z * 100) + x + 1), null, "w", 1, Array.Empty<string>(), dir, report, RegionSize, locks: locks)!;
+
+            Assert.Equal(editedBytes, File.ReadAllBytes(Path.Combine(dir, "region_0_0.tile")));
+            Assert.NotEqual(editedBytes, File.ReadAllBytes(Path.Combine(dir, "region_-1_0.tile"))); // an unlocked neighbour did regenerate
+            Assert.Contains(report.Issues, i => i.Severity == Realm.Core.Validation.Severity.Info && i.Code == TerrainCodes.RegionLocked && i.Location == "region.0.0");
+            Assert.Equal(RegionTileFile.ReadChecksum(Path.Combine(dir, "region_0_0.tile")), BitConverter.ToUInt64(editedBytes, editedBytes.Length - 8));
+            _ = rebaked;
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Bake_WithNoLockOnARegion_OverwritesItsHandEditAnyway()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "realm-bake-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            TerrainBaker.Bake(Indexed(), null, "w", 1, Array.Empty<string>(), dir, new ValidationReport(), RegionSize);
+            RegionTile original = RegionTileFile.Read(Path.Combine(dir, "region_0_0.tile"));
+            var editedHeights = (float[])original.Heights.Clone();
+            editedHeights[0] += 1000f;
+            RegionTileFile.Write(dir, new RegionTile(original.RegionX, original.RegionZ, original.Size, original.SpacingMeters, editedHeights, original.Colours));
+            byte[] editedBytes = File.ReadAllBytes(Path.Combine(dir, "region_0_0.tile"));
+
+            TerrainBaker.Bake(Indexed(), null, "w", 1, Array.Empty<string>(), dir, new ValidationReport(), RegionSize);
+
+            Assert.NotEqual(editedBytes, File.ReadAllBytes(Path.Combine(dir, "region_0_0.tile")));
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Bake_IsDeterministic_AndTheChecksumTracksContent()
     {
         string a = Path.Combine(Path.GetTempPath(), "realm-bake-" + Guid.NewGuid().ToString("N"));

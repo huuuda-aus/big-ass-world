@@ -97,7 +97,7 @@ Timings depend on the machine. A seam problem looks like this (here with `--blen
 Error TERR014 height field: 1088 step(s) across region borders are steeper than 2 (rise over run); the worst is 2.53, for example (-7688, -8008). (fix: Increase the blend radius, or reduce the height difference between neighbouring biomes.)
 ```
 
-## `bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--hamlets N] [--river-cities N] [--cross-share F] [--no-settlements] [--no-roads]`
+## `bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--no-locks] [--cities N] [--towns N] [--hamlets N] [--river-cities N] [--cross-share F] [--no-settlements] [--no-roads]`
 
 Runs the whole terrain pipeline (macro map, height field, erosion and rivers, then settlements) and bakes the result to region tiles and a manifest for the game ([format](baked-terrain.md)). Defaults: `dir` is `content`, output `baked/terrain`, seed 1, spacing 4 m, region size 256 vertices (1,024 m regions), erosion on, 3 cities, 1 river city, 1 mountain city, 5 towns and 3 hamlets. The settlement step places the cities on the natural ground (nothing is flattened, [ADR 0014](../decisions/0014-cities-on-natural-ground-and-service-buildings.md)), gives each the service buildings of its tier from `content/services/`, validates them (`SETL`), writes `settlements.json` and the terrain around each city `settlements_ground.bin` next to the tiles ([format](settlements.md)) and puts the player's spawn in the first city's central square. `--cities`, `--river-cities`, `--towns` and `--hamlets` change the counts and `--cross-share F` the share of small settlements (at most 24 houses: the hamlets) laid out as a cross of streets (0 to 1, default 1; cities and towns are always radial); `--no-settlements` skips the step. Unless `--no-roads` is given, the roads between the settlements are then planned, graded into the terrain and painted ([ADR 0013](../decisions/0013-roads-and-bridges.md)), and `roads.json` and `map.png` (an overview image for the in-game map) are written next to the tiles. The last step scatters trees, bushes and grass from `content/foliage/` over the finished world, validates them (`FOL`) and writes `foliage.bin` ([ADR 0020](../decisions/0020-foliage.md)); `clouds.bin` holds the cloud climate map ([ADR 0022](../decisions/0022-clouds.md)); `water.bin` holds the river and lake meshes ([ADR 0019](../decisions/0019-river-channels-and-flowing-water.md)). Exit codes: `0` ok, `1` errors, `2` bad arguments.
 
@@ -121,7 +121,7 @@ $ dotnet run --project src/Realm.Cli -c Release -- bake-terrain
 0 error(s), 0 warning(s) (24.8 s total).
 ```
 
-`--region-size` must divide the world and give an even number of regions per axis, at most 32 (Terrain3D's limit); otherwise `TERR018` is reported and nothing is written. Timings are from the development machine with the Release build (Debug is several times slower).
+`--region-size` must divide the world and give an even number of regions per axis, at most 32 (Terrain3D's limit); otherwise `TERR018` is reported and nothing is written. If `--out` already holds a `locks.json` (written by the [terrain editor](../how-to/sculpt-terrain.md) when it saves a hand edit, [format](baked-terrain.md)), every locked region's tile is kept as-is instead of being overwritten, reported as `TERR019`; `--no-locks` ignores the file and regenerates everything. Timings are from the development machine with the Release build (Debug is several times slower).
 
 ## `help`
 

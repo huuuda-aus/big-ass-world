@@ -78,6 +78,7 @@ Rivers that dry up (`Dried` mouth) are not an error: it is how river loss shows 
 | Code | Severity | Meaning | Typical fix |
 |---|---|---|---|
 | TERR018 | Error | The bake settings do not fit the height field: region size below 2, a region width that does not divide the world size, more regions per axis than allowed (32 for Terrain3D 1.0.2), or an odd number of regions per axis (the world origin must be a region corner). | Use a region size and `--spacing` whose product divides the world size into an even number of at most 32 regions, for example 256 vertices at 4 m. |
+| TERR019 | Info | A region named in `locks.json` was kept as-is instead of being overwritten by this bake (CLAUDE.md section 4.4). Never fails a run. | None needed; run `bake-terrain --no-locks` to overwrite every region anyway, or unlock the region in the terrain editor. |
 
 ## Settlement validators
 

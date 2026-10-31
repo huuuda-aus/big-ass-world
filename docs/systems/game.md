@@ -16,7 +16,8 @@ The Godot presentation layer. Today it streams baked terrain into Terrain3D and 
 | Auto-walk verification mode with a frame-time report | Implemented (first slice of the traversal soak test) |
 | Origin rebasing, per-biome textures, water rendering, foliage, navigation, actors, sim LOD wiring | Planned |
 | Full 30 minute traversal soak test with thresholds | Planned |
-| `Realm.Editor` | Planned |
+| Terrain editor (`TerrainEditorPlugin`): load one baked region, raise/lower/smooth/flatten brush, save back to the `.tile` (ADR 0028) | Implemented (basic) |
+| Dungeon editor, NPC table editor, other `Realm.Editor`-layer tools | Planned |
 
 ## 3. Architecture
 ```mermaid
@@ -36,8 +37,22 @@ flowchart LR
 - Threading: only the main thread touches the scene tree and Terrain3D data; the thread pool generates or reads regions and builds the region objects.
 - The Godot-free pieces live elsewhere so they are tested: tile format, baker and manifest in `Realm.Gen.Bake`; `RegionGrid` and `FrameStats` in `Realm.Core`.
 
+### Terrain editor
+```mermaid
+flowchart LR
+  P[TerrainEditorPanel] -->|region, brush settings| G[TerrainEditorPlugin]
+  G -->|mouse ray| RC[RegionTileRaycast]
+  RC -->|hit, vertex coords| G
+  G -->|BrushStroke| S[TerrainEditSession]
+  S -->|ApplyBrush| E[TerrainTileEditor]
+  S -->|Write + ReadChecksum| F[".tile files<br/>manifest.json"]
+  S -->|"WithLock / WithoutLock"| L[locks.json]
+  G -->|rebuild| M[MeshInstance3D preview]
+```
+A Godot editor plugin (`src/Realm.Game/Editor/`, [ADR 0028](../decisions/0028-terrain-editor-lives-in-realm-game.md)) for hand-editing baked regions in place (CLAUDE.md section 4.4). `TerrainEditorPanel` is a dock built in code: pick a region, pick a brush (raise, lower, smooth, flatten), load, sculpt, save, revert or unlock. `TerrainEditorPlugin._Forward3DGuiInput` turns a left-drag in the 3D viewport into brush dabs: it rays from the camera, finds where the ray crosses the loaded region's own height grid (`RegionTileRaycast`, Godot-free), and applies a dab (`TerrainTileEditor.ApplyBrush`, also Godot-free, in `Realm.Gen.Bake`) to the in-memory tile. `TerrainEditSession` holds the open tile, manifest and locks and does the file I/O: **Save** writes the tile atomically, folds its new checksum into `manifest.json` by reading only the trailing checksum of every other tile (`RegionTileFile.ReadChecksum`, not their full contents), and locks the region in `locks.json` (`TerrainLocks`) so `bake-terrain` keeps it (`TERR019`) instead of silently overwriting it; **Unlock region** removes that protection. The preview is a plain vertex-coloured mesh (unshaded, matching the baked-colour look the game itself shows before real textures exist); it only rebuilds on load, mouse-up or the "Rebuild preview" button, not every drag frame, since a 256 x 256 region is about 130,000 triangles.
+
 ## 4. Data
-Consumes the baked terrain ([format](../reference/baked-terrain.md)). Produces nothing.
+Consumes the baked terrain ([format](../reference/baked-terrain.md)). The terrain editor also writes it: one region's `.tile` and `manifest.json`'s checksum.
 
 ## 5. Determinism and persistence notes
 Nothing in this project affects simulation results. The world is a pure function of the baked files. Nothing is saved yet.
@@ -45,9 +60,12 @@ Nothing in this project affects simulation results. The world is a pure function
 ## 6. Extension points
 New content streamed per region (vegetation, props, navigation) should follow the same pattern: build on a worker thread, commit in batches, measure frame time. Textures replace the baked colour as the main look when added.
 
+A future dungeon or NPC table editor should follow the terrain editor's split (ADR 0028): Godot-free brush/placement/validation logic in the matching `Realm.Gen` or `Realm.Sim` namespace, unit-tested there; a thin `Realm.Game/Editor/*` plugin for the dock, the viewport input and any live preview mesh.
+
 ## 7. Validation
 - Dependency rules: `tests/Realm.Architecture.Tests` (Game may reference Core, Data, Sim, Gen and Scripting; nothing may reference Game; only Game uses the Godot SDK).
 - Godot-side behaviour is verified by running: `--autowalk=SECONDS` (frame statistics, ground following, streaming counts) and `--screenshot` (rendered views), and by the spike. There are no automated tests of the Godot code itself yet.
+- The terrain editor's brush math, raycast and manifest checksum fold (`TerrainTileEditor`, `RegionTileRaycast`, `TerrainManifestChecksum`) are unit-tested in `Realm.Gen.Tests/Bake`; `TerrainEditorPlugin`/`Panel`/`Session` themselves are Godot glue, verified manually (see the [how-to](../how-to/sculpt-terrain.md)).
 
 ## 8. Performance notes
 Measured on the development machine (Intel Lunar Lake integrated GPU, Linux, Godot 4.5.1, single runs):
@@ -56,8 +74,8 @@ Measured on the development machine (Intel Lunar Lake integrated GPU, Linux, God
 - Region add cost grows with region size (512 vertices: rebuild 16 to 34 ms); 128 vertices is pathologically slow in Terrain3D 1.0.2.
 
 ## 9. Known limitations
-See [known issues](../known-issues.md): basic walker physics (issues 38, 43), placeholder textures, rivers and lakes are painted colours, the sea is a plane, the baked colour is filtered smoothly and looks blurry up close, only Linux has been run, a few unexplained frame spikes remain.
+See [known issues](../known-issues.md): basic walker physics (issues 38, 43), placeholder textures, rivers and lakes are painted colours, the sea is a plane, the baked colour is filtered smoothly and looks blurry up close, only Linux has been run, a few unexplained frame spikes remain, and the terrain editor has no undo and edits one region at a time (issues 79-81).
 
 ## 10. History
-- [ADR 0009](../decisions/0009-terrain3d-integration-and-streaming.md), [ADR 0010](../decisions/0010-baked-terrain-format.md), [ADR 0005](../decisions/0005-world-scale-and-seamless-streaming.md)
-- [Devlog 2026-10-20 godot and streaming](../devlog/2026-10-20-godot-streaming.md)
+- [ADR 0009](../decisions/0009-terrain3d-integration-and-streaming.md), [ADR 0010](../decisions/0010-baked-terrain-format.md), [ADR 0005](../decisions/0005-world-scale-and-seamless-streaming.md), [ADR 0028](../decisions/0028-terrain-editor-lives-in-realm-game.md)
+- [Devlog 2026-10-20 godot and streaming](../devlog/2026-10-20-godot-streaming.md), [Devlog 2026-10-30 terrain editor](../devlog/2026-10-30-terrain-editor.md), [Devlog 2026-10-30 terrain editor edit locks](../devlog/2026-10-30-terrain-editor-locks.md)

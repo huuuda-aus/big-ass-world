@@ -135,6 +135,27 @@ public static class RegionTileFile
     /// <exception cref="InvalidDataException">The file is not a valid tile.</exception>
     public static RegionTile Read(string path) => FromBytes(File.ReadAllBytes(path));
 
+    /// <summary>
+    /// Reads only a tile's trailing checksum, without loading its heights and colours. Used to fold one rewritten
+    /// tile's new checksum back into <see cref="TerrainManifest.Checksum"/> (<see cref="TerrainManifestChecksum"/>)
+    /// without re-reading every other tile in full.
+    /// </summary>
+    /// <param name="path">The file.</param>
+    /// <returns>The stored checksum; not verified against the file's contents.</returns>
+    public static ulong ReadChecksum(string path)
+    {
+        using FileStream stream = File.OpenRead(path);
+        stream.Seek(-ChecksumBytes, SeekOrigin.End);
+        var buffer = new byte[ChecksumBytes];
+        int read = stream.Read(buffer, 0, ChecksumBytes);
+        if (read != ChecksumBytes)
+        {
+            throw new InvalidDataException($"'{path}' is too short to hold a checksum.");
+        }
+
+        return BitConverter.ToUInt64(buffer);
+    }
+
     private static ulong Fnv(ReadOnlySpan<byte> data)
     {
         ulong hash = Fnv64Offset;

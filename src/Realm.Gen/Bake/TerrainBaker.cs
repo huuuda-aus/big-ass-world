@@ -29,15 +29,10 @@ public static class TerrainBaker
     public const int DefaultMaxRegionsPerAxis = 32;
 
     private const double HalfDivisor = 2.0;
-    private const double ShadeStrength = 0.9;   // how strongly the slope toward the light brightens (and away darkens) the colour
-    private const double ShadeMinimum = 0.45;
-    private const double ShadeMaximum = 1.35;
     private const double RoadRed = 168;
     private const double RoadGreen = 140;
     private const double RoadBlue = 100;
     private const double RoadPaintMargin = 0.5; // paint a little wider than the surface so a 4 m vertex grid always catches it
-    private const ulong Fnv64Offset = 14695981039346656037UL;
-    private const ulong Fnv64Prime = 1099511628211UL;
 
     /// <summary>Checks the bake settings against a field.</summary>
     /// <param name="field">The height field.</param>
@@ -103,7 +98,7 @@ public static class TerrainBaker
                 heights[i] = h;
                 (double slopeX, double slopeZ) = Slopes(field, originVertexX + ix, originVertexZ + iz);
                 (double r, double g, double b) = TerrainColouring.Albedo(h, top, depth, Math.Sqrt((slopeX * slopeX) + (slopeZ * slopeZ)));
-                double shade = Math.Clamp(1.0 + (ShadeStrength * (slopeX + slopeZ)), ShadeMinimum, ShadeMaximum);
+                double shade = HillShading.ShadeFactor(slopeX, slopeZ);
                 colours[i] = TerrainColouring.Pack(r * shade, g * shade, b * shade);
             }
         }
@@ -150,6 +145,11 @@ public static class TerrainBaker
     /// <param name="maxRegionsPerAxis">Largest allowed number of regions per axis.</param>
     /// <param name="spawn">Where the player starts (world X and Z); by default beside the middle of the longest river.</param>
     /// <param name="roads">Roads to paint into the colour maps, or null.</param>
+    /// <param name="locks">
+    /// Regions a hand edit has locked (CLAUDE.md section 4.4); their existing tile is kept instead of being
+    /// overwritten, unless no tile exists yet (a lock on a region that was never baked has nothing to protect). Null
+    /// bakes every region, same as <see cref="TerrainLocks.Empty"/>.
+    /// </param>
     /// <returns>The manifest, or null when the settings were invalid.</returns>
     public static TerrainManifest? Bake(
         HeightField field,
@@ -162,11 +162,13 @@ public static class TerrainBaker
         int regionSize = DefaultRegionSize,
         int maxRegionsPerAxis = DefaultMaxRegionsPerAxis,
         (double X, double Z)? spawn = null,
-        IReadOnlyList<Road>? roads = null)
+        IReadOnlyList<Road>? roads = null,
+        TerrainLocks? locks = null)
     {
         ArgumentNullException.ThrowIfNull(field);
         ArgumentNullException.ThrowIfNull(outputDirectory);
         ArgumentNullException.ThrowIfNull(report);
+        locks ??= TerrainLocks.Empty;
 
         if (!TryValidate(field, regionSize, maxRegionsPerAxis, out string? problem))
         {
@@ -182,27 +184,40 @@ public static class TerrainBaker
 
         int count = perAxis * perAxis;
         var checksums = new ulong[count];
+        var kept = new bool[count]; // true where a lock kept the existing tile instead of overwriting it
         Parallel.For(0, count, index =>
         {
             int regionX = min + (index % perAxis);
             int regionZ = min + (index / perAxis);
+            string path = Path.Combine(outputDirectory, RegionTile.FileName(regionX, regionZ));
+            if (locks.Contains(regionX, regionZ) && File.Exists(path))
+            {
+                checksums[index] = RegionTileFile.ReadChecksum(path);
+                kept[index] = true;
+                return;
+            }
+
             RegionTile tile = BuildTile(field, network, regionX, regionZ, regionSize, roads);
             byte[] bytes = RegionTileFile.ToBytes(tile);
             checksums[index] = BitConverter.ToUInt64(bytes, bytes.Length - sizeof(ulong));
-            string path = Path.Combine(outputDirectory, RegionTile.FileName(regionX, regionZ));
             string temporary = path + ".tmp";
             File.WriteAllBytes(temporary, bytes);
             File.Move(temporary, path, overwrite: true);
         });
 
-        ulong combined = Fnv64Offset;
-        foreach (ulong checksum in checksums)
+        // Report sequentially: ValidationReport is not thread-safe, so this must happen after the parallel loop, not inside it.
+        for (int index = 0; index < count; index++)
         {
-            for (int shift = 0; shift < 64; shift += 8)
+            if (kept[index])
             {
-                combined = unchecked((combined ^ ((checksum >> shift) & 0xFFUL)) * Fnv64Prime);
+                int regionX = min + (index % perAxis);
+                int regionZ = min + (index / perAxis);
+                report.Add(new ValidationIssue(Severity.Info, TerrainCodes.RegionLocked, $"region.{regionX}.{regionZ}",
+                    "Locked; kept the existing hand-edited tile instead of overwriting it."));
             }
         }
+
+        string combined = TerrainManifestChecksum.Combine(checksums);
 
         (double spawnX, double spawnZ) = spawn ?? ChooseSpawn(field, network);
         var manifest = new TerrainManifest
@@ -223,7 +238,7 @@ public static class TerrainBaker
             LakeCount = network?.Lakes.Count ?? 0,
             SpawnX = spawnX,
             SpawnZ = spawnZ,
-            Checksum = combined.ToString("x16"),
+            Checksum = combined,
         };
         File.WriteAllText(Path.Combine(outputDirectory, TerrainManifest.FileName), manifest.ToJson());
         return manifest;

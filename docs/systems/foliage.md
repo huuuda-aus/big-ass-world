@@ -13,6 +13,7 @@ Scatters trees, bushes and grass over the finished world and draws them cheaply.
 | Baked `foliage.bin` | Implemented |
 | Chunked MultiMesh rendering with near and far models | Implemented (placeholder models) |
 | Trunk colliders (48 pooled) | Implemented |
+| Near trees cast shadows (far ones don't, for performance) | Implemented |
 | Wind, billboards, hand-made art, editor painting and locks | Planned |
 
 ## 3. Architecture
@@ -31,7 +32,7 @@ flowchart LR
 ```
 - `Realm.Data`: `FoliageDefinition`, `FoliageParser`, `FoliageVocabulary`.
 - `Realm.Gen.Foliage`: `FoliageGenerator`, `FoliageExclusion`, `FoliageValidator`, `FoliageFile`, `GrassScatter`, `FoliageMeshes`, `FoliageSettings`.
-- `Realm.Game.World.FoliageLayer`: loads the file, builds up to two chunks and two grass cells per frame, frees chunks beyond 1,000 m.
+- `Realm.Game.World.FoliageLayer`: loads the file, builds up to two chunks and two grass cells per frame, frees chunks beyond 1,000 m. Near-level trees (within `NearEndMeters`, 170 m) cast shadows; far-level ones (up to 950 m) don't, matching the sun's own `DirectionalShadowMaxDistance` (150 m, `DayNightCycle`) closely enough that shadows fade out around the same distance the near model switches to the far one.
 - Threading: generation is single-threaded in the CLI; the game builds on the main thread (chunks hold a few hundred plants).
 
 ## 4. Data

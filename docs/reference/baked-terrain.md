@@ -7,6 +7,7 @@ What `realm bake-terrain` writes and what the game streams. Design: [ADR 0009](.
 ```
 baked/terrain/
   manifest.json
+  locks.json       (only once a region has been hand-edited)
   region_-10_-10.tile
   region_-10_-9.tile
   ...
@@ -54,6 +55,20 @@ The default is 256 vertices at 4 m, so regions are 1,024 m wide: 4 x 4 streaming
 | `seed` | World seed used by the height field. |
 | `spawnX`, `spawnZ` | Where the player starts: beside the middle of the longest river, otherwise the world centre. |
 | `checksum` | FNV-1a fingerprint of every tile's checksum in region order (16 hex digits). Identical inputs give an identical value. |
+
+## `locks.json`
+
+Which regions a hand edit has locked (CLAUDE.md section 4.4, generate-bake-edit): `bake-terrain` keeps a locked region's existing `.tile` instead of overwriting it (reported as [`TERR019`](validators.md)), unless no tile exists there yet. The terrain editor writes this file: it locks a region automatically on **Save**, and **Unlock region** removes the entry. `bake-terrain --no-locks` ignores the file entirely and regenerates everything.
+
+```json
+{
+  "regions": [
+    { "regionX": 0, "regionZ": -2, "note": "terrain editor, 2026-10-30" }
+  ]
+}
+```
+
+Absent when nothing has been hand-edited yet; `note` is free text, not read by any logic.
 
 ## `.tile` file
 

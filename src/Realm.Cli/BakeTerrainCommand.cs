@@ -45,6 +45,7 @@ internal static class BakeTerrainCommand
         bool withSettlements = true;
         var settlementSettings = new SettlementSettings();
         bool withRoads = true;
+        bool respectLocks = true;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -97,13 +98,17 @@ internal static class BakeTerrainCommand
             {
                 erode = false;
             }
+            else if (arg == "--no-locks")
+            {
+                respectLocks = false;
+            }
             else if (!arg.StartsWith("--", StringComparison.Ordinal))
             {
                 contentDirectory = arg;
             }
             else
             {
-                error.WriteLine($"Bad argument '{arg}'. Usage: realm bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--cities N] [--towns N] [--hamlets N] [--river-cities N] [--cross-share F] [--no-settlements] [--no-roads]");
+                error.WriteLine($"Bad argument '{arg}'. Usage: realm bake-terrain [dir] [--out dir] [--seed N] [--spacing M] [--region-size N] [--no-erode] [--no-locks] [--cities N] [--towns N] [--hamlets N] [--river-cities N] [--cross-share F] [--no-settlements] [--no-roads]");
                 return ExitUsage;
             }
         }
@@ -202,8 +207,14 @@ internal static class BakeTerrainCommand
             output.WriteLine($"  clouds: mean cover {clouds.Cover.Average(b => b / 255.0):P0}, mean thickness {clouds.Thickness.Average(b => b / 255.0):P0}");
 
             step.Restart();
+            TerrainLocks locks = respectLocks ? TerrainLocks.Load(outputDirectory) : TerrainLocks.Empty;
+            if (locks.Regions.Count > 0)
+            {
+                output.WriteLine($"  locks: {locks.Regions.Count} region(s) locked by hand edits will keep their existing tile");
+            }
+
             TerrainManifest? manifest = TerrainBaker.Bake(
-                field, network, map.Id.Value, seed, new[] { generators }, outputDirectory, report, regionSize, spawn: spawn, roads: roads);
+                field, network, map.Id.Value, seed, new[] { generators }, outputDirectory, report, regionSize, spawn: spawn, roads: roads, locks: locks);
             if (manifest is null)
             {
                 continue;

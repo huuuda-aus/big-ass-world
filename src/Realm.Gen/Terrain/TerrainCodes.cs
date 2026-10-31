@@ -59,4 +59,7 @@ public static class TerrainCodes
 
     /// <summary>The terrain bake settings are invalid for this height field.</summary>
     public const string BakeSettingsInvalid = "TERR018";
+
+    /// <summary>A region was locked by a hand edit, so the bake kept its existing tile instead of overwriting it.</summary>
+    public const string RegionLocked = "TERR019";
 }

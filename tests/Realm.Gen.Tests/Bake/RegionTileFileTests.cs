@@ -108,6 +108,29 @@ public class RegionTileFileTests
     }
 
     [Fact]
+    public void ReadChecksum_MatchesTheTrailingBytesOfTheFile()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "realm-tiles-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            RegionTile tile = Tile(rx: -3, rz: 2);
+            byte[] bytes = RegionTileFile.ToBytes(tile);
+            ulong expected = BitConverter.ToUInt64(bytes, bytes.Length - 8);
+
+            string path = RegionTileFile.Write(dir, tile);
+
+            Assert.Equal(expected, RegionTileFile.ReadChecksum(path));
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Constructor_RejectsBadArrays()
     {
         Assert.Throws<ArgumentException>(() => new RegionTile(0, 0, 4, 1f, new float[15], new uint[16]));
