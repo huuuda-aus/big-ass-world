@@ -263,7 +263,7 @@ These are the target designs. Build them incrementally (§10). When implementati
 ### 6.5 Creatures and combat
 
 - **Creature families** with tiers (palette or texture swaps plus stat scaling), tags, abilities, behaviour profile, biome/spawn affinity and loot.
-- **Combat:** real-time with an optional turn-based mode (M&M style). Rules live in `Realm.Sim`; presentation only animates. Design specifics are Open Decision D3.
+- **Combat** (ADR 0029): one player character. Real-time, paced by each combatant's recovery time (M&M style), plus a VATS-style tactical pause: time stops, the player queues targeted actions paid from action points, then they resolve on the normal clock. Attacks are target-based (range and line-of-sight check, hit roll, damage roll); projectiles are sim entities. Area effects hit everyone inside them, the player included. Death has no penalty: the player wakes at a temple. Rules live in `Realm.Sim`; presentation only animates. Design: `docs/explanation/combat.md`.
 - **AI:** simple state machines or utility AI per behaviour profile. Keep it data-tunable.
 
 ### 6.6 Modding and scripting
@@ -516,8 +516,8 @@ Each milestone ends playable or demonstrable, fully tested and documented.
 |---|---|---|
 | D1 | Can the player dig or terraform terrain? | **No** → heightmap + kit. If yes, re-evaluate voxel terrain. |
 | D2 | World size target (km × km) | **Decided 2026-10-20: ~20 × 20 km**, so a 30-minute straight walk is possible from anywhere. See ADR 0005. |
-| D3 | Combat model: real-time, turn-based, or toggle | Toggle (M&M style) |
-| D4 | Party-based or single character | Ask before M5 |
+| D3 | Combat model: real-time, turn-based, or toggle | **Decided 2026-10-31:** real-time paced by action speed, plus a VATS-style tactical pause (no full turn-based mode). See ADR 0029. |
+| D4 | Party-based or single character | **Decided 2026-10-31:** single character ("most likely"; may be reopened only before M5 combat work starts). See ADR 0029. |
 | D5 | Creatures: billboards, low-poly models, or mixed | Mixed per family |
 | D6 | Large-world precision: origin rebasing vs double-precision build | Origin rebasing (needed at 20 km; confirm in the traversal soak test, ADR 0005) |
 | D7 | Test framework: xUnit vs NUnit | xUnit |

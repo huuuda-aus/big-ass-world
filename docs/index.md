@@ -40,6 +40,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
 - [Determinism](explanation/determinism.md)
 - [World scale and seamless streaming](explanation/world-scale-and-streaming.md)
 - [Making character movement more realistic: options](explanation/making-npc-movement-realistic.md)
+- [Combat: how it is meant to work](explanation/combat.md) (Planned)
 - Generate-bake-edit, persistence, sim LOD, retro rendering: **Planned**
 
 ## Systems (as-built)
@@ -82,6 +83,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [0026 An even crowd, a life indoors, and bodies that do not enter buildings](decisions/0026-even-crowd-indoor-life-and-collisions.md)
   - [0027 Night windows, lit rooms and glass](decisions/0027-night-windows-and-lit-rooms.md)
   - [0028 The terrain editor lives inside Realm.Game](decisions/0028-terrain-editor-lives-in-realm-game.md)
+  - [0029 Combat model: one character, real-time on action speed, a tactical pause](decisions/0029-combat-model-solo-character-hybrid-pause.md)
 - [Devlog](devlog/)
   - [2026-10-20 Solution skeleton](devlog/2026-10-20-solution-skeleton.md)
   - [2026-10-20 Core and Data foundations](devlog/2026-10-20-core-data-foundations.md)
@@ -103,6 +105,7 @@ Structure follows Diátaxis (CLAUDE.md section 9). Pages marked **Planned** are 
   - [2026-10-23 professions and reactions](devlog/2026-10-23-professions-and-reactions.md)
   - [2026-10-23 street graph](devlog/2026-10-23-street-graph.md)
   - [2026-10-31 Windows first run](devlog/2026-10-31-windows-first-run.md)
+  - [2026-10-31 Combat design](devlog/2026-10-31-combat-design.md)
 - [Known issues](known-issues.md)
 - [Glossary](glossary.md)
 - [Changelog](../CHANGELOG.md)

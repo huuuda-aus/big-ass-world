@@ -116,6 +116,7 @@ All notable changes are recorded here. Format: [Keep a Changelog](https://keepac
 - The scale-reference measure tape, houses and trees were removed from the game (`ReferenceStrip`, `MeasureTape`, `PropMeshConverter`). The Godot-free models (`Realm.Gen.Props`: cottage, town house, three tree kinds, `StripLayout`) and their tests stay for later use.
 
 ### Changed
+- Combat design decided (ADR 0029, design only, nothing built): one player character (D4); real-time combat paced by action speed plus a VATS-style tactical pause with action points (D3); target-based attacks; area effects hurt everyone inside, the player included; death wakes the player at a temple with no penalty. CLAUDE.md sections 6.5 and 11 updated; new `docs/explanation/combat.md` (Planned).
 - Trees may grow closer to settlements: `FoliageSettings.SettlementMarginMeters` 25 m to 8 m beyond the pad. Re-run `bake-terrain` to see it in the shipped world.
 - A yellower sun: warmer noon sun light and disc colour; clouds stay white at noon (only the low sun tints them) and the high wisps no longer dull the sun's disc.
 - Translucent clouds: cloud opacity grows slowly with density and tops out below 1, so the sun and moon show through gaps and thin edges, with a scattered-light halo in the cloud around them; thick overcast hides them but leaves a faint glow.
