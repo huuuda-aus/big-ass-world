@@ -147,7 +147,7 @@ public sealed partial class CityInstance : Node3D
             Vector3 local = ToLocal(playerWorld);
             bool near = _settlement.DistanceTo(playerWorld.X, playerWorld.Z) < _settlement.WallRadiusMeters + PlayerNearMeters;
             _crowd.Update(now, new CrowdContext(rain, near, local.X, local.Z));
-            _crowdView.Show(_crowd, now, delta, _build.Ground, _build.City.Bridges);
+            _crowdView.Show(_crowd, now, delta, _build.Ground, _build.City.Bridges, local);
         }
     }
 
@@ -460,7 +460,15 @@ public sealed partial class CityInstance : Node3D
             root.AddChild(body);
             if (landmark.Water is not null)
             {
-                root.AddChild(new MeshInstance3D { Mesh = landmark.Water, MaterialOverride = CityMaterials.Water, Name = "Water", CastShadow = GeometryInstance3D.ShadowCastingSetting.Off });
+                root.AddChild(new MeshInstance3D
+                {
+                    Mesh = landmark.Water,
+                    MaterialOverride = CityMaterials.WaterFor(
+                        (float)_build.City.Landmark!.Radius,
+                        new Vector2((float)_build.City.Landmark!.Center.X, (float)_build.City.Landmark!.Center.Y)),
+                    Name = "Water",
+                    CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                });
             }
 
             if (landmark.Flames is not null)
@@ -476,25 +484,86 @@ public sealed partial class CityInstance : Node3D
             if (landmark.JetOrigin is { } jet)
             {
                 root.AddChild(BuildJets(jet, (float)_build.City.Landmark!.Radius));
+                root.AddChild(BuildMist(jet));
             }
         }
 
         _attached = true;
     }
 
-    // Water thrown from the spout in arcs that fall into the basin.
-    private static CpuParticles3D BuildJets(Vector3 origin, float radius) => new()
+    // Fades a particle from opaque to transparent over its life, instead of popping out of existence; needs
+    // VertexColorUseAsAlbedo and alpha transparency on the material to actually show.
+    private static Gradient FadeOut(Color start, Color end)
     {
-        Name = "Jets",
+        var gradient = new Gradient();
+        gradient.SetColor(0, start);
+        gradient.SetColor(1, end);
+        return gradient;
+    }
+
+    private const float JetGravity = 9.8f;
+    private const float JetSpreadDegrees = 15f; // narrow cone: mostly straight up, like a cluster of nozzles, not a wide fan
+    private const float JetMaxRangeShare = 0.75f; // worst-case landing distance, as a share of the basin radius: stays inside the rim
+
+    // Water thrown from the spout mostly straight up (a tall, narrow arc, not a wide fan) and timed by basic
+    // projectile maths so the worst-case landing point (the widest edge of the narrow cone, at top speed) still
+    // lands inside the basin: range = v^2 * sin(2*spread) / g, solved for v given the range we want. Real gravity
+    // (9.8, not an earlier floaty 7) keeps the fall brisk rather than slow-motion. Varied droplet sizes and a
+    // fade-out near the end of the arc (so they don't pop).
+    private static CpuParticles3D BuildJets(Vector3 origin, float radius)
+    {
+        float maxRange = radius * JetMaxRangeShare;
+        float spreadRadians = Mathf.DegToRad(JetSpreadDegrees);
+        float maxSpeed = Mathf.Sqrt(maxRange * JetGravity / Mathf.Sin(2f * spreadRadians));
+        float minSpeed = maxSpeed * 0.75f;
+        float lifetime = (2f * maxSpeed / JetGravity) + 0.3f; // longest possible flight (straight up, top speed) plus a settling margin
+
+        return new CpuParticles3D
+        {
+            Name = "Jets",
+            Position = origin,
+            Amount = 420,
+            Lifetime = lifetime,
+            Direction = Vector3.Up,
+            Spread = JetSpreadDegrees,
+            InitialVelocityMin = minSpeed,
+            InitialVelocityMax = maxSpeed,
+            Gravity = new Vector3(0, -JetGravity, 0),
+            DampingMin = 0.1f,
+            DampingMax = 0.2f,
+            ScaleAmountMin = 0.6f,
+            ScaleAmountMax = 1.4f,
+            ColorRamp = FadeOut(new Color(1f, 1f, 1f, 1f), new Color(0.82f, 0.9f, 1f, 0f)),
+            Mesh = new SphereMesh { Radius = 0.08f, Height = 0.16f, RadialSegments = 4, Rings = 2, Material = DropletMaterial },
+        };
+    }
+
+    // A low, slow haze of fine droplets drifting up off the jet, the way real spray atomises near a fountain's crown.
+    private static CpuParticles3D BuildMist(Vector3 origin) => new()
+    {
+        Name = "Mist",
         Position = origin,
-        Amount = 160,
-        Lifetime = 1.5,
+        Amount = 40,
+        Lifetime = 2.2,
         Direction = Vector3.Up,
-        Spread = 38,
-        InitialVelocityMin = radius * 0.5f,
-        InitialVelocityMax = radius * 0.7f,
-        Gravity = new Vector3(0, -7, 0),
-        Mesh = new SphereMesh { Radius = 0.08f, Height = 0.16f, RadialSegments = 4, Rings = 2, Material = new StandardMaterial3D { AlbedoColor = new Color(0.87f, 0.94f, 1f), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded } },
+        Spread = 60,
+        InitialVelocityMin = 0.15f,
+        InitialVelocityMax = 0.5f,
+        Gravity = new Vector3(0, -0.3f, 0),
+        DampingMin = 0.2f,
+        DampingMax = 0.4f,
+        ScaleAmountMin = 1.2f,
+        ScaleAmountMax = 2.2f,
+        ColorRamp = FadeOut(new Color(1f, 1f, 1f, 0.35f), new Color(1f, 1f, 1f, 0f)),
+        Mesh = new SphereMesh { Radius = 0.05f, Height = 0.1f, RadialSegments = 4, Rings = 2, Material = DropletMaterial },
+    };
+
+    private static readonly StandardMaterial3D DropletMaterial = new()
+    {
+        AlbedoColor = new Color(0.87f, 0.94f, 1f),
+        ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        VertexColorUseAsAlbedo = true,
+        Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
     };
 
     private void AddFar(int index)

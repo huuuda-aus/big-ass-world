@@ -22,6 +22,8 @@ Goal: bake the terrain, start Godot and walk around the 20 km world.
    <godot> --path src/Realm.Game
    ```
    A window opens, the mouse is captured, and you stand beside a river near the middle of the map.
+
+   `tools/run-game.sh` wraps steps 2 and 3 (stops a running game, builds, starts): `tools/run-game.sh -- --fly --pos=2877,-3950` (everything after `--` is forwarded to the game). `--no-build` skips the `dotnet build`. The Godot binary comes from `$GODOT`, else the default path above. `tools/rebuild-world.sh` does the same plus steps 1 and content-lint, for when the terrain itself changed.
 4. Move with the controls below. Press `F` to fly over the whole world; `Esc` frees the mouse.
 
 ## Controls
