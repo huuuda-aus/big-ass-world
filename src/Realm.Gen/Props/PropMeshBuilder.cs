@@ -122,14 +122,14 @@ internal sealed partial class PropMeshBuilder
         }
     }
 
-    private void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 inside, Vector3 colour)
+    private void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 inside, Vector3 colour, PropMaterial material = PropMaterial.None)
     {
-        Triangle(a, b, c, inside, colour);
-        Triangle(a, c, d, inside, colour);
+        Triangle(a, b, c, inside, colour, material);
+        Triangle(a, c, d, inside, colour, material);
     }
 
     // Wind the triangle so its normal points away from a point inside the (convex) solid.
-    internal void Triangle(Vector3 a, Vector3 b, Vector3 c, Vector3 inside, Vector3 colour)
+    internal void Triangle(Vector3 a, Vector3 b, Vector3 c, Vector3 inside, Vector3 colour, PropMaterial material = PropMaterial.None)
     {
         Vector3 normal = Vector3.Cross(b - a, c - a);
         if (Vector3.Dot(normal, a - inside) < 0)
@@ -137,7 +137,7 @@ internal sealed partial class PropMeshBuilder
             (b, c) = (c, b);
         }
 
-        _triangles.Add(new PropTriangle(a, b, c, colour));
+        _triangles.Add(new PropTriangle(a, b, c, colour, material));
     }
 
     private static (float X, float Z) Ring(float cx, float cz, float radius, int i, int sides)

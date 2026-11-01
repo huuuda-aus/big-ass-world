@@ -18,6 +18,7 @@ The Godot presentation layer. Today it streams baked terrain into Terrain3D and 
 | Full 30 minute traversal soak test with thresholds | Planned |
 | Terrain editor (`TerrainEditorPlugin`): load one baked region, raise/lower/smooth/flatten brush, save back to the `.tile` (ADR 0028) | Implemented (basic) |
 | Dungeon editor, NPC table editor, other `Realm.Editor`-layer tools | Planned |
+| "Use ladder" interaction: a proximity prompt and a one-shot key (`E`) fade to black, teleport to the other end, fade in (watchtower ladders; see [settlements](settlements.md)) | Implemented (first instance of a prompt/fade/teleport pattern; no general interact system yet) |
 
 ## 3. Architecture
 ```mermaid

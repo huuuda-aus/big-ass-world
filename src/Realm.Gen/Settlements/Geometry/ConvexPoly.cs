@@ -163,6 +163,40 @@ public sealed class ConvexPoly
         return cur;
     }
 
+    /// <summary>
+    /// Expands the polygon outward by a uniform distance (every edge moved out along its own outward normal,
+    /// corners mitred by intersecting the moved edges). Unlike offsetting each vertex along the centroid-to-vertex
+    /// direction, this keeps the perpendicular distance from every original edge exactly <paramref name="distance"/>
+    /// regardless of the polygon's proportions, so eaves and plinths overhang evenly instead of leaving a gap along
+    /// the long sides of a non-square footprint.
+    /// </summary>
+    /// <param name="distance">Outward distance in metres.</param>
+    /// <returns>The expanded polygon, or this polygon if expansion degenerates (should not happen for a positive distance).</returns>
+    public ConvexPoly Outset(double distance)
+    {
+        // Clip only ever keeps part of its input, so it can shrink a polygon (Inset) but never grow one: starting
+        // from `this` and clipping with the shifted-out lines would still be bounded by this polygon's own
+        // (not yet shifted) edges. Instead start from a box comfortably larger than the result, and cut it down to
+        // the intersection of every edge's own outward-shifted half-plane, which is the offset polygon.
+        Vec2 centre = Centroid;
+        double reach = distance;
+        foreach (Vec2 p in _points)
+        {
+            reach = Math.Max(reach, Vec2.Distance(p, centre) + distance);
+        }
+
+        double half = reach + 1;
+        ConvexPoly? cur = Rect(centre.X - half, centre.Y - half, centre.X + half, centre.Y + half);
+        for (int i = 0; i < _points.Count && cur != null; i++)
+        {
+            Vec2 n = OutwardNormal(i);
+            Vec2 origin = _points[i] + (n * distance);
+            cur = cur.Clip(origin, n, _tags[i]);
+        }
+
+        return cur ?? this;
+    }
+
     private void RemoveDuplicates()
     {
         for (int i = _points.Count - 1; i >= 0 && _points.Count > 1; i--)

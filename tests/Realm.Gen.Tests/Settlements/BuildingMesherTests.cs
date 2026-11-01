@@ -51,6 +51,83 @@ public class BuildingMesherTests
     }
 
     [Fact]
+    public void Far_RoofHasASoffitVisibleFromUnderneath_MatchingTheTopFanOneForOne()
+    {
+        foreach ((Building b, Interior it) in Houses())
+        {
+            PropMesh far = BuildingMesher.Far(b, it);
+            Vector3 roofColour = b.Style == BuildingStyle.Slum ? SettlementPalette.SlumRoof : SettlementPalette.WardRoof(b.Ward);
+            int top = far.Triangles.Count(t => Same(t.Colour, roofColour));
+            int soffit = far.Triangles.Count(t => Same(t.Colour, SettlementPalette.RoofSoffit));
+
+            Assert.True(soffit > 0, $"building {b.Id}: the roof has no underside, so it is invisible (backface-culled) from below the eaves");
+            Assert.Equal(top, soffit); // one soffit triangle per top triangle: the roof is fully double-sided, no gaps
+            foreach (PropTriangle t in far.Triangles.Where(t => Same(t.Colour, SettlementPalette.RoofSoffit)))
+            {
+                Assert.True(Normal(t).Y < -0.2f, $"building {b.Id}: a roof soffit triangle does not face down");
+            }
+        }
+    }
+
+    [Fact]
+    public void Far_RoofOverhangsEveryFootprintEdgeByTheSamePerpendicularDistance()
+    {
+        // Regression for the centroid-direction offset, which under-shot the long edges of a non-square building,
+        // leaving the wall top visible under the eave there.
+        const double overhang = 0.5; // BuildingMesher.RoofOverhang
+        foreach ((Building b, Interior _) in Houses())
+        {
+            ConvexPoly ring = b.Footprint.Outset(overhang);
+            for (int i = 0; i < b.Footprint.Count; i++)
+            {
+                Vec2 a = b.Footprint.Points[i];
+                Vec2 n = b.Footprint.OutwardNormal(i);
+                Assert.Contains(ring.Points, p => Math.Abs(Vec2.Dot(n, p - a) - overhang) < 1e-6);
+            }
+        }
+    }
+
+    [Fact]
+    public void Near_ExteriorWallsAreTaggedPlasterOrMud_ByStyle_AndInteriorWallsAreNotTextured()
+    {
+        foreach ((Building b, Interior it) in Houses())
+        {
+            BuildingMeshes near = BuildingMesher.Near(b, it);
+            PropMaterial expected = b.Style == BuildingStyle.Slum ? PropMaterial.Mud : PropMaterial.WallPlaster;
+            Assert.Contains(near.Visual.Triangles, t => Same(t.Colour, SettlementPalette.WallColour(b)) && t.Material == expected);
+            Assert.DoesNotContain(near.Visual.Triangles, t => Same(t.Colour, SettlementPalette.WallColour(b)) && t.Material != expected);
+
+            // Interior walls (same builder, different colour) are out of scope for this texturing pass and stay flat.
+            Assert.All(near.Visual.Triangles.Where(t => Same(t.Colour, SettlementPalette.Inner)), t => Assert.Equal(PropMaterial.None, t.Material));
+        }
+    }
+
+    [Fact]
+    public void Far_RoofTopIsTaggedThatchOrTile_AndTheSoffitIsTaggedWood()
+    {
+        foreach ((Building b, Interior it) in Houses())
+        {
+            PropMesh far = BuildingMesher.Far(b, it);
+            bool thatched = b.Style == BuildingStyle.Slum || b.Ward == WardType.Slum;
+            PropMaterial expectedTop = thatched ? PropMaterial.RoofThatch : b.Ward == WardType.Cathedral ? PropMaterial.RoofTileGrey : PropMaterial.RoofTileRed;
+            Vector3 roofColour = b.Style == BuildingStyle.Slum ? SettlementPalette.SlumRoof : SettlementPalette.WardRoof(b.Ward);
+
+            Assert.All(far.Triangles.Where(t => Same(t.Colour, roofColour)), t => Assert.Equal(expectedTop, t.Material));
+            Assert.All(far.Triangles.Where(t => Same(t.Colour, SettlementPalette.RoofSoffit)), t => Assert.Equal(PropMaterial.Wood, t.Material));
+        }
+    }
+
+    [Fact]
+    public void Near_HalfTimberBeamsAndTheDoorSlabAreTaggedWood()
+    {
+        (Building b, Interior it) = Houses().First(h => h.Building.Style == BuildingStyle.Rich);
+        BuildingMeshes near = BuildingMesher.Near(b, it);
+
+        Assert.All(near.Visual.Triangles.Where(t => Same(t.Colour, SettlementPalette.Beam)), t => Assert.Equal(PropMaterial.Wood, t.Material));
+        Assert.Contains(near.Visual.Triangles, t => Same(t.Colour, SettlementPalette.Wood) && t.Material == PropMaterial.Wood);
+    }
+
+    [Fact]
     public void Far_HasPaintedOpenings_OneFrameAndOnePanePerOpening()
     {
         foreach ((Building b, Interior it) in Houses())

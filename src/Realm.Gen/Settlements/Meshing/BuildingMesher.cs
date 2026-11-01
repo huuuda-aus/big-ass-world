@@ -40,6 +40,9 @@ public static class BuildingMesher
     private const double OnWallTolerance = 0.02;
     private static readonly Vector3 DoorColour = SettlementPalette.Wood;
 
+    // Plaster for every style but the slum dwelling, which is mud.
+    private static PropMaterial WallMaterial(Building building) => building.Style == BuildingStyle.Slum ? PropMaterial.Mud : PropMaterial.WallPlaster;
+
     /// <summary>Builds the cheap exterior of a building.</summary>
     /// <param name="building">The building.</param>
     /// <param name="interior">Its interior (used for the positions of doors and windows and the storey count).</param>
@@ -54,7 +57,7 @@ public static class BuildingMesher
         IReadOnlyList<WallOpening> openings = Openings(building, interior);
 
         var loop = building.Footprint.Points.Select(p => P(p, 0)).ToList();
-        b.Prism(loop, (float)height, SettlementPalette.WallColour(building));
+        b.Prism(loop, (float)height, SettlementPalette.WallColour(building), WallMaterial(building));
         Roof(b, building, height);
         Facade(b, building, openings);
         if (building.Style == BuildingStyle.Rich)
@@ -95,6 +98,7 @@ public static class BuildingMesher
         ConvexPoly fp = building.Footprint;
         IReadOnlyList<WallOpening> openings = Openings(building, interior);
         Vector3 stucco = SettlementPalette.WallColour(building);
+        PropMaterial wallMaterial = WallMaterial(building);
         double thickness = interior.ExteriorWallThickness;
 
         // Outer shell: one plane per footprint edge with the openings cut out.
@@ -105,7 +109,7 @@ public static class BuildingMesher
             double length = fp.EdgeLength(j);
             var holes = openings.Where(o => o.Edge == j).Select(o => new Hole(Math.Max(0.05, o.U - (o.Width / 2)), Math.Min(length - 0.05, o.U + (o.Width / 2)), o.Bottom, o.Top)).ToList();
             Vector3 outward = new((float)dir.Y, 0, (float)-dir.X);
-            Wall(visual, a, dir, length, height, 0, holes, outward, stucco);
+            Wall(visual, a, dir, length, height, 0, holes, outward, stucco, wallMaterial);
             Wall(collision, a, dir, length, height, 0, holes, outward, stucco);
         }
 
@@ -321,13 +325,23 @@ public static class BuildingMesher
         Vec2 centre = fp.Centroid;
         bool slum = building.Style == BuildingStyle.Slum;
         double rise = building.Ward == WardType.Cathedral ? CathedralRoofRise : slum ? SlumRoofRise : HouseRoofRise;
-        var ring = fp.Points.Select(p => P(p + ((p - centre).Normalized() * RoofOverhang), baseY)).ToList();
+        // Outset (not a per-vertex centroid offset) so the eave overhangs every edge by the same perpendicular distance,
+        // including the long sides of a non-square footprint.
+        var ring = fp.Outset(RoofOverhang).Points.Select(p => P(p, baseY)).ToList();
         Vector3 apex = P(centre, baseY + rise);
         Vector3 inside = P(centre, baseY);
+        // Far above the roof, so the same three points wind the opposite way and the underside faces down: without
+        // this the eave is a single-sided triangle and the sky shows through when seen from underneath the overhang.
+        Vector3 sky = apex + (Vector3.UnitY * 50f);
         Vector3 colour = slum ? SettlementPalette.SlumRoof : SettlementPalette.WardRoof(building.Ward);
+        bool thatched = slum || building.Ward == WardType.Slum;
+        PropMaterial topMaterial = thatched ? PropMaterial.RoofThatch : building.Ward == WardType.Cathedral ? PropMaterial.RoofTileGrey : PropMaterial.RoofTileRed;
         for (int i = 0; i < ring.Count; i++)
         {
-            b.Triangle(ring[i], ring[(i + 1) % ring.Count], apex, inside, colour);
+            Vector3 a = ring[i];
+            Vector3 c = ring[(i + 1) % ring.Count];
+            b.Triangle(a, c, apex, inside, colour, topMaterial);
+            b.Triangle(a, c, apex, sky, SettlementPalette.RoofSoffit, PropMaterial.Wood);
         }
     }
 
@@ -341,12 +355,12 @@ public static class BuildingMesher
             Vec2 dir = fp.Edge(o.Edge).Normalized();
             Vector3 outward = new((float)dir.Y, 0, (float)-dir.X);
             Vector3 At(double u, double v, double offset) => P(a + (dir * u), v) + (outward * (float)offset);
-            void Rect(double u0, double u1, double v0, double v1, double offset, Vector3 colour) =>
-                b.FacingQuad(At(u0, v0, offset), At(u1, v0, offset), At(u1, v1, offset), At(u0, v1, offset), outward, colour);
+            void Rect(double u0, double u1, double v0, double v1, double offset, Vector3 colour, PropMaterial material = PropMaterial.None) =>
+                b.FacingQuad(At(u0, v0, offset), At(u1, v0, offset), At(u1, v1, offset), At(u0, v1, offset), outward, colour, material);
 
             double half = o.Width / 2;
             Rect(o.U - half - FrameWidth, o.U + half + FrameWidth, o.IsDoor ? 0 : o.Bottom - FrameWidth, o.Top + FrameWidth, 0.03, SettlementPalette.Frame);
-            Rect(o.U - half, o.U + half, o.Bottom, o.Top, 0.06, o.IsDoor ? DoorColour : SettlementPalette.Glass);
+            Rect(o.U - half, o.U + half, o.Bottom, o.Top, 0.06, o.IsDoor ? DoorColour : SettlementPalette.Glass, o.IsDoor ? PropMaterial.Wood : PropMaterial.None);
         }
     }
 
@@ -463,9 +477,9 @@ public static class BuildingMesher
         Vector3 Corner(bool end, int s, float outward) => (end ? p1 : p0) + (side * (s * half)) + (normal * outward);
         float top = (float)depth;
         Vector3 colour = SettlementPalette.Beam;
-        b.FacingQuad(Corner(false, -1, top), Corner(true, -1, top), Corner(true, 1, top), Corner(false, 1, top), normal, colour);
-        b.FacingQuad(Corner(false, 1, -sunk), Corner(true, 1, -sunk), Corner(true, 1, top), Corner(false, 1, top), side, colour);
-        b.FacingQuad(Corner(true, -1, -sunk), Corner(false, -1, -sunk), Corner(false, -1, top), Corner(true, -1, top), -side, colour);
+        b.FacingQuad(Corner(false, -1, top), Corner(true, -1, top), Corner(true, 1, top), Corner(false, 1, top), normal, colour, PropMaterial.Wood);
+        b.FacingQuad(Corner(false, 1, -sunk), Corner(true, 1, -sunk), Corner(true, 1, top), Corner(false, 1, top), side, colour, PropMaterial.Wood);
+        b.FacingQuad(Corner(true, -1, -sunk), Corner(false, -1, -sunk), Corner(false, -1, top), Corner(true, -1, top), -side, colour, PropMaterial.Wood);
     }
 
     // ---- near: openings, doors, stairs ---------------------------------------------------------------------------
@@ -530,7 +544,7 @@ public static class BuildingMesher
         float yaw = (float)Math.Atan2(dir.Y, dir.X);
         float width = (float)door.Width - 0.04f;
         float height = (float)door.Height - 0.04f;
-        b.YawBox(P(centre, floorY + 0.02), yaw, new Vector3(width, height, DoorSlab), DoorColour);
+        b.YawBox(P(centre, floorY + 0.02), yaw, new Vector3(width, height, DoorSlab), DoorColour, PropMaterial.Wood);
         foreach (int side in new[] { -1, 1 })
         {
             Vec2 knob = centre + (dir * ((width / 2) - 0.12)) + (inward * (side * (DoorSlab + 0.03)));
@@ -727,7 +741,7 @@ public static class BuildingMesher
     }
 
     // A rectangular wall from `a` along `dir`, `height` tall starting at `y`, facing `normal`, with rectangular holes.
-    private static void Wall(PropMeshBuilder b, Vec2 a, Vec2 dir, double length, double height, double y, IReadOnlyList<Hole> holes, Vector3 normal, Vector3 colour)
+    private static void Wall(PropMeshBuilder b, Vec2 a, Vec2 dir, double length, double height, double y, IReadOnlyList<Hole> holes, Vector3 normal, Vector3 colour, PropMaterial material = PropMaterial.None)
     {
         var cuts = new SortedSet<double> { 0, length };
         foreach (Hole h in holes)
@@ -749,7 +763,7 @@ public static class BuildingMesher
             var blocked = holes.Where(h => h.U0 <= ua + 1e-9 && h.U1 >= ub - 1e-9).Select(h => (h.V0, h.V1)).ToList();
             foreach ((double v0, double v1) in FreeIntervals(0, height, blocked))
             {
-                b.FacingQuad(P(a + (dir * ua), y + v0), P(a + (dir * ub), y + v0), P(a + (dir * ub), y + v1), P(a + (dir * ua), y + v1), normal, colour);
+                b.FacingQuad(P(a + (dir * ua), y + v0), P(a + (dir * ub), y + v0), P(a + (dir * ub), y + v1), P(a + (dir * ua), y + v1), normal, colour, material);
             }
         }
     }

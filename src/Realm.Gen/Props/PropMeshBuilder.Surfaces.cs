@@ -13,7 +13,7 @@ internal sealed partial class PropMeshBuilder
     public int TriangleCount => _triangles.Count;
 
     /// <summary>A triangle wound so that its front faces the given normal.</summary>
-    public void Facing(Vector3 a, Vector3 b, Vector3 c, Vector3 normal, Vector3 colour)
+    public void Facing(Vector3 a, Vector3 b, Vector3 c, Vector3 normal, Vector3 colour, PropMaterial material = PropMaterial.None)
     {
         Vector3 cross = Vector3.Cross(b - a, c - a);
         if (cross.LengthSquared() < DegenerateArea)
@@ -26,14 +26,14 @@ internal sealed partial class PropMeshBuilder
             (b, c) = (c, b);
         }
 
-        _triangles.Add(new PropTriangle(a, b, c, colour));
+        _triangles.Add(new PropTriangle(a, b, c, colour, material));
     }
 
     /// <summary>A quad (two triangles) facing the given normal.</summary>
-    public void FacingQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 normal, Vector3 colour)
+    public void FacingQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 normal, Vector3 colour, PropMaterial material = PropMaterial.None)
     {
-        Facing(a, b, c, normal, colour);
-        Facing(a, c, d, normal, colour);
+        Facing(a, b, c, normal, colour, material);
+        Facing(a, c, d, normal, colour, material);
     }
 
     /// <summary>A quad visible from both sides.</summary>
@@ -44,11 +44,11 @@ internal sealed partial class PropMeshBuilder
     }
 
     /// <summary>A convex polygon as a triangle fan, facing the given normal.</summary>
-    public void FacingPolygon(IReadOnlyList<Vector3> points, Vector3 normal, Vector3 colour)
+    public void FacingPolygon(IReadOnlyList<Vector3> points, Vector3 normal, Vector3 colour, PropMaterial material = PropMaterial.None)
     {
         for (int i = 1; i + 1 < points.Count; i++)
         {
-            Facing(points[0], points[i], points[i + 1], normal, colour);
+            Facing(points[0], points[i], points[i + 1], normal, colour, material);
         }
     }
 
@@ -59,7 +59,8 @@ internal sealed partial class PropMeshBuilder
     /// <param name="across">Local Z axis (unit).</param>
     /// <param name="size">Extent along each axis.</param>
     /// <param name="colour">Colour.</param>
-    public void OrientedBox(Vector3 centre, Vector3 along, Vector3 up, Vector3 across, Vector3 size, Vector3 colour)
+    /// <param name="material">Real-world material for texturing, or <see cref="PropMaterial.None"/> for flat colour.</param>
+    public void OrientedBox(Vector3 centre, Vector3 along, Vector3 up, Vector3 across, Vector3 size, Vector3 colour, PropMaterial material = PropMaterial.None)
     {
         Vector3 hx = along * (size.X / 2);
         Vector3 hy = up * (size.Y / 2);
@@ -69,19 +70,19 @@ internal sealed partial class PropMeshBuilder
             centre - hx - hy - hz, centre + hx - hy - hz, centre + hx - hy + hz, centre - hx - hy + hz,
             centre - hx + hy - hz, centre + hx + hy - hz, centre + hx + hy + hz, centre - hx + hy + hz,
         };
-        Quad(c[0], c[1], c[2], c[3], centre, colour);
-        Quad(c[4], c[5], c[6], c[7], centre, colour);
-        Quad(c[0], c[1], c[5], c[4], centre, colour);
-        Quad(c[1], c[2], c[6], c[5], centre, colour);
-        Quad(c[2], c[3], c[7], c[6], centre, colour);
-        Quad(c[3], c[0], c[4], c[7], centre, colour);
+        Quad(c[0], c[1], c[2], c[3], centre, colour, material);
+        Quad(c[4], c[5], c[6], c[7], centre, colour, material);
+        Quad(c[0], c[1], c[5], c[4], centre, colour, material);
+        Quad(c[1], c[2], c[6], c[5], centre, colour, material);
+        Quad(c[2], c[3], c[7], c[6], centre, colour, material);
+        Quad(c[3], c[0], c[4], c[7], centre, colour, material);
     }
 
     /// <summary>A box lying along the ground direction <paramref name="yaw"/> (plan angle) with its base at the given height.</summary>
-    public void YawBox(Vector3 baseCentre, float yaw, Vector3 size, Vector3 colour)
+    public void YawBox(Vector3 baseCentre, float yaw, Vector3 size, Vector3 colour, PropMaterial material = PropMaterial.None)
     {
         (Vector3 along, Vector3 across) = Axes(yaw);
-        OrientedBox(baseCentre + (Vector3.UnitY * (size.Y / 2)), along, Vector3.UnitY, across, size, colour);
+        OrientedBox(baseCentre + (Vector3.UnitY * (size.Y / 2)), along, Vector3.UnitY, across, size, colour, material);
     }
 
     /// <summary>The horizontal unit vectors along and across a plan direction.</summary>
@@ -92,7 +93,8 @@ internal sealed partial class PropMeshBuilder
     /// <param name="loop">Base corners (any winding), all at the same height.</param>
     /// <param name="height">Extrusion height.</param>
     /// <param name="colour">Colour of the walls and top.</param>
-    public void Prism(IReadOnlyList<Vector3> loop, float height, Vector3 colour)
+    /// <param name="material">Real-world material for texturing, or <see cref="PropMaterial.None"/> for flat colour.</param>
+    public void Prism(IReadOnlyList<Vector3> loop, float height, Vector3 colour, PropMaterial material = PropMaterial.None)
     {
         Vector3 centroid = Vector3.Zero;
         foreach (Vector3 p in loop)
@@ -111,11 +113,11 @@ internal sealed partial class PropMeshBuilder
         for (int i = 0; i < loop.Count; i++)
         {
             int j = (i + 1) % loop.Count;
-            Quad(loop[i], loop[j], top[j], top[i], inside, colour);
+            Quad(loop[i], loop[j], top[j], top[i], inside, colour, material);
         }
 
-        FacingPolygon(top, Vector3.UnitY, colour);
-        FacingPolygon(loop, -Vector3.UnitY, colour);
+        FacingPolygon(top, Vector3.UnitY, colour, material);
+        FacingPolygon(loop, -Vector3.UnitY, colour, material);
     }
 
     /// <summary>A tube (cylinder or frustum) between two points, with end caps.</summary>

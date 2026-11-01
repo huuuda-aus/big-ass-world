@@ -47,8 +47,9 @@ public sealed record CityLandmark(
 /// </summary>
 public sealed class CityBuild
 {
-    private CityBuild(Settlement settlement, City city, CityBuilding[] buildings, ArrayMesh? wall, ConcavePolygonShape3D? wallShape, CityLandmark? landmark, double landmarkBaseY, CityBridgeMesh[] bridges, NavGraphResult nav, IGroundSampler ground, OpenGround open, IReadOnlyList<NpcPlan> crowd, IReadOnlyDictionary<int, string> nodeLabels)
+    private CityBuild(Settlement settlement, City city, CityBuilding[] buildings, ArrayMesh? wall, ConcavePolygonShape3D? wallShape, CityLandmark? landmark, double landmarkBaseY, CityBridgeMesh[] bridges, NavGraphResult nav, IGroundSampler ground, OpenGround open, IReadOnlyList<NpcPlan> crowd, IReadOnlyDictionary<int, string> nodeLabels, IReadOnlyList<Ladder> ladders)
     {
+        Ladders = ladders;
         NodeLabels = nodeLabels;
         Open = open;
         CrowdPlans = crowd;
@@ -103,6 +104,9 @@ public sealed class CityBuild
     /// <summary>Height of the centrepiece's base above the city origin, in metres.</summary>
     public double LandmarkBaseY { get; }
 
+    /// <summary>Watchtower ladders, in the city's local frame (empty for a stone wall or no wall).</summary>
+    public IReadOnlyList<Ladder> Ladders { get; }
+
     /// <summary>Generates a city and all its far meshes. Takes about a second or two; call it from a worker thread.</summary>
     /// <param name="settlement">The settlement to build.</param>
     /// <param name="terrain">The baked terrain around it; the city is built on level ground when null.</param>
@@ -121,7 +125,7 @@ public sealed class CityBuild
         {
             Interior interior = InteriorGenerator.Generate(building, city.Seed);
             BuildingSite site = BuildingSite.Plan(building, ground);
-            ArrayMesh far = PropMeshConverter.ToArrayMesh(BuildingMesher.Far(building, interior, site));
+            ArrayMesh far = PropMeshConverter.ToTexturedArrayMesh(BuildingMesher.Far(building, interior, site));
             Vec2 centre = building.Footprint.Centroid;
             PropMesh? glow = NightLights.Glow(building, interior);
             list.Add(new CityBuilding(building, interior, far, centre.X, centre.Y, site) { Glow = glow is null ? null : PropMeshConverter.ToArrayMesh(glow) });
@@ -175,6 +179,7 @@ public sealed class CityBuild
             ground,
             open,
             crowd,
-            CrowdGenerator.NodeLabels(city, nav));
+            CrowdGenerator.NodeLabels(city, nav),
+            meshes.Ladders);
     }
 }

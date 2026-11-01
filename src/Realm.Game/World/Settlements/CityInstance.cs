@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using Realm.Game.Bridge;
@@ -79,6 +80,13 @@ public sealed partial class CityInstance : Node3D
     {
         _build = build ?? throw new ArgumentNullException(nameof(build));
         _settlement = build.Settlement;
+        Ladders = build.Ladders.Select(l =>
+        {
+            (double bx, double bz) = _settlement.ToWorld(l.Position);
+            (double tx, double tz) = _settlement.ToWorld(l.TopPosition);
+            double y = _settlement.GroundHeightMeters;
+            return (new Vector3((float)bx, (float)(y + l.BottomY), (float)bz), new Vector3((float)tx, (float)(y + l.TopY), (float)tz));
+        }).ToList();
         _far = new MeshInstance3D?[build.Buildings.Length];
         _near = new Node3D?[build.Buildings.Length];
         _nearBuilding = new bool[build.Buildings.Length];
@@ -386,6 +394,9 @@ public sealed partial class CityInstance : Node3D
     /// <summary>Settlement this city shows.</summary>
     public Settlement Settlement => _settlement;
 
+    /// <summary>Watchtower ladders, in world space: where the player stands to use each end.</summary>
+    public IReadOnlyList<(Vector3 Bottom, Vector3 Top)> Ladders { get; }
+
     /// <summary>Houses currently shown as detailed buildings.</summary>
     public int NearCount { get; private set; }
 
@@ -572,7 +583,7 @@ public sealed partial class CityInstance : Node3D
         var node = new MeshInstance3D
         {
             Mesh = _build.Buildings[index].Far,
-            MaterialOverride = CityMaterials.Solid,
+            MaterialOverride = BuildingMaterials.Textured,
             Name = $"House{_build.Buildings[index].Building.Id}",
             Position = new Vector3(0, (float)_build.Buildings[index].Site.BaseY, 0),
         };
@@ -632,7 +643,7 @@ public sealed partial class CityInstance : Node3D
             BuildingMeshes meshes = BuildingMesher.Near(b.Building, b.Interior, b.Site);
             _finished.Enqueue(new NearResult(
                 index,
-                PropMeshConverter.ToArrayMesh(meshes.Visual),
+                PropMeshConverter.ToTexturedArrayMesh(meshes.Visual),
                 PropMeshConverter.ToCollisionShape(meshes.Collision),
                 PropMeshConverter.ToRoomMesh(meshes.Rooms),
                 meshes.Glass is null ? null : PropMeshConverter.ToArrayMesh(meshes.Glass)));
@@ -652,7 +663,7 @@ public sealed partial class CityInstance : Node3D
             Name = $"Near{_build.Buildings[result.Index].Building.Id}",
             Position = new Vector3(0, (float)_build.Buildings[result.Index].Site.BaseY, 0),
         };
-        root.AddChild(new MeshInstance3D { Mesh = result.Visual, MaterialOverride = CityMaterials.Solid });
+        root.AddChild(new MeshInstance3D { Mesh = result.Visual, MaterialOverride = BuildingMaterials.Textured });
         var body = new StaticBody3D();
         body.AddChild(new CollisionShape3D { Shape = result.Shape });
         root.AddChild(body);

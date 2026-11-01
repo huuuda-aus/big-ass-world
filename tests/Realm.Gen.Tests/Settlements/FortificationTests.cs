@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Realm.Core.Random;
@@ -16,6 +17,8 @@ namespace Realm.Gen.Tests.Settlements;
 public class FortificationTests
 {
     private static readonly City Town = CityGenerator.Generate(new CityParams { Seed = 8, MaxBuildings = 50 });
+
+    public static IEnumerable<object[]> Seeds => Enumerable.Range(1, 30).Select(s => new object[] { s });
 
     private static Settlement Of(SettlementTier tier, int buildings = 50) =>
         new($"settlement.{tier}", "Test", tier, 0, 0, 0, 100, 100, 130, 1, buildings, false, CentrepieceKind.None);
@@ -84,6 +87,107 @@ public class FortificationTests
         {
             Assert.DoesNotContain(palisade.Triangles, t => Distance(t, gate) < 1.5);
         }
+    }
+
+    [Theory]
+    [MemberData(nameof(Seeds))]
+    public void Watchtowers_BackPostsStandInsideThePalisade(int seed)
+    {
+        // The platform's front edge is meant to sit flush with (a little past) the wall line, where the wall
+        // itself stands in for the front posts, so only the two back posts are checked here. A post tube's only
+        // triangle with every vertex above 4 m is its top cap (its side quads mix a low and a high vertex), and
+        // Colour == Log(32) above that height is unique to a watchtower post (everything else in a palisade uses
+        // a hash under 32, which collapses to the same shade as 0: Log's shade index is (hash >> 5) % count).
+        City city = seed == 8 ? Town : CityGenerator.Generate(new CityParams { Seed = seed, MaxBuildings = 50 });
+        PropMesh palisade = CityMesher.Wall(city, null, Fortification.Palisade)!;
+        var postCaps = palisade.Triangles.Where(t => t.Colour == SettlementPalette.Log(32) && t.A.Y > 4f && t.B.Y > 4f && t.C.Y > 4f).ToList();
+        Assert.NotEmpty(postCaps);
+
+        foreach (PropTriangle t in postCaps)
+        {
+            foreach (Vector3 v in new[] { t.A, t.B, t.C })
+            {
+                var p = new Vec2(v.X, v.Z);
+                Assert.True(PointInPolygon(city.Wall, p), $"seed {seed}: a watchtower back post at {v} is outside the palisade");
+            }
+        }
+    }
+
+    [Fact]
+    public void Build_WithAPalisade_ExposesLadders_OneAtEveryWatchtower_ReachingFromGroundToThePlatform()
+    {
+        CityMeshes meshes = CityMesher.Build(Town, Town.Seed, null, Fortification.Palisade);
+
+        Assert.NotEmpty(meshes.Ladders);
+        foreach (Ladder ladder in meshes.Ladders)
+        {
+            Assert.True(ladder.TopY > ladder.BottomY, $"ladder at {ladder.Position}: top {ladder.TopY} is not above bottom {ladder.BottomY}");
+            Assert.True(PointInPolygon(Town.Wall, ladder.Position), $"ladder at {ladder.Position} is outside the palisade");
+            Assert.True(PointInPolygon(Town.Wall, ladder.TopPosition), $"ladder top landing at {ladder.TopPosition} is outside the palisade");
+            // The top landing point must clear the floor's hole (0.5 m half-width) by at least a body radius
+            // (0.4 m) plus a little margin, or arriving there lands in the hole, which has no floor.
+            Assert.True(Vec2.Distance(ladder.Position, ladder.TopPosition) >= 0.95, $"ladder top landing at {ladder.TopPosition} is only {Vec2.Distance(ladder.Position, ladder.TopPosition):F2} m from the hole's centre");
+        }
+    }
+
+    [Fact]
+    public void Build_WithAPalisade_TheRoofClearsAStandingPlayerAboveTheLadder()
+    {
+        PropMesh palisade = CityMesher.Wall(Town, null, Fortification.Palisade)!;
+        CityMeshes meshes = CityMesher.Build(Town, Town.Seed, null, Fortification.Palisade);
+        double roofBaseY = palisade.Triangles.Where(t => t.Colour == SettlementPalette.SlumRoof).SelectMany(t => new[] { t.A.Y, t.B.Y, t.C.Y }).Min();
+
+        // 1.8 m is the player capsule's height (WorldScene.BodyHeight); Realm.Gen does not reference it directly
+        // (it stays Godot-free), so this is the one place that would catch the two falling out of step again.
+        foreach (Ladder ladder in meshes.Ladders)
+        {
+            Assert.True(roofBaseY - ladder.TopY >= 1.8, $"only {roofBaseY - ladder.TopY:F2} m of headroom above the ladder's top landing at {ladder.TopPosition}, less than the player's 1.8 m height");
+        }
+    }
+
+    [Fact]
+    public void Build_WithAPalisade_HasAWaistHighRailingAroundThePlatform()
+    {
+        PropMesh palisade = CityMesher.Wall(Town, null, Fortification.Palisade)!;
+        CityMeshes meshes = CityMesher.Build(Town, Town.Seed, null, Fortification.Palisade);
+        double floorTopY = meshes.Ladders[0].TopY; // flat ground: every tower's floor sits at the same height
+
+        // Colour == Log(1) above the floor's own top surface is the railing specifically: the front braces share
+        // the colour but their top end sits just under the floor (platformY - 0.1), never reaching it.
+        var railing = palisade.Triangles.Where(t => t.Colour == SettlementPalette.Log(1) && t.A.Y >= floorTopY - 0.05f && t.B.Y >= floorTopY - 0.05f && t.C.Y >= floorTopY - 0.05f).ToList();
+        Assert.NotEmpty(railing);
+
+        double top = railing.SelectMany(t => new[] { t.A.Y, t.B.Y, t.C.Y }).Max();
+        Assert.True(top - floorTopY >= 0.9, $"railing only reaches {top - floorTopY:F2} m above the floor, expected close to waist height (1.0 m)");
+        // Posts alone (thin upright boxes) are a few hundred triangles across all four edges; the round horizontal
+        // log courses stacked tight between them (no gap: each spaced less than a log's diameter from the next,
+        // LogSides = 8 round faces each) add several hundred more, so a low count here means the fill courses,
+        // not just the posts, are missing or too sparse.
+        Assert.True(railing.Count >= 500, $"only {railing.Count} railing triangles, expected the posts plus tightly stacked horizontal fill courses");
+    }
+
+    [Fact]
+    public void Build_WithAStoneWall_HasNoLadders()
+    {
+        CityMeshes meshes = CityMesher.Build(Town, Town.Seed, null, Fortification.Stone);
+
+        Assert.Empty(meshes.Ladders);
+    }
+
+    // Standard even-odd ray-casting test; correct for any simple polygon, convex or not.
+    private static bool PointInPolygon(IReadOnlyList<Vec2> poly, Vec2 p)
+    {
+        bool inside = false;
+        for (int i = 0, j = poly.Count - 1; i < poly.Count; j = i++)
+        {
+            Vec2 a = poly[i], c = poly[j];
+            if ((a.Y > p.Y) != (c.Y > p.Y) && p.X < ((c.X - a.X) * (p.Y - a.Y) / (c.Y - a.Y)) + a.X)
+            {
+                inside = !inside;
+            }
+        }
+
+        return inside;
     }
 
     [Fact]

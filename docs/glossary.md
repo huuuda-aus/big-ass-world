@@ -97,3 +97,5 @@
 - **Sky fill** (`RoomLighting.SkyFill`): the share of the sky's ambient light that reaches a room, from 0.1 (no openings) to 0.8, by its windows and doors; sun patches are unaffected.
 - **Lamp level**: how brightly a house's lamps burn, 0 (empty or daytime) to 1 (someone home at night); it eases between the two and drives the interior lamps, the far glow and the street glow of that house.
 - **Aura** (`NightLights.Aura`): the fake light a lit window throws on the street and on nearby walls: one additive mesh per house, not a real light.
+- **Material** (`PropMaterial`): which real-world material a prop triangle represents (plaster, mud, thatch, tile, wood, stone), for texturing; `None` means flat vertex colour, as every prop rendered before building textures existed ([ADR 0030](decisions/0030-building-texture-pass.md)).
+- **Outset** (`ConvexPoly.Outset`): expands a convex polygon outward by a uniform perpendicular distance from every edge (the intersection of each edge's own outward-shifted half-plane); used for a roof's eave and a foundation's plinth or deck outline.

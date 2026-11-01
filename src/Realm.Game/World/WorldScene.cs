@@ -45,6 +45,9 @@ public partial class WorldScene : Node3D
     private const float PitchLimit = 1.5f;
     private const float FarPlane = 3000f;
     private const double PickMeters = 40;
+    private const double LadderUseRangeMeters = 2.0;
+    private const float LadderFadeSeconds = 0.35f;
+    private const float LadderArrivalLift = 0.1f;
     private const float WalkFogDensity = 0.010f; // about 5 percent visibility at the 300 m walking view distance
     private const float FlyFogDensity = 0.0010f;
     private const double WalkLoadMeters = 300;
@@ -78,6 +81,10 @@ public partial class WorldScene : Node3D
     private CloudClimate _climate = null!; // Safe: set in _Ready by BuildEnvironment.
     private RainEffect? _rain;
     private Label? _personLabel;
+    private Label? _ladderPrompt;
+    private ColorRect? _fade;
+    private (Vector3 Near, Vector3 Far)? _nearLadder;
+    private bool _usingLadder;
     private DayNightCycle _cycle = null!; // Safe: set in _Ready by BuildEnvironment.
     private Godot.Environment _environment = null!; // Safe: set in _Ready by BuildEnvironment.
     private LaunchArguments _args = new(Array.Empty<string>());
@@ -281,6 +288,9 @@ public partial class WorldScene : Node3D
                 case Key.N:
                     _cities?.ToggleNavDebug();
                     break;
+                case Key.E when !_fly:
+                    UseLadder();
+                    break;
                 case Key.T:
                     // Cycle the speed of time: normal, 30 times, 300 times, paused.
                     _clock.TimeScale = _clock.TimeScale switch { < 0.5 => 1, < 2 => 30, < 100 => 300, _ => 0 };
@@ -342,6 +352,7 @@ public partial class WorldScene : Node3D
         _cycle.Update(delta, _body.Position);
         _rain?.SetIntensity(RainAt(_body.Position.X, _body.Position.Z));
         UpdatePersonLabel();
+        UpdateLadderPrompt();
         _cities?.Process(_body.Position, delta, _streamer.Options.LoadDistanceMeters);
         if (_map is { Visible: true })
         {
@@ -677,7 +688,24 @@ public partial class WorldScene : Node3D
         _personLabel.AddThemeColorOverride("font_outline_color", Colors.Black);
         _personLabel.AddThemeConstantOverride("outline_size", 6);
         layer.AddChild(_personLabel);
+        _ladderPrompt = new Label { HorizontalAlignment = HorizontalAlignment.Center, Visible = false };
+        _ladderPrompt.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
+        _ladderPrompt.Position = new Vector2(-400, -100);
+        _ladderPrompt.Size = new Vector2(800, 60);
+        _ladderPrompt.AddThemeFontSizeOverride("font_size", HudFontSize);
+        _ladderPrompt.AddThemeColorOverride("font_outline_color", Colors.Black);
+        _ladderPrompt.AddThemeConstantOverride("outline_size", 6);
+        layer.AddChild(_ladderPrompt);
         AddChild(layer);
+
+        // A full-screen cover for the ladder's "use" transition (fade out, teleport, fade in); on its own layer so
+        // it draws over the HUD too, and starts transparent so it is invisible until UseLadder animates it.
+        var fadeLayer = new CanvasLayer { Layer = 100 };
+        _fade = new ColorRect { Color = new Color(0, 0, 0, 0), MouseFilter = Control.MouseFilterEnum.Ignore };
+        _fade.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        fadeLayer.AddChild(_fade);
+        AddChild(fadeLayer);
+
         UpdateHud();
     }
 
@@ -694,7 +722,7 @@ public partial class WorldScene : Node3D
             $"x {p.X:F0}  z {p.Z:F0}  ground {groundText}  region ({region.X}, {region.Y})\n" +
             $"terrain: {_streamer.LoadedCount} loaded, {_streamer.PendingCount} loading, last rebuild {_lastUpdateMs:F1} ms\n" +
             CityHudLine() +
-            "WASD/arrows move  Shift run  Space jump  F fly  T time  N paths  F1 hide  Esc mouse";
+            "WASD/arrows move  Shift run  Space jump  E ladder  F fly  T time  N paths  F1 hide  Esc mouse";
     }
 
     // The rain at a place: from the region's clouds and the swing of the weather, or the fixed value of --rain.
@@ -754,6 +782,63 @@ public partial class WorldScene : Node3D
 
         _personLabel.Text = challenged ? "Guard: \"Halt! State your business.\"" + (text is null ? string.Empty : "\n" + text) : text ?? string.Empty;
         _personLabel.Visible = _hud.Visible && _personLabel.Text.Length > 0;
+    }
+
+    // Standing at either end of a watchtower ladder shows a prompt; pressing E (UseLadder) teleports to the other
+    // end. No climbing animation or collision along the ladder itself: the "climb" is the fade transition.
+    private void UpdateLadderPrompt()
+    {
+        _nearLadder = null;
+        if (_cities is not null && !_usingLadder)
+        {
+            foreach (CityInstance city in _cities.Cities)
+            {
+                foreach ((Vector3 bottom, Vector3 top) in city.Ladders)
+                {
+                    if (_body.Position.DistanceTo(bottom) < LadderUseRangeMeters)
+                    {
+                        _nearLadder = (bottom, top);
+                    }
+                    else if (_body.Position.DistanceTo(top) < LadderUseRangeMeters)
+                    {
+                        _nearLadder = (top, bottom);
+                    }
+                }
+            }
+        }
+
+        if (_ladderPrompt is not null)
+        {
+            _ladderPrompt.Text = _nearLadder is null ? string.Empty : "Press E to use the ladder";
+            _ladderPrompt.Visible = _hud.Visible && _nearLadder is not null;
+        }
+    }
+
+    // Fades to black, moves the player to the far end of the ladder they are standing at, then fades back in.
+    private void UseLadder()
+    {
+        if (_nearLadder is not { } ladder || _fade is null || _usingLadder)
+        {
+            return;
+        }
+
+        _usingLadder = true;
+        _nearLadder = null;
+        if (_ladderPrompt is not null)
+        {
+            _ladderPrompt.Visible = false;
+        }
+
+        Vector3 destination = ladder.Far;
+        Tween tween = CreateTween();
+        tween.TweenProperty(_fade, "color:a", 1f, LadderFadeSeconds);
+        tween.TweenCallback(Callable.From(() =>
+        {
+            _body.Position = destination + (Vector3.Up * LadderArrivalLift);
+            _body.Velocity = Vector3.Zero;
+        }));
+        tween.TweenProperty(_fade, "color:a", 0f, LadderFadeSeconds);
+        tween.TweenCallback(Callable.From(() => _usingLadder = false));
     }
 
     // The baked cloud climate, or an even partly cloudy one when the world has none.

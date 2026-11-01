@@ -44,6 +44,9 @@ public static class SettlementPalette
     /// <summary>Beams of half-timbering.</summary>
     public static Vector3 Beam { get; } = Hex(0x4a3320);
 
+    /// <summary>Underside of the roof overhang (rafters and boards), seen when standing under the eaves.</summary>
+    public static Vector3 RoofSoffit { get; } = Hex(0x4a3a2a);
+
     /// <summary>Outer wall plaster of a building; varies slightly from building to building.</summary>
     /// <param name="buildingId">Building identifier within its city.</param>
     /// <returns>The colour.</returns>

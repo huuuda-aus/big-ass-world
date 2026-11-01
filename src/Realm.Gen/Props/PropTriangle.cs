@@ -7,4 +7,5 @@ namespace Realm.Gen.Props;
 /// <param name="B">Second corner in metres.</param>
 /// <param name="C">Third corner in metres.</param>
 /// <param name="Colour">Linear RGB, each channel 0 to 1.</param>
-public readonly record struct PropTriangle(Vector3 A, Vector3 B, Vector3 C, Vector3 Colour);
+/// <param name="Material">The real-world material this triangle represents, or <see cref="PropMaterial.None"/> (the default) for flat colour with no texture.</param>
+public readonly record struct PropTriangle(Vector3 A, Vector3 B, Vector3 C, Vector3 Colour, PropMaterial Material = PropMaterial.None);

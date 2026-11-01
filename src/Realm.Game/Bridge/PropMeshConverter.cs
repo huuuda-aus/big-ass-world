@@ -1,6 +1,7 @@
 using System;
 using Godot;
 using System.Collections.Generic;
+using Realm.Game.World.Settlements;
 using Realm.Gen.Props;
 using Realm.Gen.Settlements.Meshing;
 
@@ -46,6 +47,74 @@ public static class PropMeshConverter
         arrays[(int)Mesh.ArrayType.Vertex] = vertices;
         arrays[(int)Mesh.ArrayType.Normal] = normals;
         arrays[(int)Mesh.ArrayType.Color] = colours;
+        var mesh = new ArrayMesh();
+        mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
+        return mesh;
+    }
+
+    /// <summary>
+    /// Builds a mesh like <see cref="ToArrayMesh"/>, but additionally carries UV (a dominant-axis planar
+    /// projection of each triangle's own vertices, scaled by <see cref="BuildingMaterials.TileSize"/> so the
+    /// chosen material tiles at a believable size) and, in UV2.x, which texture layer it samples: -1 for a
+    /// triangle whose <see cref="PropMaterial"/> is <see cref="PropMaterial.None"/> (flat vertex colour, exactly
+    /// as <see cref="ToArrayMesh"/> renders it), or the layer index otherwise. Pair with
+    /// <see cref="BuildingMaterials.Textured"/>.
+    /// </summary>
+    /// <param name="prop">The model.</param>
+    /// <returns>The mesh.</returns>
+    public static ArrayMesh ToTexturedArrayMesh(PropMesh prop)
+    {
+        ArgumentNullException.ThrowIfNull(prop);
+        int count = prop.Triangles.Count * 3;
+        var vertices = new Vector3[count];
+        var normals = new Vector3[count];
+        var colours = new Color[count];
+        var uvs = new Godot.Vector2[count];
+        var uv2s = new Godot.Vector2[count];
+        int i = 0;
+        foreach (PropTriangle t in prop.Triangles)
+        {
+            var a = new Vector3(t.A.X, t.A.Y, t.A.Z);
+            var b = new Vector3(t.B.X, t.B.Y, t.B.Z);
+            var c = new Vector3(t.C.X, t.C.Y, t.C.Z);
+            Vector3 normal = (b - a).Cross(c - a).Normalized();
+            var colour = new Color(t.Colour.X, t.Colour.Y, t.Colour.Z);
+            float layer = t.Material == PropMaterial.None ? -1f : (int)t.Material - 1;
+            (float tileX, float tileY) = t.Material == PropMaterial.None ? (1f, 1f) : BuildingMaterials.TileSize((int)t.Material - 1);
+            float ax = Mathf.Abs(normal.X), ay = Mathf.Abs(normal.Y), az = Mathf.Abs(normal.Z);
+
+            // World-space planar UV, projected along whichever axis the triangle faces most: seamless tiling
+            // textures need no authored UVs, and a building's own local origin gives each one a different phase.
+            Godot.Vector2 Uv(Vector3 p) => ay >= ax && ay >= az
+                ? new Godot.Vector2(p.X / tileX, p.Z / tileY)
+                : ax >= az
+                    ? new Godot.Vector2(p.Z / tileX, p.Y / tileY)
+                    : new Godot.Vector2(p.X / tileX, p.Y / tileY);
+
+            // Reverse the winding: our meshes are counter-clockwise outward, Godot's front faces are clockwise.
+            vertices[i] = a;
+            vertices[i + 1] = c;
+            vertices[i + 2] = b;
+            uvs[i] = Uv(a);
+            uvs[i + 1] = Uv(c);
+            uvs[i + 2] = Uv(b);
+            for (int k = 0; k < 3; k++)
+            {
+                normals[i + k] = normal;
+                colours[i + k] = colour;
+                uv2s[i + k] = new Godot.Vector2(layer, 0f);
+            }
+
+            i += 3;
+        }
+
+        var arrays = new Godot.Collections.Array();
+        arrays.Resize((int)Mesh.ArrayType.Max);
+        arrays[(int)Mesh.ArrayType.Vertex] = vertices;
+        arrays[(int)Mesh.ArrayType.Normal] = normals;
+        arrays[(int)Mesh.ArrayType.Color] = colours;
+        arrays[(int)Mesh.ArrayType.TexUV] = uvs;
+        arrays[(int)Mesh.ArrayType.TexUV2] = uv2s;
         var mesh = new ArrayMesh();
         mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays);
         return mesh;

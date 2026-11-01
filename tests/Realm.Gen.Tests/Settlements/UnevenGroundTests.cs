@@ -98,6 +98,19 @@ public class UnevenGroundTests
     }
 
     [Fact]
+    public void AStoneFoundation_IsTaggedTheStoneMaterial()
+    {
+        City city = Make(buildings: 400);
+        (Building b, Interior interior) = Furnish(city, WardType.Merchant);
+        BuildingSite site = BuildingSite.Plan(b, new Slope(0.4));
+        Assert.Equal(FoundationStyle.Stone, site.Style);
+
+        PropMesh mesh = BuildingMesher.Far(b, interior, site);
+
+        Assert.Contains(mesh.Triangles, t => t.Material == PropMaterial.Stone);
+    }
+
+    [Fact]
     public void Style_FollowsTheWard_TheServiceAndTheDrop()
     {
         City city = Make(buildings: 400);

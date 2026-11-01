@@ -65,7 +65,7 @@ internal static class FoundationMesher
         switch (style)
         {
             case FoundationStyle.Stone:
-                StoneCourses(b, Loop(fp, StoneLipMeters), floor - BuriedMeters, 0, building.Id);
+                StoneCourses(b, fp.Outset(StoneLipMeters).Points, floor - BuriedMeters, 0, building.Id);
                 stepStart = StoneLipMeters;
                 break;
             case FoundationStyle.Wood:
@@ -109,21 +109,15 @@ internal static class FoundationMesher
             // Each course sticks out or in a few centimetres so the wall reads as stacked stones.
             double wobble = ((int)(h % 5) - 2) * 0.02;
             var ring = loop.Select(p => P(p + ((p - centre).Normalized() * wobble), bottom + (k * thickness))).ToList();
-            b.Prism(ring, (float)thickness, StoneColour * StoneShades[(h >> 3) % (uint)StoneShades.Length]);
+            b.Prism(ring, (float)thickness, StoneColour * StoneShades[(h >> 3) % (uint)StoneShades.Length], PropMaterial.Stone);
         }
-    }
-
-    private static List<Vec2> Loop(ConvexPoly fp, double outset)
-    {
-        Vec2 centre = fp.Centroid;
-        return fp.Points.Select(p => p + ((p - centre).Normalized() * outset)).ToList();
     }
 
     // ---- wood --------------------------------------------------------------------------------------------------
 
     private static void Pilings(PropMeshBuilder b, BuildingSite site, ConvexPoly fp, int doorEdge, double outset)
     {
-        List<Vec2> outline = outset > 0 ? Loop(fp, outset) : fp.Points.ToList();
+        IReadOnlyList<Vec2> outline = outset > 0 ? fp.Outset(outset).Points : fp.Points;
         Vec2 centre = fp.Centroid;
 
         // Posts at every corner...
@@ -187,7 +181,7 @@ internal static class FoundationMesher
 
     private static void Deck(PropMeshBuilder b, ConvexPoly fp, int doorEdge)
     {
-        List<Vec2> outer = Loop(fp, DeckWidthMeters);
+        IReadOnlyList<Vec2> outer = fp.Outset(DeckWidthMeters).Points;
         b.Prism(outer.Select(p => P(p, -DeckDrop)).ToList(), (float)DeckThickness, DeckColour);
 
         // A rail round the deck except along the front, where the steps start.
